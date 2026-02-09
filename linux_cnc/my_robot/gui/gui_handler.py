@@ -7,6 +7,8 @@ from datetime import datetime
 # Модулі LinuxCNC
 import linuxcnc
 
+import key_config as keys
+
 # Регулювання імпортів Qt (PyQt5 за замовчуванням для LinuxCNC)
 try:
     from PyQt5 import QtCore, QtWidgets, QtGui
@@ -300,9 +302,68 @@ class HandlerClass:
         if hasattr(self.widgets, 'btn_home_all'):
             self.widgets.btn_home_all.clicked.connect(self.on_btn_home_all_clicked)
 
+        self.widgets.window().keyPressEvent = lambda event: self.processed_key_event(event, True)
+        self.widgets.window().keyReleaseEvent = lambda event: self.processed_key_event(event, False)
         
         self._connect_all_jog_buttons()
         print("DEBUG: Обробник готовий до роботи")
+    
+    def processed_key_event(self, event, is_pressed):
+        """
+        Централізована обробка гарячих клавіш.
+        Параметри:
+            event: об'єкт події QKeyEvent
+            is_pressed: True якщо клавіша натиснута, False якщо відпущена
+        """
+        # Більшість системних команд LinuxCNC спрацьовують лише на натискання
+        if not is_pressed:
+            return
+
+        key = event.key()
+        modifiers = event.modifiers()
+        # Перевіряємо, чи затиснуто клавішу Control
+        is_ctrl = bool(modifiers & QtCore.Qt.ControlModifier)
+
+        # 1. ЗАХИСТ: Якщо фокус на полі введення тексту - ігноруємо гарячі клавіші
+        focus_widget = QtWidgets.QApplication.focusWidget()
+        if isinstance(focus_widget, (QtWidgets.QLineEdit, QtWidgets.QTextEdit, QtWidgets.QPlainTextEdit)):
+            # Дозволяємо лише Escape, щоб вийти з поля введення
+            if key == QtCore.Qt.Key_Escape:
+                focus_widget.clearFocus()
+            return
+
+        # 2. ОБРОБКА КОМАНД З CTRL
+        if is_ctrl:
+            if key == QtCore.Qt.Key_Home:        # Ctrl + Home
+                self.on_btn_home_all_clicked()
+            elif key == QtCore.Qt.Key_S:           # Ctrl + S
+                self.on_btn_file_save_as_clicked()
+            elif key == QtCore.Qt.Key_R:           # Ctrl + R
+                self.on_btn_file_reload_clicked()
+            return # Виходимо, щоб не спрацювали поодинокі клавіші нижче
+
+        # 3. ОБРОБКА ПООДИНОКИХ КЛАВІШ
+        # Системні
+        if key == keys.HOTKEYS["ESTOP"]:           # F1
+            self.on_btn_estop_clicked()
+        elif key == keys.HOTKEYS["POWER"]:         # F2
+            self.on_btn_power_off_clicked()
+        
+        # Файли
+        elif key == keys.HOTKEYS["OPEN_FILE"]:     # O
+            self.on_btn_file_open_clicked()
+            
+        # Виконання (Режим AUTO)
+        elif key == keys.HOTKEYS["RUN"]:           # R
+            self.on_btn_cycle_start_clicked()
+        elif key == keys.HOTKEYS["STOP"]:          # ESC
+            self.on_btn_cycle_stop_clicked
+        elif key == keys.HOTKEYS["PAUSE"]:         # P
+            self.on_btn_cycle_pause_clicked()
+        elif key == keys.HOTKEYS["RESUME"]:        # S
+            self.on_btn_cycle_continue_clicked()
+        elif key == keys.HOTKEYS["STEP"]:          # T
+            self.on_btn_cycle_step_clicked()
     
     def setup_output_panel(self):
         # Встановлюємо стилі
@@ -324,7 +385,7 @@ class HandlerClass:
             return
 
         timestamp = datetime.now().strftime("%H:%M:%S")
-        colors = {"info": "#00FFFF", "warning": "#FFCC00", "error": "#FF5555"}
+        colors = {"info": "#9E9E9E", "warning": "#FE5C0D", "error": "#FF0000"}
         color = colors.get(level, "#FFFFFF")
         
         # Формуємо повний текст для буфера обміну: [12:00:01] INFO: Повідомлення
@@ -356,7 +417,9 @@ class HandlerClass:
         btn_copy = QtWidgets.QPushButton("📋")
         btn_copy.setFixedSize(24, 24)
         btn_copy.setCursor(QtCore.Qt.PointingHandCursor)
-        btn_copy.setToolTip("Копіювати повний лог")
+        #стилі для підказки кнопки копіювання
+        
+        
         btn_copy.setStyleSheet("""
             QPushButton {
                 background-color: #2A2A2A;

@@ -227,6 +227,9 @@ border: 3px solid #333333;
        <bold>true</bold>
       </font>
      </property>
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:8pt; color:#ffffff;&quot;&gt;Home all joints [Ctrl + Home]&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
      <property name="styleSheet">
       <string notr="true">QToolButton {
 	background-color: #333333;
@@ -440,7 +443,7 @@ CYCLE</string>
 }</string>
        </property>
        <property name="text">
-        <string>CONTINUE</string>
+        <string>RESUME</string>
        </property>
       </widget>
       <widget class="QPushButton" name="btn_cycle_step">
@@ -637,7 +640,7 @@ background-color: #161616;</string>
         </font>
        </property>
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ffffff;&quot;&gt;Reopen current file [L]&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ffffff;&quot;&gt;Reopen current file [Ctrl+R]&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="styleSheet">
         <string notr="true">QPushButton {
@@ -1119,7 +1122,7 @@ background-color: #161616;</string>
         </font>
        </property>
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ffffff;&quot;&gt;Resume execution [S]&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string/>
        </property>
        <property name="styleSheet">
         <string notr="true">QPushButton {
@@ -1158,7 +1161,7 @@ background-color: #161616;</string>
         </font>
        </property>
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ffffff;&quot;&gt;Resume execution [S]&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string/>
        </property>
        <property name="styleSheet">
         <string notr="true">QPushButton {
