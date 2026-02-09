@@ -1,9 +1,9 @@
-# Mon Feb 09 10:49:42 EET 2026
+# Mon Feb 09 13:05:51 EET 2026
 #
 # This file:    ./puma560_cmds.hal
 # Created by:   /home/anna/linuxcnc-dev/lib/hallib/basic_sim.tcl
 # With options: 
-# From inifile: /home/anna/Projects/my_robot/puma560.ini
+# From inifile: /home/anna/LinuxCNC_PA/linux_cnc/my_robot/puma560.ini
 # Halfiles:     LIB:basic_sim.tcl puma560_dh.hal
 #
 # This file contains the hal commands produced by basic_sim.tcl

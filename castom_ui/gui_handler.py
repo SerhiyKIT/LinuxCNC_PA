@@ -1,26 +1,33 @@
 #!/usr/bin/env python3
-from email import message
-from xml.parsers.expat import model
-from datetime import datetime
-import linuxcnc
-import subprocess
 import os
 import sys
+import subprocess
+from datetime import datetime
 
-# Виправлення для QGLWidget (для Ubuntu 24.04 та LinuxCNC 2.9)
+# Модулі LinuxCNC
+import linuxcnc
+
+# Регулювання імпортів Qt (PyQt5 за замовчуванням для LinuxCNC)
 try:
+    from PyQt5 import QtCore, QtWidgets, QtGui
+    from PyQt5.QtCore import Qt, QTimer, QSize, QStringListModel
+    from PyQt5.QtWidgets import QMessageBox, QFileDialog, QLabel, QVBoxLayout, QWidget, QFrame
+    from PyQt5.QtGui import QTextCursor, QIcon
     from PyQt5.QtOpenGL import QGLWidget
-    from PyQt5 import QtWidgets, QtCore
+    
+    QT_VERSION = 5
 except ImportError:
-    class QGLWidget: pass
-
-try:
-    from PyQt5.QtCore import QTimer, QStringListModel
-    from PyQt5.QtWidgets import QMessageBox, QFileDialog
-    from PyQt5.QtGui import QTextCursor
-except ImportError:
-    from PyQt6.QtCore import QTimer, QStringListModel
-    from PyQt6.QtWidgets import QMessageBox, QFileDialog
+    try:
+        from PyQt6 import QtCore, QtWidgets, QtGui
+        from PyQt6.QtCore import Qt, QTimer, QSize, QStringListModel
+        from PyQt6.QtWidgets import QMessageBox, QFileDialog, QLabel, QVBoxLayout, QWidget, QFrame
+        from PyQt6.QtGui import QTextCursor, QIcon
+        class QGLWidget: pass 
+        
+        QT_VERSION = 6
+    except ImportError:
+        class QGLWidget: pass
+        QT_VERSION = 0
 
 class HandlerClass:
     def __init__(self, halcomp, widgets, paths):
@@ -47,8 +54,10 @@ class HandlerClass:
             self.status = linuxcnc.stat()
             self.command = linuxcnc.command()
             print("DEBUG: Підключення до LinuxCNC успішне")
+            self.log_message(f"Successfully connected to LinuxCNC", "info")
         except Exception as e:
             print(f"ERROR: Помилка підключення до LinuxCNC: {e}")
+            self.log_message(f"Error connecting to LinuxCNC: {e}", "error")
         
         # Налаштування для сумісності з genserkins
         self.TELEOP_ENABLE_VAL = int(0) 
@@ -161,12 +170,16 @@ class HandlerClass:
                 border: 1px solid #2D2D2D;
                 border-radius: 5px;
                 outline: none;
+                padding: 0px;
             }
             QListWidget::item {
                 background-color: transparent;
+                padding: 0px;
+                margin: 0px;
+                border: none;
             }
             QListWidget::item:selected {
-                background-color: #1A1A1A; /* Легке підсвічування при виборі */
+                background-color: #1A1A1A;
             }
         """
         
@@ -281,79 +294,124 @@ class HandlerClass:
             
         self._connect_all_axis_buttons()
         
-        try:
-            if hasattr(self.widgets, 'btn_estop'):
-                self.widgets.btn_estop.clicked.connect(self.on_btn_estop_clicked)
-            if hasattr(self.widgets, 'btn_power_off'):
-                self.widgets.btn_power_off.clicked.connect(self.on_btn_power_off_clicked)
-            if hasattr(self.widgets, 'btn_home_all'):
-                self.widgets.btn_home_all.clicked.connect(self.on_btn_home_all_clicked)
-        except Exception as e:
-            print(f"Init Error: {e}")
+        if hasattr(self.widgets, 'btn_estop'):
+            self.widgets.btn_estop.clicked.connect(self.on_btn_estop_clicked)
+        if hasattr(self.widgets, 'btn_power_off'):
+            self.widgets.btn_power_off.clicked.connect(self.on_btn_power_off_clicked)
+        if hasattr(self.widgets, 'btn_home_all'):
+            self.widgets.btn_home_all.clicked.connect(self.on_btn_home_all_clicked)
+
         
         self._connect_all_jog_buttons()
         print("DEBUG: Обробник готовий до роботи")
     
     def setup_output_panel(self):
-        """Початкове налаштування візуального стилю списку повідомлень"""
+        # Встановлюємо стилі
         self.widgets.list_output_view.setStyleSheet(self.STYLE_OUTPUT_VIEW)
-        # Приховуємо скролбари візуально, але залишаємо функціональність
+        
+        # Обнуляємо все на рівні об'єкта
+        self.widgets.list_output_view.setSpacing(0)
+        self.widgets.list_output_view.setContentsMargins(0, 0, 0, 0)
+        
+        # Вимикаємо внутрішні відступи контейнера даних
+        if hasattr(self.widgets.list_output_view, 'viewport'):
+            self.widgets.list_output_view.viewport().setContentsMargins(0, 0, 0, 0)
+            
         self.widgets.list_output_view.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.widgets.list_output_view.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        # Вмикаємо плавне прокручування
-        self.widgets.list_output_view.setVerticalScrollMode(QtWidgets.QAbstractItemView.ScrollPerPixel)
-
+        
     def log_message(self, message, level="info"):
-        """
-        Виведення повідомлень у list_output_view з кольоровою індикацією та розділювачами.
-        level: "info", "warning", "error"
-        """
         if not hasattr(self.widgets, 'list_output_view'):
             return
 
         timestamp = datetime.now().strftime("%H:%M:%S")
-        
-        # Колірна палітра (відповідає вашому загальному стилю)
-        colors = {
-            "info": "#00FFFF",    # Cyan для інфо
-            "warning": "#FFCC00", # Помаранчево-жовтий для попереджень
-            "error": "#FF5555"    # Червоний для помилок
-        }
+        colors = {"info": "#00FFFF", "warning": "#FFCC00", "error": "#FF5555"}
         color = colors.get(level, "#FFFFFF")
+        
+        # Формуємо повний текст для буфера обміну: [12:00:01] INFO: Повідомлення
+        full_log_text = f"[{timestamp}] {level.upper()}: {message}"
 
-        # Створюємо елемент списку
         item = QtWidgets.QListWidgetItem(self.widgets.list_output_view)
         
-        # Створюємо кастомний Label з HTML для розмітки
-        # Додаємо сіру лінію внизу кожного повідомлення
+        container = QtWidgets.QWidget()
+        container.setObjectName("logContainer")
+        container.setStyleSheet("#logContainer { background: transparent; border: none; }")
+        
+        v_layout = QtWidgets.QVBoxLayout(container)
+        v_layout.setContentsMargins(5, 2, 5, 2)
+        v_layout.setSpacing(0)
+
+        h_layout = QtWidgets.QHBoxLayout()
+        h_layout.setSpacing(10)
+
+        # Візуальний текст (HTML)
         label = QtWidgets.QLabel(
-            f'<div style="margin-bottom: 2px;">'
-            f'<span style="color: #666666; font-family: monospace;">[{timestamp}]</span> '
+            f'<span style="color: #666666;">[{timestamp}]</span> '
             f'<b style="color: {color};">{level.upper()}:</b> {message}'
-            f'</div>'
-            f'<div style="border-bottom: 1px solid #2A2A2A; margin-top: 4px;"></div>'
         )
-        
         label.setWordWrap(True)
-        label.setStyleSheet("padding: 3px 10px; color: #DCDCDC; font-size: 12px; background: transparent;")
+        # Динамічно обмежуємо ширину, щоб WordWrap працював коректно
+        label.setFixedWidth(self.widgets.list_output_view.width() - 60)
+        label.setStyleSheet("color: #DCDCDC; font-size: 12px; border: none; background: transparent;")
+        
+        btn_copy = QtWidgets.QPushButton("📋")
+        btn_copy.setFixedSize(24, 24)
+        btn_copy.setCursor(QtCore.Qt.PointingHandCursor)
+        btn_copy.setToolTip("Копіювати повний лог")
+        btn_copy.setStyleSheet("""
+            QPushButton {
+                background-color: #2A2A2A;
+                color: #DCDCDC;
+                border-radius: 4px;
+                border: none;
+            }
+            QPushButton:hover { background-color: #3A3A3A; color: #FE5C0D; }
+        """)
+        
+        # Передаємо full_log_text замість просто message
+        btn_copy.clicked.connect(lambda: self._copy_to_clipboard(full_log_text, btn_copy))
 
-        # Додаємо віджет у список
+        h_layout.addWidget(label, 1)
+        h_layout.addWidget(btn_copy, 0)
+        v_layout.addLayout(h_layout)
+
+        line = QtWidgets.QFrame()
+        line.setFixedHeight(1)
+        line.setStyleSheet("background-color: #333333; border: none; margin-top: 4px;")
+        v_layout.addWidget(line)
+
         self.widgets.list_output_view.addItem(item)
-        self.widgets.list_output_view.setItemWidget(item, label)
+        self.widgets.list_output_view.setItemWidget(item, container)
         
-        # Встановлюємо SizeHint, щоб QListWidget знав висоту рядка
-        # Якщо повідомлення дуже довге — воно займе більше місця
-        item.setSizeHint(label.sizeHint())
-
-        # Автоматична прокрутка до останнього повідомлення
+        # Використовуємо автоматичний розрахунок висоти контейнера
+        item.setSizeHint(container.sizeHint())
         self.widgets.list_output_view.scrollToBottom()
-        
-        # Дублюємо критичні помилки в діалогове вікно (за потреби)
-        if level == "error" and "limit" not in message.lower():
-             # Для лімітів осей вікно не відкриваємо, щоб не спамити, 
-             # а для системних збоїв — так.
-             self.show_message("System Error", message, "error")
 
+    def _copy_to_clipboard(self, text, button):
+        """Копіює текст та дає візуальний фідбек на кнопці"""
+        clipboard = QtWidgets.QApplication.clipboard()
+        clipboard.setText(text)
+        
+        # Візуальне підтвердження: міняємо іконку на галочку на 1 секунду
+        old_text = button.text()
+        button.setText("✓")
+        button.setStyleSheet("background-color: #1A4A1A; color: #00FF00; border-radius: 4px;")
+        
+        # Повертаємо назад через 1000 мс
+        QtCore.QTimer.singleShot(1000, lambda: self._reset_copy_button(button, old_text))
+
+    def _reset_copy_button(self, button, old_text):
+        button.setText(old_text)
+        button.setStyleSheet("""
+            QPushButton {
+                background-color: #2A2A2A;
+                color: #DCDCDC;
+                border-radius: 4px;
+                border: none;
+            }
+            QPushButton:hover { background-color: #3A3A3A; color: #FE5C0D; }
+        """)
+    
     def toggle_output_message(self, item):
         """Метод для розгортання/згортання довгих повідомлень (за потреби)"""
         widget = self.widgets.list_output_view.itemWidget(item)
@@ -406,6 +464,26 @@ class HandlerClass:
         
         msg.exec_()
     
+    def send_mdi(self, code):
+        self.status.poll()
+        # Запам'ятовуємо поточний режим перед перемиканням
+        previous_mode = self.status.task_mode
+        
+        # Якщо ми вже не в MDI, перемикаємося
+        if previous_mode != linuxcnc.MODE_MDI:
+            self.command.mode(linuxcnc.MODE_MDI)
+            self.command.wait_complete()
+        
+        # Виконуємо команду
+        self.command.mdi(code)
+        self.command.wait_complete() # Чекаємо завершення виконання команди
+        
+        # Повертаємо попередній режим (наприклад, Manual)
+        if previous_mode != linuxcnc.MODE_MDI:
+            self.command.mode(previous_mode)
+            self.command.wait_complete()
+            print(f"Виконано: {code} (повернено в попередній режим)")
+    
     def on_btn_tool_arm_clicked(self):
         """Активація живлення серво-захвата (Safety Arm)"""
         is_armed = self.widgets.btn_tool_arm.isChecked()
@@ -437,7 +515,7 @@ class HandlerClass:
         
         if is_grip:
             # Викликаємо M101 (Стиснення)
-            self.command.mdi("M101")
+            self.send_mdi("M101")
             print("DEBUG: [GRIPPER] Executing MDI Command: M101 (GRIP)")
             
             self.widgets.btn_tool_action.setText("RELEASE")
@@ -445,7 +523,7 @@ class HandlerClass:
             self.widgets.lbl_tool_status.setText("STATUS: HOLDING")
         else:
             # Викликаємо M102 (Розтиснення)
-            self.command.mdi("M102")
+            self.send_mdi("M102")
             print("DEBUG: [GRIPPER] Executing MDI Command: M102 (RELEASE)")
             
             self.widgets.btn_tool_action.setText("GRIP")
