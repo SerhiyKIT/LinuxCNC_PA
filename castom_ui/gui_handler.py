@@ -36,18 +36,17 @@ class HandlerClass:
         self.status = linuxcnc.stat()
         self.command = linuxcnc.command()
         
-        # Параметри руху
-        self.SPEED = 1000.0  # Одиниці за хвилину
+        ini_path = os.environ.get('INI_FILE_NAME')
+        self.ini = linuxcnc.ini(ini_path)
         
-        # Ліміти суглобів (Joint Limits) згідно з налаштуваннями INI
-        self.JOINT_LIMITS = {
-            0: {"min": -360.0, "max": 360.0}, # JOINT_0
-            1: {"min": -360.0, "max": 360.0}, # JOINT_1
-            2: {"min": -215.0, "max": 35.0},  # JOINT_2
-            3: {"min": -360.0, "max": 360.0}, # JOINT_3
-            4: {"min": -360.0, "max": 360.0}, # JOINT_4
-            5: {"min": -360.0, "max": 360.0}  # JOINT_5
-        }
+        self.SPEED = float(self.ini.find("DISPLAY", "DEFAULT_LINEAR_VELOCITY") or 600.0)
+        self.SPEED = self.SPEED * 60
+        
+        self.JOINT_LIMITS = {}
+        for i in range(6): 
+            min_lim = float(self.ini.find(f"JOINT_{i}", "MIN_LIMIT") or -360.0)
+            max_lim = float(self.ini.find(f"JOINT_{i}", "MAX_LIMIT") or 360.0)
+            self.JOINT_LIMITS[i] = {"min": min_lim, "max": max_lim}
         
         # Ініціалізація зв'язку з LinuxCNC
         try:
