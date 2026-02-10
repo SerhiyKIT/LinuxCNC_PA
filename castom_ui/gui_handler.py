@@ -1,26 +1,35 @@
 #!/usr/bin/env python3
-from email import message
-from xml.parsers.expat import model
-from datetime import datetime
-import linuxcnc
-import subprocess
 import os
 import sys
+import subprocess
+from datetime import datetime
 
-# Виправлення для QGLWidget (для Ubuntu 24.04 та LinuxCNC 2.9)
+# Модулі LinuxCNC
+import linuxcnc
+
+import key_config as keys
+
+# Регулювання імпортів Qt (PyQt5 за замовчуванням для LinuxCNC)
 try:
+    from PyQt5 import QtCore, QtWidgets, QtGui
+    from PyQt5.QtCore import Qt, QTimer, QSize, QStringListModel
+    from PyQt5.QtWidgets import QMessageBox, QFileDialog, QLabel, QVBoxLayout, QWidget, QFrame
+    from PyQt5.QtGui import QTextCursor, QIcon
     from PyQt5.QtOpenGL import QGLWidget
-    from PyQt5 import QtWidgets, QtCore
+    
+    QT_VERSION = 5
 except ImportError:
-    class QGLWidget: pass
-
-try:
-    from PyQt5.QtCore import QTimer, QStringListModel
-    from PyQt5.QtWidgets import QMessageBox, QFileDialog
-    from PyQt5.QtGui import QTextCursor
-except ImportError:
-    from PyQt6.QtCore import QTimer, QStringListModel
-    from PyQt6.QtWidgets import QMessageBox, QFileDialog
+    try:
+        from PyQt6 import QtCore, QtWidgets, QtGui
+        from PyQt6.QtCore import Qt, QTimer, QSize, QStringListModel
+        from PyQt6.QtWidgets import QMessageBox, QFileDialog, QLabel, QVBoxLayout, QWidget, QFrame
+        from PyQt6.QtGui import QTextCursor, QIcon
+        class QGLWidget: pass 
+        
+        QT_VERSION = 6
+    except ImportError:
+        class QGLWidget: pass
+        QT_VERSION = 0
 
 class HandlerClass:
     def __init__(self, halcomp, widgets, paths):
@@ -29,26 +38,27 @@ class HandlerClass:
         self.status = linuxcnc.stat()
         self.command = linuxcnc.command()
         
-        # Параметри руху
-        self.SPEED = 1000.0  # Одиниці за хвилину
+        ini_path = os.environ.get('INI_FILE_NAME')
+        self.ini = linuxcnc.ini(ini_path)
         
-        # Ліміти суглобів (Joint Limits) згідно з налаштуваннями INI
-        self.JOINT_LIMITS = {
-            0: {"min": -360.0, "max": 360.0}, # JOINT_0
-            1: {"min": -360.0, "max": 360.0}, # JOINT_1
-            2: {"min": -215.0, "max": 35.0},  # JOINT_2
-            3: {"min": -360.0, "max": 360.0}, # JOINT_3
-            4: {"min": -360.0, "max": 360.0}, # JOINT_4
-            5: {"min": -360.0, "max": 360.0}  # JOINT_5
-        }
+        self.SPEED = float(self.ini.find("DISPLAY", "DEFAULT_LINEAR_VELOCITY") or 600.0)
+        self.SPEED = self.SPEED * 60
+        
+        self.JOINT_LIMITS = {}
+        for i in range(6): 
+            min_lim = float(self.ini.find(f"JOINT_{i}", "MIN_LIMIT") or -360.0)
+            max_lim = float(self.ini.find(f"JOINT_{i}", "MAX_LIMIT") or 360.0)
+            self.JOINT_LIMITS[i] = {"min": min_lim, "max": max_lim}
         
         # Ініціалізація зв'язку з LinuxCNC
         try:
             self.status = linuxcnc.stat()
             self.command = linuxcnc.command()
             print("DEBUG: Підключення до LinuxCNC успішне")
+            self.log_message(f"Successfully connected to LinuxCNC", "info")
         except Exception as e:
             print(f"ERROR: Помилка підключення до LinuxCNC: {e}")
+            self.log_message(f"Error connecting to LinuxCNC: {e}", "error")
         
         # Налаштування для сумісності з genserkins
         self.TELEOP_ENABLE_VAL = int(0) 
@@ -161,12 +171,16 @@ class HandlerClass:
                 border: 1px solid #2D2D2D;
                 border-radius: 5px;
                 outline: none;
+                padding: 0px;
             }
             QListWidget::item {
                 background-color: transparent;
+                padding: 0px;
+                margin: 0px;
+                border: none;
             }
             QListWidget::item:selected {
-                background-color: #1A1A1A; /* Легке підсвічування при виборі */
+                background-color: #1A1A1A;
             }
         """
         
@@ -281,79 +295,185 @@ class HandlerClass:
             
         self._connect_all_axis_buttons()
         
-        try:
-            if hasattr(self.widgets, 'btn_estop'):
-                self.widgets.btn_estop.clicked.connect(self.on_btn_estop_clicked)
-            if hasattr(self.widgets, 'btn_power_off'):
-                self.widgets.btn_power_off.clicked.connect(self.on_btn_power_off_clicked)
-            if hasattr(self.widgets, 'btn_home_all'):
-                self.widgets.btn_home_all.clicked.connect(self.on_btn_home_all_clicked)
-        except Exception as e:
-            print(f"Init Error: {e}")
+        if hasattr(self.widgets, 'btn_estop'):
+            self.widgets.btn_estop.clicked.connect(self.on_btn_estop_clicked)
+        if hasattr(self.widgets, 'btn_power_off'):
+            self.widgets.btn_power_off.clicked.connect(self.on_btn_power_off_clicked)
+        if hasattr(self.widgets, 'btn_home_all'):
+            self.widgets.btn_home_all.clicked.connect(self.on_btn_home_all_clicked)
+
+        self.widgets.window().keyPressEvent = lambda event: self.processed_key_event(event, True)
+        self.widgets.window().keyReleaseEvent = lambda event: self.processed_key_event(event, False)
         
         self._connect_all_jog_buttons()
         print("DEBUG: Обробник готовий до роботи")
     
+    def processed_key_event(self, event, is_pressed):
+        """
+        Централізована обробка гарячих клавіш.
+        Параметри:
+            event: об'єкт події QKeyEvent
+            is_pressed: True якщо клавіша натиснута, False якщо відпущена
+        """
+        # Більшість системних команд LinuxCNC спрацьовують лише на натискання
+        if not is_pressed:
+            return
+
+        key = event.key()
+        modifiers = event.modifiers()
+        # Перевіряємо, чи затиснуто клавішу Control
+        is_ctrl = bool(modifiers & QtCore.Qt.ControlModifier)
+
+        # 1. ЗАХИСТ: Якщо фокус на полі введення тексту - ігноруємо гарячі клавіші
+        focus_widget = QtWidgets.QApplication.focusWidget()
+        if isinstance(focus_widget, (QtWidgets.QLineEdit, QtWidgets.QTextEdit, QtWidgets.QPlainTextEdit)):
+            # Дозволяємо лише Escape, щоб вийти з поля введення
+            if key == QtCore.Qt.Key_Escape:
+                focus_widget.clearFocus()
+            return
+
+        # 2. ОБРОБКА КОМАНД З CTRL
+        if is_ctrl:
+            if key == QtCore.Qt.Key_Home:        # Ctrl + Home
+                self.on_btn_home_all_clicked()
+            elif key == QtCore.Qt.Key_S:           # Ctrl + S
+                self.on_btn_file_save_as_clicked()
+            elif key == QtCore.Qt.Key_R:           # Ctrl + R
+                self.on_btn_file_reload_clicked()
+            return # Виходимо, щоб не спрацювали поодинокі клавіші нижче
+
+        # 3. ОБРОБКА ПООДИНОКИХ КЛАВІШ
+        # Системні
+        if key == keys.HOTKEYS["ESTOP"]:           # F1
+            self.on_btn_estop_clicked()
+        elif key == keys.HOTKEYS["POWER"]:         # F2
+            self.on_btn_power_off_clicked()
+        
+        # Файли
+        elif key == keys.HOTKEYS["OPEN_FILE"]:     # O
+            self.on_btn_file_open_clicked()
+            
+        # Виконання (Режим AUTO)
+        elif key == keys.HOTKEYS["RUN"]:           # R
+            self.on_btn_cycle_start_clicked()
+        elif key == keys.HOTKEYS["STOP"]:          # ESC
+            self.on_btn_cycle_stop_clicked
+        elif key == keys.HOTKEYS["PAUSE"]:         # P
+            self.on_btn_cycle_pause_clicked()
+        elif key == keys.HOTKEYS["RESUME"]:        # S
+            self.on_btn_cycle_continue_clicked()
+        elif key == keys.HOTKEYS["STEP"]:          # T
+            self.on_btn_cycle_step_clicked()
+    
     def setup_output_panel(self):
-        """Початкове налаштування візуального стилю списку повідомлень"""
+        # Встановлюємо стилі
         self.widgets.list_output_view.setStyleSheet(self.STYLE_OUTPUT_VIEW)
-        # Приховуємо скролбари візуально, але залишаємо функціональність
+        
+        # Обнуляємо все на рівні об'єкта
+        self.widgets.list_output_view.setSpacing(0)
+        self.widgets.list_output_view.setContentsMargins(0, 0, 0, 0)
+        
+        # Вимикаємо внутрішні відступи контейнера даних
+        if hasattr(self.widgets.list_output_view, 'viewport'):
+            self.widgets.list_output_view.viewport().setContentsMargins(0, 0, 0, 0)
+            
         self.widgets.list_output_view.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.widgets.list_output_view.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        # Вмикаємо плавне прокручування
-        self.widgets.list_output_view.setVerticalScrollMode(QtWidgets.QAbstractItemView.ScrollPerPixel)
-
+        
     def log_message(self, message, level="info"):
-        """
-        Виведення повідомлень у list_output_view з кольоровою індикацією та розділювачами.
-        level: "info", "warning", "error"
-        """
         if not hasattr(self.widgets, 'list_output_view'):
             return
 
         timestamp = datetime.now().strftime("%H:%M:%S")
-        
-        # Колірна палітра (відповідає вашому загальному стилю)
-        colors = {
-            "info": "#00FFFF",    # Cyan для інфо
-            "warning": "#FFCC00", # Помаранчево-жовтий для попереджень
-            "error": "#FF5555"    # Червоний для помилок
-        }
+        colors = {"info": "#DCDCDC", "warning": "#FE5C0D", "error": "#FF0000"}
         color = colors.get(level, "#FFFFFF")
+        
+        # Формуємо повний текст для буфера обміну: [12:00:01] INFO: Повідомлення
+        full_log_text = f"[{timestamp}] {level.upper()}: {message}"
 
-        # Створюємо елемент списку
         item = QtWidgets.QListWidgetItem(self.widgets.list_output_view)
         
-        # Створюємо кастомний Label з HTML для розмітки
-        # Додаємо сіру лінію внизу кожного повідомлення
+        container = QtWidgets.QWidget()
+        container.setObjectName("logContainer")
+        container.setStyleSheet("#logContainer { background: transparent; border: none; }")
+        
+        v_layout = QtWidgets.QVBoxLayout(container)
+        v_layout.setContentsMargins(5, 2, 5, 2)
+        v_layout.setSpacing(0)
+
+        h_layout = QtWidgets.QHBoxLayout()
+        h_layout.setSpacing(10)
+
+        # Візуальний текст (HTML)
         label = QtWidgets.QLabel(
-            f'<div style="margin-bottom: 2px;">'
-            f'<span style="color: #666666; font-family: monospace;">[{timestamp}]</span> '
+            f'<span style="color: #666666;">[{timestamp}]</span> '
             f'<b style="color: {color};">{level.upper()}:</b> {message}'
-            f'</div>'
-            f'<div style="border-bottom: 1px solid #2A2A2A; margin-top: 4px;"></div>'
         )
-        
         label.setWordWrap(True)
-        label.setStyleSheet("padding: 3px 10px; color: #DCDCDC; font-size: 12px; background: transparent;")
+        # Динамічно обмежуємо ширину, щоб WordWrap працював коректно
+        label.setFixedWidth(self.widgets.list_output_view.width() - 60)
+        label.setStyleSheet("color: #DCDCDC; font-size: 12px; border: none; background: transparent;")
+        
+        btn_copy = QtWidgets.QPushButton("📋")
+        btn_copy.setFixedSize(24, 24)
+        btn_copy.setCursor(QtCore.Qt.PointingHandCursor)
+        #стилі для підказки кнопки копіювання
+        
+        
+        btn_copy.setStyleSheet("""
+            QPushButton {
+                background-color: #2A2A2A;
+                color: #DCDCDC;
+                border-radius: 4px;
+                border: none;
+            }
+            QPushButton:hover { background-color: #3A3A3A; color: #FE5C0D; }
+        """)
+        
+        # Передаємо full_log_text замість просто message
+        btn_copy.clicked.connect(lambda: self._copy_to_clipboard(full_log_text, btn_copy))
 
-        # Додаємо віджет у список
+        h_layout.addWidget(label, 1)
+        h_layout.addWidget(btn_copy, 0)
+        v_layout.addLayout(h_layout)
+
+        line = QtWidgets.QFrame()
+        line.setFixedHeight(1)
+        line.setStyleSheet("background-color: #333333; border: none; margin-top: 4px;")
+        v_layout.addWidget(line)
+
         self.widgets.list_output_view.addItem(item)
-        self.widgets.list_output_view.setItemWidget(item, label)
+        self.widgets.list_output_view.setItemWidget(item, container)
         
-        # Встановлюємо SizeHint, щоб QListWidget знав висоту рядка
-        # Якщо повідомлення дуже довге — воно займе більше місця
-        item.setSizeHint(label.sizeHint())
-
-        # Автоматична прокрутка до останнього повідомлення
+        # Використовуємо автоматичний розрахунок висоти контейнера
+        item.setSizeHint(container.sizeHint())
         self.widgets.list_output_view.scrollToBottom()
-        
-        # Дублюємо критичні помилки в діалогове вікно (за потреби)
-        if level == "error" and "limit" not in message.lower():
-             # Для лімітів осей вікно не відкриваємо, щоб не спамити, 
-             # а для системних збоїв — так.
-             self.show_message("System Error", message, "error")
 
+    def _copy_to_clipboard(self, text, button):
+        """Копіює текст та дає візуальний фідбек на кнопці"""
+        clipboard = QtWidgets.QApplication.clipboard()
+        clipboard.setText(text)
+        
+        # Візуальне підтвердження: міняємо іконку на галочку на 1 секунду
+        old_text = button.text()
+        button.setText("✓")
+        button.setStyleSheet("background-color: #1A4A1A; color: #00FF00; border-radius: 4px;")
+        
+        # Повертаємо назад через 1000 мс
+        QtCore.QTimer.singleShot(1000, lambda: self._reset_copy_button(button, old_text))
+
+    def _reset_copy_button(self, button, old_text):
+        button.setText(old_text)
+        button.setStyleSheet("""
+            QPushButton {
+                background-color: #2A2A2A;
+                color: #DCDCDC;
+                border-radius: 4px;
+                border: none;
+            }
+            QPushButton:hover { background-color: #3A3A3A; color: #FE5C0D; }
+        """)
+    
     def toggle_output_message(self, item):
         """Метод для розгортання/згортання довгих повідомлень (за потреби)"""
         widget = self.widgets.list_output_view.itemWidget(item)
@@ -406,6 +526,26 @@ class HandlerClass:
         
         msg.exec_()
     
+    def send_mdi(self, code):
+        self.status.poll()
+        # Запам'ятовуємо поточний режим перед перемиканням
+        previous_mode = self.status.task_mode
+        
+        # Якщо ми вже не в MDI, перемикаємося
+        if previous_mode != linuxcnc.MODE_MDI:
+            self.command.mode(linuxcnc.MODE_MDI)
+            self.command.wait_complete()
+        
+        # Виконуємо команду
+        self.command.mdi(code)
+        self.command.wait_complete() # Чекаємо завершення виконання команди
+        
+        # Повертаємо попередній режим (наприклад, Manual)
+        if previous_mode != linuxcnc.MODE_MDI:
+            self.command.mode(previous_mode)
+            self.command.wait_complete()
+            print(f"Виконано: {code} (повернено в попередній режим)")
+    
     def on_btn_tool_arm_clicked(self):
         """Активація живлення серво-захвата (Safety Arm)"""
         is_armed = self.widgets.btn_tool_arm.isChecked()
@@ -437,7 +577,7 @@ class HandlerClass:
         
         if is_grip:
             # Викликаємо M101 (Стиснення)
-            self.command.mdi("M101")
+            self.send_mdi("M101")
             print("DEBUG: [GRIPPER] Executing MDI Command: M101 (GRIP)")
             
             self.widgets.btn_tool_action.setText("RELEASE")
@@ -445,7 +585,7 @@ class HandlerClass:
             self.widgets.lbl_tool_status.setText("STATUS: HOLDING")
         else:
             # Викликаємо M102 (Розтиснення)
-            self.command.mdi("M102")
+            self.send_mdi("M102")
             print("DEBUG: [GRIPPER] Executing MDI Command: M102 (RELEASE)")
             
             self.widgets.btn_tool_action.setText("GRIP")
@@ -539,7 +679,7 @@ class HandlerClass:
     
         new_filepath, _ = QFileDialog.getSaveFileName(
             None, 
-            "Зберегти G-код як...", 
+            "Save G-Code as...", 
             initial_path, 
             "G-Code Files (*.ngc *.txt);;All Files (*)", 
             options=options
@@ -569,6 +709,7 @@ class HandlerClass:
             
             except Exception as e:
                 print(f"ERROR: Не вдалося зберегти файл: {e}")
+                self.log_message(f"Error saving file: {e}", level="error")
     
     def on_btn_file_reload_clicked(self):
         """Перевантаження поточного файлу для оновлення змін"""
@@ -576,10 +717,12 @@ class HandlerClass:
     
         if not self.last_loaded_file:
             print("WARNING: Немає файлу для оновлення")
+            self.log_message("No file to reload", level="warning")
             return
         
         if self.status.interp_state != linuxcnc.INTERP_IDLE:
             print("WARNING: Неможливо оновити файл під час роботи!")
+            self.log_message("Cannot reload file while running", level="warning")
             return
 
         try:
@@ -598,6 +741,7 @@ class HandlerClass:
             print(f"DEBUG: Файл {os.path.basename(temp_path)} успішно оновлено")
         except Exception as e:
             print(f"ERROR: Помилка оновлення: {e}")
+            self.log_message(f"Error reloading file: {e}", level="error")
     
     def on_btn_file_edit_clicked(self):
         """Відкриття G-коду у текстовому редакторі (з обходом помилки асоціації файлів)"""
@@ -605,10 +749,12 @@ class HandlerClass:
     
         if not self.last_loaded_file or not os.path.exists(self.last_loaded_file):
             print("WARNING: Файл не знайдено")
+            self.log_message("File not found", level="warning")
             return
 
         if self.status.interp_state != linuxcnc.INTERP_IDLE:
             print("WARNING: Редагування заборонено під час виконання")
+            self.log_message("Cannot edit file while running", level="warning")
             return
 
         # Список редакторів для перевірки (від найбільш ймовірних у LinuxCNC збірках)
@@ -628,6 +774,7 @@ class HandlerClass:
     
         if not editor_found:
             print("ERROR: Не вдалося знайти встановлений текстовий редактор")
+            self.log_message("No suitable text editor found", level="error")
             
         if editor_found:
             self.reload_needed = True  # Активуємо прапорець
@@ -640,10 +787,12 @@ class HandlerClass:
         self.status.poll()
         if not self.status.file:
             print("WARNING: Файл не завантажено")
+            self.log_message("No file loaded", level="warning")
             return
 
         if not all(self.status.homed[:3]):
             print("WARNING: Виконайте Home All перед запуском програми")
+            self.log_message("Not all axes homed", level="warning")
             return
 
         try:
@@ -658,6 +807,7 @@ class HandlerClass:
             print(f"DEBUG: Запуск успішний: {os.path.basename(self.status.file)}")
         except Exception as e:
             print(f"ERROR: Помилка запуску: {e}")
+            self.log_message(f"Error starting program: {e}", level="error")
     
     def on_btn_cycle_continue_clicked(self):
         """Відновлення руху після паузи (виправлено)"""
@@ -677,6 +827,7 @@ class HandlerClass:
                 print("DEBUG: Виконання продовжено")
             except Exception as e:
                 print(f"ERROR: Помилка відновлення: {e}")
+                self.log_message(f"Error resuming execution: {e}", level="error")
         else:
             # Якщо ми не на паузі, але програма завантажена — можливо, треба просто Start?
             print("DEBUG: Станок не в стані PAUSE, команда RESUME ігнорується")
@@ -702,14 +853,16 @@ class HandlerClass:
         # Базові перевірки
         if not self.status.file:
             print("WARNING: Файл не завантажено")
+            self.log_message("No file loaded", level="warning")
             return
         if self.status.task_state != linuxcnc.STATE_ON:
             print("WARNING: Увімкніть живлення")
+            self.log_message("Machine not powered on", level="warning")
             return
         if not all(self.status.homed[:3]):
             print("WARNING: Виконайте Home All перед запуском програми")
+            self.log_message("Not all axes homed", level="warning")
             return
-
 
         try:
             # Перемикаємо в AUTO, якщо ми в іншому режимі
@@ -724,12 +877,14 @@ class HandlerClass:
         
         except Exception as e:
             print(f"ERROR: Помилка покрокового виконання: {e}")
+            self.log_message(f"Error stepping execution: {e}", level="error")
     
     def _on_gcode_edited(self, topLeft, bottomRight, roles):
         # Додаємо перевірку стану перед записом
         self.status.poll()
         if self.status.interp_state != linuxcnc.INTERP_IDLE:
             print("WARNING: Спроба збереження під час роботи заблокована!")
+            self.log_message("Cannot save while program is running", level="warning")
             return
 
         if not self.last_loaded_file or not os.path.exists(self.last_loaded_file):
@@ -753,6 +908,7 @@ class HandlerClass:
         
         except Exception as e:
             print(f"ERROR: Не вдалося зберегти зміни: {e}")
+            self.log_message(f"Error saving changes: {e}", level="error")
         
     def on_btn_file_open_clicked(self):
         """Відкриває діалог вибору файлу та передає його в LinuxCNC"""
@@ -769,11 +925,13 @@ class HandlerClass:
                 self.command.program_open(file_path)
             except Exception as e:
                 print(f"ERROR: Не вдалося завантажити файл: {e}")
+                self.log_message(f"Error loading file: {e}", level="error")
     
     def _load_gcode_to_view(self, filepath):
         """Зчитує текст файлу та оновлює модель QListView"""
         if not os.path.exists(filepath):
             print(f"ERROR: Шлях {filepath} не знайдено")
+            self.log_message(f"File not found: {filepath}", level="warning")
             return
 
         # 1. Оновлюємо лейбл назви файлу
@@ -802,6 +960,7 @@ class HandlerClass:
             
             except Exception as e:
                 print(f"ERROR: Помилка завантаження G-коду в модель: {e}")
+                self.log_message(f"Error loading G-code to view: {e}", level="error")
 
     def _on_overlay_clicked(self, panel_type):
         # Перемикання дозволено лише якщо система готова і хомінг виконано
@@ -849,6 +1008,7 @@ class HandlerClass:
             self.command.wait_complete()
         except Exception as e:
             print(f"ERROR Axis Sync: {e}")
+            self.log_message(f"Error syncing axis: {e}", level="error")
 
         mode_text = "Continuous"
         if hasattr(self.widgets, 'combo_axis_mode'):
@@ -864,6 +1024,7 @@ class HandlerClass:
                 self.command.jog(linuxcnc.JOG_INCREMENT, 0, axis_idx, float(direction) * vel, increment)
         except Exception as e:
             print(f"ERROR Axis Jog: {e}")
+            self.log_message(f"Error jogging axis {axis_idx}: {e}", level="error")
             
     def stop_axis_jog(self, axis_idx):
         mode_text = "Continuous"
@@ -877,6 +1038,7 @@ class HandlerClass:
             self.command.jog(linuxcnc.JOG_STOP, 0, axis_idx)
         except Exception as e:
             print(f"ERROR Axis Stop: {e}")
+            self.log_message(f"Error stopping axis {axis_idx}: {e}", level="error")
     
     def _connect_all_jog_buttons(self):
         """Автоматичне підключення кнопок руху за шаблоном назв у UI"""
@@ -915,6 +1077,7 @@ class HandlerClass:
             self.command.wait_complete()
         except Exception as e:
             print(f"ERROR: Помилка синхронізації режимів: {e}")
+            self.log_message(f"Error syncing modes: {e}", level="error")
 
     def start_jog(self, joint, direction):
         if not self.is_ready():
@@ -941,6 +1104,7 @@ class HandlerClass:
             print(f"DEBUG: JOG J{joint} | Mode: {mode_text} | Dir: {direction}")
         except Exception as e:
             print(f"ERROR: Помилка джога J{joint}: {e}")
+            self.log_message(f"Error jogging axis {joint}: {e}", level="error")
 
     def stop_jog(self, joint):
         # Зупинку викликаємо ТІЛЬКИ для безперервного режиму.
@@ -957,6 +1121,7 @@ class HandlerClass:
             print(f"DEBUG: Зупинка J{joint} (Continuous mode)")
         except Exception as e:
             print(f"ERROR: Помилка зупинки джога J{joint}: {e}")
+            self.log_message(f"Error stopping jog axis {joint}: {e}", level="error")
     
     def update__(self):
         try:
