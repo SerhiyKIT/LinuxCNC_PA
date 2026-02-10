@@ -7,6 +7,8 @@ from datetime import datetime
 # Модулі LinuxCNC
 import linuxcnc
 
+import key_config as keys
+
 # Регулювання імпортів Qt (PyQt5 за замовчуванням для LinuxCNC)
 try:
     from PyQt5 import QtCore, QtWidgets, QtGui
@@ -300,9 +302,68 @@ class HandlerClass:
         if hasattr(self.widgets, 'btn_home_all'):
             self.widgets.btn_home_all.clicked.connect(self.on_btn_home_all_clicked)
 
+        self.widgets.window().keyPressEvent = lambda event: self.processed_key_event(event, True)
+        self.widgets.window().keyReleaseEvent = lambda event: self.processed_key_event(event, False)
         
         self._connect_all_jog_buttons()
         print("DEBUG: Обробник готовий до роботи")
+    
+    def processed_key_event(self, event, is_pressed):
+        """
+        Централізована обробка гарячих клавіш.
+        Параметри:
+            event: об'єкт події QKeyEvent
+            is_pressed: True якщо клавіша натиснута, False якщо відпущена
+        """
+        # Більшість системних команд LinuxCNC спрацьовують лише на натискання
+        if not is_pressed:
+            return
+
+        key = event.key()
+        modifiers = event.modifiers()
+        # Перевіряємо, чи затиснуто клавішу Control
+        is_ctrl = bool(modifiers & QtCore.Qt.ControlModifier)
+
+        # 1. ЗАХИСТ: Якщо фокус на полі введення тексту - ігноруємо гарячі клавіші
+        focus_widget = QtWidgets.QApplication.focusWidget()
+        if isinstance(focus_widget, (QtWidgets.QLineEdit, QtWidgets.QTextEdit, QtWidgets.QPlainTextEdit)):
+            # Дозволяємо лише Escape, щоб вийти з поля введення
+            if key == QtCore.Qt.Key_Escape:
+                focus_widget.clearFocus()
+            return
+
+        # 2. ОБРОБКА КОМАНД З CTRL
+        if is_ctrl:
+            if key == QtCore.Qt.Key_Home:        # Ctrl + Home
+                self.on_btn_home_all_clicked()
+            elif key == QtCore.Qt.Key_S:           # Ctrl + S
+                self.on_btn_file_save_as_clicked()
+            elif key == QtCore.Qt.Key_R:           # Ctrl + R
+                self.on_btn_file_reload_clicked()
+            return # Виходимо, щоб не спрацювали поодинокі клавіші нижче
+
+        # 3. ОБРОБКА ПООДИНОКИХ КЛАВІШ
+        # Системні
+        if key == keys.HOTKEYS["ESTOP"]:           # F1
+            self.on_btn_estop_clicked()
+        elif key == keys.HOTKEYS["POWER"]:         # F2
+            self.on_btn_power_off_clicked()
+        
+        # Файли
+        elif key == keys.HOTKEYS["OPEN_FILE"]:     # O
+            self.on_btn_file_open_clicked()
+            
+        # Виконання (Режим AUTO)
+        elif key == keys.HOTKEYS["RUN"]:           # R
+            self.on_btn_cycle_start_clicked()
+        elif key == keys.HOTKEYS["STOP"]:          # ESC
+            self.on_btn_cycle_stop_clicked
+        elif key == keys.HOTKEYS["PAUSE"]:         # P
+            self.on_btn_cycle_pause_clicked()
+        elif key == keys.HOTKEYS["RESUME"]:        # S
+            self.on_btn_cycle_continue_clicked()
+        elif key == keys.HOTKEYS["STEP"]:          # T
+            self.on_btn_cycle_step_clicked()
     
     def setup_output_panel(self):
         # Встановлюємо стилі
@@ -324,7 +385,7 @@ class HandlerClass:
             return
 
         timestamp = datetime.now().strftime("%H:%M:%S")
-        colors = {"info": "#00FFFF", "warning": "#FFCC00", "error": "#FF5555"}
+        colors = {"info": "#DCDCDC", "warning": "#FE5C0D", "error": "#FF0000"}
         color = colors.get(level, "#FFFFFF")
         
         # Формуємо повний текст для буфера обміну: [12:00:01] INFO: Повідомлення
@@ -356,7 +417,9 @@ class HandlerClass:
         btn_copy = QtWidgets.QPushButton("📋")
         btn_copy.setFixedSize(24, 24)
         btn_copy.setCursor(QtCore.Qt.PointingHandCursor)
-        btn_copy.setToolTip("Копіювати повний лог")
+        #стилі для підказки кнопки копіювання
+        
+        
         btn_copy.setStyleSheet("""
             QPushButton {
                 background-color: #2A2A2A;
@@ -616,7 +679,7 @@ class HandlerClass:
     
         new_filepath, _ = QFileDialog.getSaveFileName(
             None, 
-            "Зберегти G-код як...", 
+            "Save G-Code as...", 
             initial_path, 
             "G-Code Files (*.ngc *.txt);;All Files (*)", 
             options=options
@@ -646,6 +709,7 @@ class HandlerClass:
             
             except Exception as e:
                 print(f"ERROR: Не вдалося зберегти файл: {e}")
+                self.log_message(f"Error saving file: {e}", level="error")
     
     def on_btn_file_reload_clicked(self):
         """Перевантаження поточного файлу для оновлення змін"""
@@ -653,10 +717,12 @@ class HandlerClass:
     
         if not self.last_loaded_file:
             print("WARNING: Немає файлу для оновлення")
+            self.log_message("No file to reload", level="warning")
             return
         
         if self.status.interp_state != linuxcnc.INTERP_IDLE:
             print("WARNING: Неможливо оновити файл під час роботи!")
+            self.log_message("Cannot reload file while running", level="warning")
             return
 
         try:
@@ -675,6 +741,7 @@ class HandlerClass:
             print(f"DEBUG: Файл {os.path.basename(temp_path)} успішно оновлено")
         except Exception as e:
             print(f"ERROR: Помилка оновлення: {e}")
+            self.log_message(f"Error reloading file: {e}", level="error")
     
     def on_btn_file_edit_clicked(self):
         """Відкриття G-коду у текстовому редакторі (з обходом помилки асоціації файлів)"""
@@ -682,10 +749,12 @@ class HandlerClass:
     
         if not self.last_loaded_file or not os.path.exists(self.last_loaded_file):
             print("WARNING: Файл не знайдено")
+            self.log_message("File not found", level="warning")
             return
 
         if self.status.interp_state != linuxcnc.INTERP_IDLE:
             print("WARNING: Редагування заборонено під час виконання")
+            self.log_message("Cannot edit file while running", level="warning")
             return
 
         # Список редакторів для перевірки (від найбільш ймовірних у LinuxCNC збірках)
@@ -705,6 +774,7 @@ class HandlerClass:
     
         if not editor_found:
             print("ERROR: Не вдалося знайти встановлений текстовий редактор")
+            self.log_message("No suitable text editor found", level="error")
             
         if editor_found:
             self.reload_needed = True  # Активуємо прапорець
@@ -717,10 +787,12 @@ class HandlerClass:
         self.status.poll()
         if not self.status.file:
             print("WARNING: Файл не завантажено")
+            self.log_message("No file loaded", level="warning")
             return
 
         if not all(self.status.homed[:3]):
             print("WARNING: Виконайте Home All перед запуском програми")
+            self.log_message("Not all axes homed", level="warning")
             return
 
         try:
@@ -735,6 +807,7 @@ class HandlerClass:
             print(f"DEBUG: Запуск успішний: {os.path.basename(self.status.file)}")
         except Exception as e:
             print(f"ERROR: Помилка запуску: {e}")
+            self.log_message(f"Error starting program: {e}", level="error")
     
     def on_btn_cycle_continue_clicked(self):
         """Відновлення руху після паузи (виправлено)"""
@@ -754,6 +827,7 @@ class HandlerClass:
                 print("DEBUG: Виконання продовжено")
             except Exception as e:
                 print(f"ERROR: Помилка відновлення: {e}")
+                self.log_message(f"Error resuming execution: {e}", level="error")
         else:
             # Якщо ми не на паузі, але програма завантажена — можливо, треба просто Start?
             print("DEBUG: Станок не в стані PAUSE, команда RESUME ігнорується")
@@ -779,14 +853,16 @@ class HandlerClass:
         # Базові перевірки
         if not self.status.file:
             print("WARNING: Файл не завантажено")
+            self.log_message("No file loaded", level="warning")
             return
         if self.status.task_state != linuxcnc.STATE_ON:
             print("WARNING: Увімкніть живлення")
+            self.log_message("Machine not powered on", level="warning")
             return
         if not all(self.status.homed[:3]):
             print("WARNING: Виконайте Home All перед запуском програми")
+            self.log_message("Not all axes homed", level="warning")
             return
-
 
         try:
             # Перемикаємо в AUTO, якщо ми в іншому режимі
@@ -801,12 +877,14 @@ class HandlerClass:
         
         except Exception as e:
             print(f"ERROR: Помилка покрокового виконання: {e}")
+            self.log_message(f"Error stepping execution: {e}", level="error")
     
     def _on_gcode_edited(self, topLeft, bottomRight, roles):
         # Додаємо перевірку стану перед записом
         self.status.poll()
         if self.status.interp_state != linuxcnc.INTERP_IDLE:
             print("WARNING: Спроба збереження під час роботи заблокована!")
+            self.log_message("Cannot save while program is running", level="warning")
             return
 
         if not self.last_loaded_file or not os.path.exists(self.last_loaded_file):
@@ -830,6 +908,7 @@ class HandlerClass:
         
         except Exception as e:
             print(f"ERROR: Не вдалося зберегти зміни: {e}")
+            self.log_message(f"Error saving changes: {e}", level="error")
         
     def on_btn_file_open_clicked(self):
         """Відкриває діалог вибору файлу та передає його в LinuxCNC"""
@@ -846,11 +925,13 @@ class HandlerClass:
                 self.command.program_open(file_path)
             except Exception as e:
                 print(f"ERROR: Не вдалося завантажити файл: {e}")
+                self.log_message(f"Error loading file: {e}", level="error")
     
     def _load_gcode_to_view(self, filepath):
         """Зчитує текст файлу та оновлює модель QListView"""
         if not os.path.exists(filepath):
             print(f"ERROR: Шлях {filepath} не знайдено")
+            self.log_message(f"File not found: {filepath}", level="warning")
             return
 
         # 1. Оновлюємо лейбл назви файлу
@@ -879,6 +960,7 @@ class HandlerClass:
             
             except Exception as e:
                 print(f"ERROR: Помилка завантаження G-коду в модель: {e}")
+                self.log_message(f"Error loading G-code to view: {e}", level="error")
 
     def _on_overlay_clicked(self, panel_type):
         # Перемикання дозволено лише якщо система готова і хомінг виконано
@@ -926,6 +1008,7 @@ class HandlerClass:
             self.command.wait_complete()
         except Exception as e:
             print(f"ERROR Axis Sync: {e}")
+            self.log_message(f"Error syncing axis: {e}", level="error")
 
         mode_text = "Continuous"
         if hasattr(self.widgets, 'combo_axis_mode'):
@@ -941,6 +1024,7 @@ class HandlerClass:
                 self.command.jog(linuxcnc.JOG_INCREMENT, 0, axis_idx, float(direction) * vel, increment)
         except Exception as e:
             print(f"ERROR Axis Jog: {e}")
+            self.log_message(f"Error jogging axis {axis_idx}: {e}", level="error")
             
     def stop_axis_jog(self, axis_idx):
         mode_text = "Continuous"
@@ -954,6 +1038,7 @@ class HandlerClass:
             self.command.jog(linuxcnc.JOG_STOP, 0, axis_idx)
         except Exception as e:
             print(f"ERROR Axis Stop: {e}")
+            self.log_message(f"Error stopping axis {axis_idx}: {e}", level="error")
     
     def _connect_all_jog_buttons(self):
         """Автоматичне підключення кнопок руху за шаблоном назв у UI"""
@@ -992,6 +1077,7 @@ class HandlerClass:
             self.command.wait_complete()
         except Exception as e:
             print(f"ERROR: Помилка синхронізації режимів: {e}")
+            self.log_message(f"Error syncing modes: {e}", level="error")
 
     def start_jog(self, joint, direction):
         if not self.is_ready():
@@ -1018,6 +1104,7 @@ class HandlerClass:
             print(f"DEBUG: JOG J{joint} | Mode: {mode_text} | Dir: {direction}")
         except Exception as e:
             print(f"ERROR: Помилка джога J{joint}: {e}")
+            self.log_message(f"Error jogging axis {joint}: {e}", level="error")
 
     def stop_jog(self, joint):
         # Зупинку викликаємо ТІЛЬКИ для безперервного режиму.
@@ -1034,6 +1121,7 @@ class HandlerClass:
             print(f"DEBUG: Зупинка J{joint} (Continuous mode)")
         except Exception as e:
             print(f"ERROR: Помилка зупинки джога J{joint}: {e}")
+            self.log_message(f"Error stopping jog axis {joint}: {e}", level="error")
     
     def update__(self):
         try:

@@ -227,6 +227,9 @@ border: 3px solid #333333;
        <bold>true</bold>
       </font>
      </property>
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:8pt; color:#ffffff;&quot;&gt;Home all joints [Ctrl + Home]&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
      <property name="styleSheet">
       <string notr="true">QToolButton {
 	background-color: #333333;
@@ -300,6 +303,9 @@ padding: 0px;
 color: #fff;
 </string>
       </property>
+      <property name="autoScrollMargin">
+       <number>5</number>
+      </property>
      </widget>
      <widget class="QFrame" name="frame_6">
       <property name="geometry">
@@ -343,7 +349,7 @@ background-color: #161616;</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -383,7 +389,7 @@ CYCLE</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -422,7 +428,7 @@ CYCLE</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -440,7 +446,7 @@ CYCLE</string>
 }</string>
        </property>
        <property name="text">
-        <string>CONTINUE</string>
+        <string>RESUME</string>
        </property>
       </widget>
       <widget class="QPushButton" name="btn_cycle_step">
@@ -461,7 +467,7 @@ CYCLE</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -500,7 +506,7 @@ CYCLE</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -533,7 +539,7 @@ CYCLE</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -592,7 +598,7 @@ background-color: #161616;</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -631,13 +637,13 @@ background-color: #161616;</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
        </property>
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ffffff;&quot;&gt;Reopen current file [L]&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ffffff;&quot;&gt;Reopen current file [Ctrl+R]&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="styleSheet">
         <string notr="true">QPushButton {
@@ -670,7 +676,7 @@ background-color: #161616;</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -709,7 +715,7 @@ background-color: #161616;</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -889,7 +895,7 @@ background-color: #161616;</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -928,7 +934,7 @@ background-color: #161616;</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -967,7 +973,7 @@ background-color: #161616;</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -1021,7 +1027,7 @@ border: 3px solid #333333;</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -1113,13 +1119,13 @@ background-color: #161616;</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
        </property>
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ffffff;&quot;&gt;Resume execution [S]&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string/>
        </property>
        <property name="styleSheet">
         <string notr="true">QPushButton {
@@ -1152,13 +1158,13 @@ background-color: #161616;</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
        </property>
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ffffff;&quot;&gt;Resume execution [S]&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string/>
        </property>
        <property name="styleSheet">
         <string notr="true">QPushButton {
@@ -1185,7 +1191,7 @@ background-color: #161616;</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>

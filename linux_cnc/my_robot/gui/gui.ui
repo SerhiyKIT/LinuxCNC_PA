@@ -303,6 +303,9 @@ padding: 0px;
 color: #fff;
 </string>
       </property>
+      <property name="autoScrollMargin">
+       <number>5</number>
+      </property>
      </widget>
      <widget class="QFrame" name="frame_6">
       <property name="geometry">
@@ -346,7 +349,7 @@ background-color: #161616;</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -386,7 +389,7 @@ CYCLE</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -425,7 +428,7 @@ CYCLE</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -464,7 +467,7 @@ CYCLE</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -503,7 +506,7 @@ CYCLE</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -536,7 +539,7 @@ CYCLE</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -595,7 +598,7 @@ background-color: #161616;</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -634,7 +637,7 @@ background-color: #161616;</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -673,7 +676,7 @@ background-color: #161616;</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -712,7 +715,7 @@ background-color: #161616;</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -892,7 +895,7 @@ background-color: #161616;</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -931,7 +934,7 @@ background-color: #161616;</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -970,7 +973,7 @@ background-color: #161616;</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -1024,7 +1027,7 @@ border: 3px solid #333333;</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -1116,7 +1119,7 @@ background-color: #161616;</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -1155,7 +1158,7 @@ background-color: #161616;</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -1188,7 +1191,7 @@ background-color: #161616;</string>
        <property name="font">
         <font>
          <family>JetBrains Mono</family>
-         <pointsize>8</pointsize>
+         <pointsize>10</pointsize>
          <weight>50</weight>
          <bold>false</bold>
         </font>
