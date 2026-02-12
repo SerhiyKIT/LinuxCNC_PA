@@ -1,3 +1,4 @@
+# logic/core/machine.py
 import linuxcnc
 import config
 
@@ -11,16 +12,42 @@ class MachineController:
         self.status = linuxcnc.stat()
         self.command = linuxcnc.command()
         
+        # Channel for receiving error messages from LinuxCNC
+        self.error_channel = linuxcnc.error_channel()
+        
         # Load local copies of essential config data
         self.params = config.MACHINE_PARAMS
         self.limits = config.JOINT_LIMITS
+        
+        self.SPEED = config.DEFAULT_SPEED
+        
+        self.manual_mode = config.DEFAULT_MANUAL_MODE
+        
+        # Parameters for jog control Sand teleop
+        self.JOG_CMD_FLAG = self.params.get("JOG_CMD_FLAG", 1)
+        self.TELEOP_ENABLE_VAL = self.params.get("TELEOP_ENABLE_VAL", 0)
+
+    # --- POLLING / STATUS ---
 
     def poll(self):
         """Update machine status data"""
         self.status.poll()
 
+    def poll_errors(self):
+        """Check for new messages from LinuxCNC and return them with a severity level"""
+        error = self.error_channel.poll()
+        if error:
+            kind, text = error
+            level = "info"
+            if kind in (linuxcnc.NML_ERROR, linuxcnc.OPERATOR_ERROR):
+                level = "error"
+            elif kind == linuxcnc.NML_TEXT:
+                level = "warning"
+            return text, level
+        return None
+    
     # --- STATE CONTROL ---
-
+    
     def toggle_estop(self):
         """Toggle Emergency Stop state"""
         self.poll()
@@ -53,27 +80,36 @@ class MachineController:
         self.command.teleop_enable(0)
         self.command.home(int(axis_num))
 
-    def jog(self, axis_index, direction, speed, increment=0):
-        """
-        Execute jogging command.
-        axis_index: 0 for X, 1 for Y, etc.
-        direction: 1 (positive) or -1 (negative)
-        speed: actual velocity
-        increment: 0 for continuous, >0 for incremental
-        """
+    def set_teleop(self, enable: bool):
+        """Enable or disable teleoperation mode (for jogging)."""
+        self.poll()
+        state = 1 if enable else 0
+        if self.status.kinematics_type != state:
+            self.command.teleop_enable(state)
+            self.command.wait_complete()
+
+    def jog(self, axis_index, direction, speed, increment=0, is_joint=True):
+        """"Send a jog command to LinuxCNC. Handles both Joint and Axis jogging"""
         self.set_mode(linuxcnc.MODE_MANUAL)
         
+        jog_type = self.JOG_CMD_FLAG if is_joint else 0
+        
+        self.set_teleop(not is_joint)
+        
+        vel = float(direction) * (speed / 60.0)
+        idx = int(axis_index)
+
+        print(f"ACTUAL SEND (Kinematic fix): type={jog_type}, idx={idx}, vel={vel}")
+        
         if increment == 0:
-            # Continuous movement
-            self.command.jog(linuxcnc.JOG_CONTINUOUS, axis_index, direction * speed)
+            self.command.jog(linuxcnc.JOG_CONTINUOUS, jog_type, idx, vel)
         else:
-            # Incremental movement
-            self.command.jog(linuxcnc.JOG_INCREMENT, axis_index, direction * speed, increment)
+            self.command.jog(linuxcnc.JOG_INCREMENT, jog_type, idx, vel, float(increment))
 
-    def stop_jog(self, axis_index):
-        """Stop movement on specific axis"""
-        self.command.jog(linuxcnc.JOG_STOP, axis_index)
-
+    def stop_jog(self, axis_index, is_joint=True):
+        jog_type = self.JOG_CMD_FLAG if is_joint else 0
+        self.command.jog(linuxcnc.JOG_STOP, jog_type, int(axis_index))
+        
     # --- PROGRAM EXECUTION ---
 
     def run_program(self, line_number=0):
@@ -97,35 +133,77 @@ class MachineController:
         self.poll()
         return self.status.position
     
-    # --- SPECIFIC ROBOT LOGIC (Puma 560 / Switchkins) ---
-
-    def set_kinematics_type(self, kins_type: int):
-        """
-        Switch between different kinematics types using motion.analog-out-03.
-        Commonly: 0 = Identity (Joints), 1 = XYZ (World)
-        """
-        # M68 E3 Q[kins_type]
-        self.command.analog_output(3, float(kins_type))
-        self.log.info(f"Kinematics type changed to: {kins_type}")
-
-    def set_teleop(self, enable: bool):
-        """
-        Enable/Disable Teleop mode.
-        Must be 0 for Homing and Joint-jogging.
-        Must be 1 for Cartesian-jogging (XYZ movement).
-        """
+    def get_states(self):
+        """Return a dictionary of key machine states for UI logic and control decisions"""
         self.poll()
-        state = 1 if enable else 0
-        if self.status.kinematics_type != state:
-            self.command.teleop_enable(state)
-            self.command.wait_complete()
+        
+        # 1. Basic states: Power, E-Stop
+        task_state = self.status.task_state
+        estop_state = self.status.estop
+        
+        power_on = (task_state == linuxcnc.STATE_ON)
+        estop_off = (estop_state != linuxcnc.STATE_ESTOP)
+        
+        # 2. States of the interpreter (Idle, Paused, Running)
+        interp = self.status.interp_state
+        is_idle = (interp == linuxcnc.INTERP_IDLE)
+        is_paused = (interp == linuxcnc.INTERP_PAUSED)
+        is_running = (interp in [linuxcnc.INTERP_READING, linuxcnc.INTERP_WAITING])
+
+        # 3. Homing status 
+        homed_status = self.status.homed
+        joints_count = self.params.get("JOINTS_COUNT", 6)
+        all_homed = all(homed_status[i] for i in range(min(joints_count, len(homed_status))))
+        
+        # Additionally, we can include actual positions for more detailed state info
+        actual_pos = self.status.actual_position
+        joint_pos = self.status.joint_actual_position
+        
+        return {
+            'power_on': power_on,
+            'estop_off': estop_off,
+            'is_ready': power_on and estop_off,
+            'all_homed': all_homed,
+            
+            # States of the interpreter
+            'is_idle': is_idle,
+            'is_paused': is_paused,
+            'is_running': is_running,
+            
+            # Positions (for potential use in UI or logic)
+            'actual_position': actual_pos,
+            'joint_position': joint_pos,
+            
+            # File loaded status
+            'has_file': bool(self.status.file),
+            'manual_mode': getattr(self, 'manual_mode', 'axis'),
+            
+            # Kinematics type (for teleop mode)
+            'teleop': self.status.kinematics_type == 1,
+        }
+
+    def can_home(self):
+        """"Check if machine is in a state that allows homing (not in error, power on, idle)"""
+        self.poll()
+        
+        is_not_in_error = (self.status.estop != linuxcnc.STATE_ESTOP)
+        is_power_on = (self.status.task_state == linuxcnc.STATE_ON)
+        is_idle = (self.status.interp_state == linuxcnc.INTERP_IDLE)
+
+        if not (is_not_in_error and is_power_on and is_idle):
+            print(f"DEBUG: Homing blocked logic -> NotInError:{is_not_in_error}, "
+                  f"PowerOn:{is_power_on}, Idle:{is_idle}")
+        
+        return is_not_in_error and is_power_on and is_idle
+
+    def is_all_homed(self):
+        """Check if all joints are homed. This is used to determine if we need to show the "Re-Home?" confirmation dialog."""
+        self.poll()
+        count = self.params.get("JOINTS_COUNT", 6)
+        return all(self.status.homed[i] for i in range(count))
 
     def home_all_sequence(self):
-        """
-        Execute homing sequence for a robot.
-        Robots usually require Joint mode for homing.
-        """
-        self.set_teleop(False) # Ensure we are in Joint mode
-        for i in range(config.MACHINE_PARAMS["JOINTS_COUNT"]):
-            self.home_axis(i)
-            self.command.wait_complete()
+        """Сама команда для LinuxCNC"""
+        self.set_mode(linuxcnc.MODE_MANUAL)
+        self.set_teleop(False)
+        self.command.home(-1) 
