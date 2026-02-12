@@ -2,4 +2,4 @@
 # Export core services for easier access
 
 from .machine import MachineController
-from .logger import Logger
+from .logger import LoggerController
