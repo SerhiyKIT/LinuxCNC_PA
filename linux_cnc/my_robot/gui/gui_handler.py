@@ -41,7 +41,7 @@ class HandlerClass:
         ini_path = os.environ.get('INI_FILE_NAME')
         self.ini = linuxcnc.ini(ini_path)
         
-        self.SPEED = float(self.ini.find("DISPLAY", "DEFAULT_LINEAR_VELOCITY") or 600.0)
+        self.SPEED = float(self.ini.find("TRAJ", "DEFAULT_LINEAR_VELOCITY") or 600.0)
         self.SPEED = self.SPEED * 60
         
         self.JOINT_LIMITS = {}
@@ -1396,15 +1396,6 @@ class HandlerClass:
             btn.setEnabled(not estop)
             btn.setStyleSheet(self.STYLE_POWER_ON if power_on and not estop else self.STYLE_POWER_OFF)
             btn.setText("ON" if power_on else "OFF")
-        
-        # Приклад логіки для кнопок циклу
-        is_auto = (self.status.task_mode == linuxcnc.MODE_AUTO)
-        is_running = (self.status.interp_state != linuxcnc.INTERP_IDLE)
-
-        if hasattr(self.widgets, 'btn_cycle_start'):
-            # Кнопка Start активна тільки якщо ми не в процесі руху або на паузі
-            can_start = self.status.interp_state in [linuxcnc.INTERP_IDLE, linuxcnc.INTERP_PAUSED]
-            self.widgets.btn_cycle_start.setEnabled(can_start)
 
     def _update_panel_access(self):
         """Оновлення доступу до панелей залежно від стану станка та виконання програми"""
