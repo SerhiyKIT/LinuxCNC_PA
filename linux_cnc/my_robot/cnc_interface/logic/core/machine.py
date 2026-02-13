@@ -19,7 +19,10 @@ class MachineController:
         self.params = config.MACHINE_PARAMS
         self.limits = config.JOINT_LIMITS
         
-        self.SPEED = config.DEFAULT_SPEED
+        self.speed = self.params.get("LINEAR_VEL", 1.0) * 60
+        
+        self.linear_jog_speed = 300.0
+        self.angular_jog_speed = 30.0
         
         self.manual_mode = config.DEFAULT_MANUAL_MODE
         
@@ -81,34 +84,69 @@ class MachineController:
         self.command.home(int(axis_num))
 
     def set_teleop(self, enable: bool):
-        """Enable or disable teleoperation mode (for jogging)."""
+        """Enable or disable teleoperation mode (for jogging)"""
         self.poll()
         state = 1 if enable else 0
         if self.status.kinematics_type != state:
             self.command.teleop_enable(state)
             self.command.wait_complete()
 
-    def jog(self, axis_index, direction, speed, increment=0, is_joint=True):
-        """"Send a jog command to LinuxCNC. Handles both Joint and Axis jogging"""
-        self.set_mode(linuxcnc.MODE_MANUAL)
-        
-        jog_type = self.JOG_CMD_FLAG if is_joint else 0
-        
-        self.set_teleop(not is_joint)
-        
-        vel = float(direction) * (speed / 60.0)
-        idx = int(axis_index)
+    def is_ready(self):
+        try:
+            self.status.poll()
+            return not self.status.estop and (self.status.task_state == linuxcnc.STATE_ON)
+        except:
+            return False
 
-        print(f"ACTUAL SEND (Kinematic fix): type={jog_type}, idx={idx}, vel={vel}")
+    def sync_mode(self, want_teleop):
+        """want_teleop: True для World mode (Axes), False для Joint mode"""
+        try:
+            self.status.poll()
+            if self.status.task_mode != linuxcnc.MODE_MANUAL:
+                self.command.mode(linuxcnc.MODE_MANUAL)
+                self.command.wait_complete()
+            
+            val = 1 if want_teleop else 0
+            self.command.teleop_enable(val)
+            self.command.wait_complete()
+            return True
+        except Exception as e:
+            print(f"ERROR: Sync modes failed: {e}")
+            return False
+
+    def jog(self, index, direction, speed, increment, is_joint):
+        """Jog a joint or axis. Handles both continuous and incremental jogging based on increment value"""
+        flag = self.JOG_CMD_FLAG if is_joint else 0
+
+        vel = (speed / 60.0)
         
         if increment == 0:
-            self.command.jog(linuxcnc.JOG_CONTINUOUS, jog_type, idx, vel)
+            # Continuous
+            self.command.jog(linuxcnc.JOG_CONTINUOUS, flag, int(index), float(direction) * vel)
         else:
-            self.command.jog(linuxcnc.JOG_INCREMENT, jog_type, idx, vel, float(increment))
+            # Increment
+            self.command.jog(linuxcnc.JOG_INCREMENT, flag, int(index), float(direction) * vel, float(increment))
 
-    def stop_jog(self, axis_index, is_joint=True):
-        jog_type = self.JOG_CMD_FLAG if is_joint else 0
-        self.command.jog(linuxcnc.JOG_STOP, jog_type, int(axis_index))
+    # --- OVERRIDES ---
+    def stop_jog(self, index, is_joint):
+        flag = self.JOG_CMD_FLAG if is_joint else 0
+        self.command.jog(linuxcnc.JOG_STOP, flag, int(index))
+        
+    def set_feed_override(self, rate):
+        """rate: float (1.0 = 100%)"""
+        self.command.feedrate(rate)
+
+    def set_rapid_override(self, rate):
+        """rate: float (1.0 = 100%)"""
+        self.command.rapidrate(rate)
+
+    def set_spindle_override(self, rate):
+        """rate: float (1.0 = 100%)"""
+        self.command.spindleoverride(rate)
+
+    def set_max_velocity(self, velocity):
+        """velocity: float (units per minute)"""
+        self.command.maxvel(velocity / 60.0)
         
     # --- PROGRAM EXECUTION ---
 
@@ -180,6 +218,11 @@ class MachineController:
             
             # Kinematics type (for teleop mode)
             'teleop': self.status.kinematics_type == 1,
+            
+            # G-code and M-code information (for potential use in UI)
+            'gcodes': self.status.gcodes,
+            'mcodes': self.status.mcodes,
+            'settings': self.status.settings,
         }
 
     def can_home(self):
