@@ -1,5 +1,5 @@
 # logic/managers/control_manager.py
-import config
+from config import STYLES
 from PyQt5.QtWidgets import QMessageBox
 
 class ControlManager:
@@ -11,7 +11,7 @@ class ControlManager:
         self.homing_complete_shown = False
         
         # Default speed for jogging, can be adjusted via config
-        self.SPEED = config.DEFAULT_SPEED
+        self.SPEED = self.cnc.speed
 
     def on_btn_estop_clicked(self):
         """Handler for E-Stop button click. Toggles E-Stop state and logs the action"""
@@ -76,6 +76,6 @@ class ControlManager:
         msg.setInformativeText("This will reset current coordinates and may cause unexpected motion.")
         msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
         msg.setDefaultButton(QMessageBox.Cancel)
-        msg.setStyleSheet(config.STYLES.get('MSGBOX', ""))
+        msg.setStyleSheet(STYLES.get('MSGBOX', ""))
         
         return msg.exec_() == QMessageBox.Yes
