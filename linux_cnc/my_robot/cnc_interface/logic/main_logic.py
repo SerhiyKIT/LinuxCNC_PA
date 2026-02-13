@@ -1,12 +1,13 @@
 # logic/main_logic.py
-import linuxcnc
 from PyQt5 import QtCore
-from core.machine import MachineController
-from core.logger import LoggerController
-from managers.control_manager import ControlManager
-from managers.style_manager import StyleManager
-from managers.ui_manager import UIManager
-from managers.jog_manager import JogManager
+from core import MachineController
+from core import LoggerController
+from managers import ControlManager
+from managers import StyleManager
+from managers import UIManager
+from managers import JointManager
+from managers import AxisManager
+from managers import OverridesManager
 
 import config
 
@@ -16,6 +17,7 @@ class HandlerClass:
         self.widgets = widgets
         self.paths = paths
         
+        # Load machine parameters from config
         self.params = config.MACHINE_PARAMS
         
         # Initialize core controllers
@@ -28,8 +30,13 @@ class HandlerClass:
         self.ui_manager = UIManager(self.cnc, self.widgets)
         # Initialize control manager
         self.control = ControlManager(self.cnc, self.widgets)
-        # Initialize jog manager
-        self.jog = JogManager(self.cnc, self.widgets)
+        # Initialize joint manager
+        self.joint_manager = JointManager(self.cnc, self.widgets)
+        # Initialize axis manager
+        self.axis_manager = AxisManager(self.cnc, self.widgets)
+        # Initialize overrides manager
+        self.overrides_manager = OverridesManager(self.cnc, self.widgets)
+        
 
     def initialized__(self):
         # Start the main update loop
@@ -67,14 +74,25 @@ class HandlerClass:
         if hasattr(self.widgets, 'axis_control_overlay'):
             self.widgets.axis_control_overlay.mousePressEvent = lambda e: self.control.on_overlay_clicked(self.cnc.get_states(), "axis")
         
-        # Connect jog buttons
-        self.jog._connect_jog_buttons()
+        # Connect joint buttons
+        self.joint_manager.connect_all_jog_buttons()
+        
+        # Connect axis buttons
+        self.axis_manager.connect_all_axis_buttons()
+        
+        # Connect override sliders
+        self.overrides_manager.setup_overrides()
         
         # Populate jog mode ComboBox
         if hasattr(self.widgets, 'combo_joint_mode'):
             self.widgets.combo_joint_mode.clear()
             self.widgets.combo_joint_mode.addItems(self.params.get("JOG_MODES", []))
         
+        if hasattr(self.widgets, 'combo_axis_mode'):
+            self.widgets.combo_axis_mode.clear()
+            self.widgets.combo_axis_mode.addItems(self.params.get("JOG_MODES", []))
+        
+        # Setup output panel if the widget exists
         if hasattr(self.widgets, 'list_output_view'):
             self.ui_manager.setup_output_panel()
 
