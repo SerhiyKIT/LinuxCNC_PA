@@ -11,8 +11,6 @@ INI_PATH = os.environ.get('INI_FILE_NAME')
 INI_FILE = linuxcnc.ini(INI_PATH) if INI_PATH else None
 
 # --- DEFAULTS ---
-_default_vel = float(INI_FILE.find("TRAJ", "DEFAULT_LINEAR_VELOCITY") or 10.0) if INI_FILE else 10.0
-DEFAULT_SPEED = _default_vel * 60
 DEFAULT_MANUAL_MODE = "axis"
 
 # --- PATHS ---
@@ -49,16 +47,16 @@ def get_joint_limits(num_joints=6):
 MACHINE_PARAMS = {
     "POLL_INTERVAL": 100,
     
-    # Linear velocities from [DISPLAY] or [AXIS_X]
-    "LINEAR_VEL":         get_ini_val("DISPLAY", "DEFAULT_LINEAR_VELOCITY", 5.0),
-    "MAX_LINEAR_VEL":     get_ini_val("AXIS_X", "MAX_VELOCITY", 30.0),
+    # Linear velocities from TRAJ
+    "LINEAR_VEL":         get_ini_val("TRAJ", "DEFAULT_LINEAR_VELOCITY", 5.0),
+    "MAX_LINEAR_VEL":     get_ini_val("TRAJ", "MAX_LINEAR_VELOCITY", 30.0),
     
     # Angular velocities
     "ANGULAR_VEL":        get_ini_val("DISPLAY", "DEFAULT_ANGULAR_VELOCITY", 36.0),
     "MAX_ANGULAR_VEL":    get_ini_val("AXIS_A", "MAX_VELOCITY", 30.0),
     
     # Increments for jogging
-    "JOG_MODES":     ["Continuous", "1.0000", "0.1000", "0.0100", "0.0010", "0.0001"],
+    "JOG_MODES":     ["Continuous", "1.0000", "0.1000", "0.0100", "0.0010"],
     
     # Number of joints (from [KINS])
     "JOINTS_COUNT":       int(get_ini_val("KINS", "JOINTS", 6, val_type=float)),
@@ -116,11 +114,6 @@ HOTKEYS = {
     "PAUSE":         Qt.Key_P,
     "RESUME":        Qt.Key_S,
     "STOP":          Qt.Key_Escape,
-}
-
-# --- AXIS MAPPING ---
-AXIS_MAPPING = {
-    0: "X", 1: "Y", 2: "Z", 3: "A", 4: "B", 5: "C"
 }
 
 # --- COLORS ---
@@ -223,7 +216,7 @@ STYLES = {
     'GRIP_INACTIVE': f"QPushButton {{ background-color: {COLORS['BG_BTN_DEFAULT']}; color: {COLORS['TEXT_MAIN']}; padding: 5px; border-radius: 10px; border: none; }}",
 
     # --- Copy Button for Output Panel ---
-    'STYLE_COPY_BTN': f"""
+    'COPY_BTN': f"""
     QPushButton {{ background-color: {COLORS['BG_WIDGET']}; color: {COLORS['TEXT_INACTIVE']}; border: 1px solid {COLORS['LOGGER_BORDER']}; border-radius: 4px; }} 
     QPushButton:hover {{ background-color: {COLORS['BG_BTN_HOVER']}; color: {COLORS['ACCENT']}; }} """,
     
@@ -236,6 +229,9 @@ STYLES = {
     
     # --- Message Text ---
     'MSG_TEXT': f"QLabel {{ color: {COLORS['TEXT_DISABLED']}; font-size: 12px; border: none; background: {COLORS['BG_TRANSPARENT']}; }}",
+
+    # --- Log Container
+    'LOG_CONTAINER': f"#logContainer {{ background: {COLORS['BG_TRANSPARENT']}; border: none;}}",
 }
 
 # --- MESSAGES ---
