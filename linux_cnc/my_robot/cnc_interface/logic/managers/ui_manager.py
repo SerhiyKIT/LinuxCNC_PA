@@ -26,25 +26,30 @@ class UIManager:
         # Preload styles for different states
         self.STYLE_ESTOP_ON = STYLES.get('ESTOP_ON', '')
         self.STYLE_ESTOP_OFF = STYLES.get('ESTOP_OFF', '')
+        
         self.STYLE_POWER_ON = STYLES.get('POWER_ON', '')
         self.STYLE_POWER_OFF = STYLES.get('POWER_OFF', '')
+        
         self.STYLE_HOME_READY = STYLES.get('HOME_READY', '')
         self.STYLE_HOME_INACTIVE = STYLES.get('HOME_INACTIVE', '')
-        self.STYLE_PANEL_ACTIVE = STYLES.get('PANEL_ACTIVE', '')
-        self.STYLE_PANEL_INACTIVE = STYLES.get('PANEL_INACTIVE', '')
+        
         self.PANEL_LABEL_ACTIVE = STYLES.get('PANEL_LABEL_ACTIVE', '')
         self.PANEL_LABEL_INACTIVE = STYLES.get('PANEL_LABEL_INACTIVE', '')
         self.PANEL_FRAME_ACTIVE = STYLES.get('PANEL_FRAME_ACTIVE', '')
         self.PANEL_FRAME_INACTIVE = STYLES.get('PANEL_FRAME_INACTIVE', '')
+        
         self.STYLE_GCODE_ACTIVE = STYLES.get('GCODE_ACTIVE', '')
         self.STYLE_GCODE_INACTIVE = STYLES.get('GCODE_INACTIVE', '')
-        self.JOG_ACTIVE = STYLES.get('JOG_ACTIVE', '')
-        self.JOG_LIMITED = STYLES.get('JOG_LIMITED', '')
-        self.OUTPUT_VIEW = STYLES.get('STYLE_OUTPUT_VIEW', '')
-        self.STYLE_COPY_BTN = STYLES.get('STYLE_COPY_BTN', '')
-        self.SEPARATOR_LINE = STYLES.get('SEPARATOR_LINE', '')
-        self.CLIPBOARD = STYLES.get('CLIPBOARD', '')
-        self.MSG_TEXT = STYLES.get('MSG_TEXT', '')
+        
+        self.STYLE_JOG_ACTIVE = STYLES.get('JOG_ACTIVE', '')
+        self.STYLE_JOG_LIMITED = STYLES.get('JOG_LIMITED', '')
+        
+        self.STYLE_OUTPUT_VIEW = STYLES.get('OUTPUT_VIEW', '')
+        self.STYLE_COPY_BTN = STYLES.get('COPY_BTN', '')
+        self.STYLE_SEPARATOR_LINE = STYLES.get('SEPARATOR_LINE', '')
+        self.STYLE_CLIPBOARD = STYLES.get('CLIPBOARD', '')
+        self.STYLE_MSG_TEXT = STYLES.get('MSG_TEXT', '')
+        self.STYLE_LOG_CONTAINER = STYLES.get('LOG_CONTAINER', '')
         
 
     def update_ui(self, states):
@@ -58,6 +63,7 @@ class UIManager:
             self._update_gcode_controls(states)
             self._update_cycle_buttons(states)
             self._update_file_buttons(states)
+            self._update_active_gcodes(states)
         except Exception as e:
             print(f"DEBUG UI Error: {e}")
 
@@ -74,7 +80,7 @@ class UIManager:
             if label:
                 prev = self.last_joint_pos.get(i, None)
                 
-                if prev is None or abs(val - prev) > 0.0005:
+                if prev is None or abs(val - prev) > 0.00005:
                     label.setText(f"{val:.4f}")
                     self.last_joint_pos[i] = val
         
@@ -82,7 +88,7 @@ class UIManager:
         self._handle_joint_soft_limits(states)
 
         # 2. Update World positions
-        axes = ['x', 'y', 'z', 'a', 'b', 'c']
+        axes = self.axes = ['x', 'y', 'z', 'a', 'b', 'c']
         for i, axis in enumerate(axes):
             val = actual_pos[i] if i < len(actual_pos) else 0.0
             w = getattr(self.widgets, f'txt_{axis}_pos', None)
@@ -91,7 +97,7 @@ class UIManager:
                 storage_key = f"world_{axis}"
                 prev_w = self.last_joint_pos.get(storage_key, None)
                 
-                if prev_w is None or abs(val - prev_w) > 0.0005:
+                if prev_w is None or abs(val - prev_w) > 0.00005:
                     w.setText(f"{val:.4f}")
                     self.last_joint_pos[storage_key] = val
                 
@@ -253,8 +259,8 @@ class UIManager:
 
         j_pos = states['joint_position']
         
-        style_active = self.JOG_ACTIVE
-        style_limited = self.JOG_LIMITED
+        style_active = self.STYLE_JOG_ACTIVE
+        style_limited = self.STYLE_JOG_LIMITED
 
         for i in range(min(6, len(j_pos))):
             limits = self.limits.get(i)
@@ -280,18 +286,12 @@ class UIManager:
         """
         Complex method to update the style of a panel group (main panel, label, frame) based on a common prefix.
         """
-        # 1. Basic panel (QWidget group)
-        panel = getattr(self.widgets, prefix, None)
-        if panel:
-            panel.setEnabled(is_active)
-            panel.setStyleSheet(self.STYLE_PANEL_ACTIVE if is_active else self.STYLE_PANEL_INACTIVE)
-
-        # 2. Title label of the panel
+        # 1. Title label of the panel
         lbl = getattr(self.widgets, f"lbl_{prefix}", None)
         if lbl:
             lbl.setStyleSheet(self.PANEL_LABEL_ACTIVE if is_active else self.PANEL_LABEL_INACTIVE)
 
-        # 3. Border frame of the panel
+        # 2. Border frame of the panel
         frm = getattr(self.widgets, f"frm_{prefix}", None)
         if frm:
             frm.setStyleSheet(self.PANEL_FRAME_ACTIVE if is_active else self.PANEL_FRAME_INACTIVE)
@@ -299,7 +299,7 @@ class UIManager:
     def setup_output_panel(self):
         """Initial setup for the output log panel to ensure it has the correct styles and behavior for displaying log messages."""
         view = self.widgets.list_output_view
-        view.setStyleSheet(self.OUTPUT_VIEW)
+        view.setStyleSheet(self.STYLE_OUTPUT_VIEW)
         view.setSpacing(0)
         view.setContentsMargins(0, 0, 0, 0)
         
@@ -323,7 +323,7 @@ class UIManager:
         item = QtWidgets.QListWidgetItem(self.widgets.list_output_view)
         container = QtWidgets.QWidget()
         container.setObjectName("logContainer")
-        container.setStyleSheet("#logContainer { background: transparent; border: none; }")
+        container.setStyleSheet(self.STYLE_LOG_CONTAINER)
         
         v_layout = QtWidgets.QVBoxLayout(container)
         v_layout.setContentsMargins(5, 2, 5, 2)
@@ -340,7 +340,7 @@ class UIManager:
         label.setWordWrap(True)
         # Fix the width to prevent it from expanding indefinitely and ensure proper text wrapping within the output panel
         label.setFixedWidth(self.widgets.list_output_view.width() - 60)
-        label.setStyleSheet(self.MSG_TEXT)
+        label.setStyleSheet(self.STYLE_MSG_TEXT)
         
         # Copy button to copy the log message to clipboard
         btn_copy = QtWidgets.QPushButton("📋")
@@ -357,7 +357,7 @@ class UIManager:
         # Separator line below each log entry for better visual separation
         line = QtWidgets.QFrame()
         line.setFixedHeight(1)
-        line.setStyleSheet(self.SEPARATOR_LINE)
+        line.setStyleSheet(self.STYLE_SEPARATOR_LINE)
         v_layout.addWidget(line)
 
         self.widgets.list_output_view.addItem(item)
@@ -372,10 +372,46 @@ class UIManager:
         
         old_text = button.text()
         button.setText("✓")
-        button.setStyleSheet(self.CLIPBOARD)
+        button.setStyleSheet(self.STYLE_CLIPBOARD)
         QtCore.QTimer.singleShot(1000, lambda: self._reset_copy_button(button, old_text))
 
     def _reset_copy_button(self, button, old_text):
         """"Reset the copy button to its original state after showing feedback"""
         button.setText(old_text)
-        button.setStyleSheet(STYLES.get('STYLE_COPY_BTN', ""))
+        button.setStyleSheet(self.STYLE_COPY_BTN)
+        
+    def _update_active_gcodes(self, states):
+        """Upddate the G-code status bar to show active G-codes, M-codes, and current feed/spindle settings based on machine state"""
+        status_bar = getattr(self.widgets, 'txt_gcodeStatusBar', None)
+        if not status_bar:
+            return
+
+        # 1. Extract active G-codes and format them as strings (e.g., G0, G1, G2, etc.)
+        active_gcodes = []
+        for code in states.get('gcodes', []):
+            if code == -1: continue
+            g_prefix = f"G{code/10.0:g}"
+            active_gcodes.append(g_prefix)
+    
+        # 2. Extract active M-codes and format them as strings (e.g., M3, M5, etc.)
+        active_mcodes = []
+        for m_code in states.get('mcodes', []):
+            if m_code == -1: continue
+            active_mcodes.append(f"M{m_code}")
+
+        # 3. Extract current feed and spindle speed settings from the machine state and format them for display
+        settings = states.get('settings', [0, 0, 0])
+        f_set = settings[1]
+        s_set = settings[2]
+    
+        # Combine all the information into a single status string to display in the G-code status bar
+        g_str = " ".join(active_gcodes)
+        m_str = " ".join(active_mcodes)
+        fs_str = f"F{f_set:.0f} S{s_set:.0f}"
+
+        # 4. Final combined status string that includes active G-codes, M-codes, and feed/spindle settings
+        full_status = f"{g_str} | {m_str} | {fs_str}"
+    
+        # Only update the status bar text if it has changed to avoid unnecessary UI updates
+        if status_bar.text() != full_status:
+            status_bar.setText(full_status)
