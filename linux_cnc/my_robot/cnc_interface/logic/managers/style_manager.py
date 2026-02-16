@@ -13,8 +13,10 @@ class StyleManager:
         self._set_jogging_styles()
         self._set_gcode_button_styles()
         self._set_panel_styles()
-        self._set_dialog_and_list_styles()
-        self._set_tool_and_gripper_styles()
+        self._set_dialog_styles()
+        self._set_list_styles()
+        self._set_tool_styles() 
+        self._set_gripper_styles()
         self._set_logger_styles()
 
     def _set_emergency_stop_styles(self):
@@ -44,14 +46,18 @@ class StyleManager:
         self.PANEL_LABEL_INACTIVE = STYLES['PANEL_LABEL_INACTIVE']
         self.PANEL_LABEL_ACTIVE = STYLES['PANEL_LABEL_ACTIVE']
 
-    def _set_dialog_and_list_styles(self):
+    def _set_dialog_styles(self):
         self.STYLE_MSGBOX = STYLES['MSGBOX']
         self.STYLE_GCODE_LIST = STYLES['GCODE_LIST']
+        
+    def _set_list_styles(self):
         self.STYLE_OUTPUT_VIEW = STYLES.get('STYLE_OUTPUT_VIEW', '')
 
-    def _set_tool_and_gripper_styles(self):
+    def _set_tool_styles(self):
         self.STYLE_TOOL_ARMED = STYLES['TOOL_ARMED']
         self.STYLE_TOOL_DISARMED = STYLES['TOOL_DISARMED']
+        
+    def _set_gripper_styles(self):
         self.STYLE_GRIP_ACTIVE = STYLES['GRIP_ACTIVE']
         self.STYLE_GRIP_INACTIVE = STYLES['GRIP_INACTIVE']
 
