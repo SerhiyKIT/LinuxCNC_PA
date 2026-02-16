@@ -96,6 +96,12 @@ SLIDER_CONFIGS = {
     'sld_max_velocity': (0, 600)
 }
 
+# --- MANAGER KEYS ---
+MGR_CONTROL = "control"
+MGR_CYCLE   = "cycle"
+MGR_TOOL    = "tool"
+MGR_FILE    = "file"
+
 # --- HOTKEYS ---
 HOTKEYS = {
     # System commands

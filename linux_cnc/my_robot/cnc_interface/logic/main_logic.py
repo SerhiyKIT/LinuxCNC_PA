@@ -10,6 +10,7 @@ from managers import OverridesManager
 from managers import FileManager
 from managers import CycleManager
 from managers import ToolManager
+from managers import KeyboardManager
 import config
 
 class HandlerClass:
@@ -43,6 +44,17 @@ class HandlerClass:
         self.cycle_manager = CycleManager(self.cnc, self.widgets)
         # Initialize tool manager
         self.tool_manager = ToolManager(self.cnc, self.widgets)
+        
+        # Create a mapping of manager keys to their instances for easy access from the keyboard manager
+        self.managers_map = {
+            config.MGR_CONTROL: self.control,
+            config.MGR_CYCLE:   self.cycle_manager,
+            config.MGR_TOOL:    self.tool_manager,
+            config.MGR_FILE:    self.file_manager
+        }
+        
+        # Initialize keyboard manager with references to other managers for command execution
+        self.keyboard_manager = KeyboardManager(self.widgets, self.managers_map)
         
 
     def initialized__(self):
@@ -120,6 +132,10 @@ class HandlerClass:
         # Setup output panel if the widget exists
         if hasattr(self.widgets, 'list_output_view'):
             self.ui_manager.setup_output_panel()
+        
+        # Connect keyboard events to the keyboard manager
+        self.widgets.window().keyPressEvent = lambda event: self.keyboard_manager.processed_key_event(event, True)
+        self.widgets.window().keyReleaseEvent = lambda event: self.keyboard_manager.processed_key_event(event, False)
 
     def _update_ui(self):
         """Main loop for polling machine status and updating UI"""
