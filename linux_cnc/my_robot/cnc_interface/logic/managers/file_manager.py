@@ -13,6 +13,7 @@ class FileManager:
         self.STYLE_GCODE_WARN = STYLES.get('GCODE_WARN', '')
 
     def connect_file_buttons(self):
+        # Connect file-related buttons to their handlers
         mapping = {
             'btn_file_open': self.on_btn_file_open_clicked,
             'btn_file_save_as': self.on_btn_file_save_as_clicked,
@@ -24,7 +25,7 @@ class FileManager:
             if btn: btn.clicked.connect(handler)
 
     def on_btn_file_open_clicked(self):
-        """Відкриває діалог вибору файлу"""
+        """Open a G-code file using a file dialog and load it into the CNC controller and UI view"""
         default_dir = os.path.expanduser("~/linuxcnc-dev/configs/sim/axis/nc_files")
         file_path, _ = QFileDialog.getOpenFileName(
             None, "Open G-Code File", default_dir,
@@ -33,15 +34,13 @@ class FileManager:
     
         if file_path:
             try:
-                # Використовуємо метод контролера (там всередині poll() і open)
                 self.cnc.open_program(file_path)
-                # Після успішного відкриття в CNC, завантажуємо в UI
                 self._load_gcode_to_view(file_path)
             except Exception as e:
                 print(f"ERROR: Не вдалося завантажити файл: {e}")
 
     def on_btn_file_save_as_clicked(self):
-        """Збереження вмісту в'юхи у новий файл"""
+        """Save the currently loaded G-code file under a new name using a file dialog, and update the CNC controller with the new file path"""
         if not self.cnc.is_interpreter_idle():
             print("WARNING: Переривання: інтерпретатор зайнятий")
             return
@@ -57,12 +56,10 @@ class FileManager:
             try:
                 if not new_filepath.endswith(('.ngc', '.txt')): new_filepath += '.ngc'
                 
-                # Збираємо дані
                 content = [model.index(i, 0).data() for i in range(model.rowCount())]
                 with open(new_filepath, 'w', encoding='utf-8') as f:
                     f.write("\n".join(content))
 
-                # Повідомляємо CNC про новий файл
                 self.cnc.open_program(new_filepath)
                 self._load_gcode_to_view(new_filepath)
                 print(f"DEBUG: Збережено та завантажено: {new_filepath}")
@@ -70,7 +67,7 @@ class FileManager:
                 print(f"ERROR: Помилка збереження: {e}")
 
     def on_btn_file_reload_clicked(self):
-        """Оновлення поточного файлу"""
+        """Update the currently loaded G-code file in the CNC controller and UI view, if the file has changed on disk and the machine is idle"""
         last_file = self.cnc.get_last_file()
         if not last_file or not self.cnc.is_interpreter_idle():
             print("WARNING: Reload неможливий (файл не знайдено або станок працює)")
@@ -81,7 +78,6 @@ class FileManager:
             self._load_gcode_to_view(last_file)
             self.cnc.reload_needed = False
             
-            # Повертаємо нормальний стиль кнопці
             if hasattr(self.widgets, 'btn_file_reload'):
                 self.widgets.btn_file_reload.setStyleSheet("")
                 
@@ -90,7 +86,7 @@ class FileManager:
             print(f"ERROR: Помилка релоаду: {e}")
 
     def on_btn_file_edit_clicked(self):
-        """Відкриття у зовнішньому редакторі"""
+        """Open the currently loaded G-code file in an external text editor for editing, and mark it for reload after editing is done"""
         last_file = self.cnc.get_last_file()
         if not last_file or not self.cnc.is_interpreter_idle():
             return
@@ -105,7 +101,7 @@ class FileManager:
                 return
 
     def _load_gcode_to_view(self, filepath):
-        """Візуальне завантаження тексту у QListView для PyQt5"""
+        """Load G-code from the specified file into the list view, allowing for editing and ensuring synchronization with the CNC controller. This method also updates UI labels and handles potential errors gracefully."""
         if not os.path.exists(filepath):
             print(f"ERROR: Файл не знайдено: {filepath}")
             return
@@ -114,27 +110,22 @@ class FileManager:
             with open(filepath, 'r', encoding='utf-8') as f:
                 lines = [line.strip() for line in f.readlines()]
         
-            # Створюємо модель
             model = QStringListModel()
             model.setStringList(lines)
         
             if hasattr(self.widgets, 'list_gcode_view'):
                 view = self.widgets.list_gcode_view
             
-                # 1. Спершу встановлюємо модель
+                # 1. Set the model to the view
                 view.setModel(model)
             
-                # 2. Тільки ПІСЛЯ встановлення моделі налаштовуємо тригери
-                # В PyQt5 використовуємо пряме звернення до констант
+                # 2. Allow editing lines directly in the view
                 triggers = QAbstractItemView.DoubleClicked | QAbstractItemView.EditKeyPressed
                 view.setEditTriggers(triggers)
             
-                # 3. Підключаємо сигнал (робимо це саме до моделі)
-                # Важливо: модель належить View, тому ми маємо бути впевнені, 
-                # що працюємо з актуальним об'єктом моделі.
+                # 3. Connect the model's dataChanged signal to a handler to detect edits
                 model.dataChanged.connect(self._on_gcode_edited)
 
-            # Оновлюємо лейбли
             if hasattr(self.widgets, 'lbl_filename'):
                 self.widgets.lbl_filename.setText(os.path.basename(filepath))
         
@@ -147,11 +138,8 @@ class FileManager:
             print(f"ERROR: _load_gcode_to_view: {e}")
 
     def _on_gcode_edited(self, topLeft, bottomRight, roles):
-        """
-        Викликається автоматично після завершення редагування рядка в UI.
-        Зберігає зміни у файл та оновлює стан контролера.
-        """
-        # 1. Перевірка станів перед записом
+        """Handler for when G-code lines are edited in the list view. This method checks if the file has changed and, if so, saves the changes back to disk and synchronizes with LinuxCNC. It also handles potential errors gracefully."""
+        # 1. Check if we have a file loaded and if the machine is idle before allowing edits to be saved
         if not self.cnc.is_interpreter_idle():
             print("WARNING: Редагування заблоковано: програма виконується")
             return
@@ -161,26 +149,22 @@ class FileManager:
             return
 
         try:
-            # 2. Отримуємо актуальну модель з віджета
+            # 2. Get the current content from the model
             model = self.widgets.list_gcode_view.model()
             if not model:
                 return
                 
-            # Збираємо всі рядки тексту з моделі
             all_lines = model.stringList()
         
-            # 3. Перезаписуємо фізичний файл на диску
+            # 3. Save the edited lines back to the file
             with open(last_file, 'w', encoding='utf-8') as f:
-                # Додаємо символ нового рядка в кінці, щоб LinuxCNC коректно зчитав останній рядок
                 f.write("\n".join(all_lines) + "\n")
         
-            # 4. Повідомляємо LinuxCNC, що файл змінився (синхронізація)
+            # 4. Reload the file in LinuxCNC to synchronize changes
             self.cnc.open_program(last_file)
             
-            # Оскільки ми щойно самі синхронізували файл, reload вже не потрібен
             self.cnc.reload_needed = False
             
-            # Скидаємо стиль кнопки, якщо він був встановлений
             if hasattr(self.widgets, 'btn_file_reload'):
                 self.widgets.btn_file_reload.setStyleSheet("")
                 

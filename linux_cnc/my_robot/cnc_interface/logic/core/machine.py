@@ -155,12 +155,12 @@ class MachineController:
     # --- FILE MANAGEMENT ---
     
     def is_interpreter_idle(self):
-        """Перевірка, чи вільний інтерпретатор для маніпуляцій з файлом"""
+        """Check if the G-code interpreter is idle (not running or paused). This is used to determine if we can safely load a new program or allow edits to the current program."""
         self.status.poll()
         return self.status.interp_state == linuxcnc.INTERP_IDLE
 
     def open_program(self, filepath):
-        """Команда LinuxCNC на відкриття файлу з перевіркою стану"""
+        """Load a G-code file into LinuxCNC. Checks if the file exists and if the interpreter is idle before attempting to load."""
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"Файл не знайдено: {filepath}")
             
@@ -175,20 +175,53 @@ class MachineController:
             raise Exception(f"LinuxCNC program_open error: {e}")
 
     def get_last_file(self):
-        """Повертає шлях до останнього успішно завантаженого файлу"""
+        """Return the last loaded file path, or None if no file has been loaded yet. This is used for the "Reload" functionality to know which file to reload."""
         return self.last_loaded_file
     
     # --- PROGRAM EXECUTION ---
 
-    def run_program(self, line_number=0):
-        """Start G-code execution from specific line"""
-        self.set_mode(linuxcnc.MODE_AUTO)
+    def cycle_start(self, line_number=0):
+        """Start execution of the loaded G-code program from a specific line number (default 0). Checks for necessary conditions before starting."""
+        self.status.poll()
+        if not self.status.file:
+            raise Exception("Файл не завантажено")
+        if not all(self.status.homed[:3]):
+            raise Exception("Виконайте Home All перед запуском")
+            
+        self.command.mode(linuxcnc.MODE_AUTO)
+        self.command.wait_complete()
         self.command.auto(linuxcnc.AUTO_RUN, line_number)
 
-    def abort(self):
-        """Stop all motions and program execution immediately"""
-        self.command.abort()
+    def cycle_resume(self):
+        """Resume execution of a paused program. If the machine is not in AUTO mode, it switches to AUTO before resuming."""
+        self.status.poll()
+        if self.status.interp_state == linuxcnc.INTERP_PAUSED:
+            if self.status.task_mode != linuxcnc.MODE_AUTO:
+                self.command.mode(linuxcnc.MODE_AUTO)
+                self.command.wait_complete()
+            self.command.auto(linuxcnc.AUTO_RESUME)
 
+    def cycle_pause(self):
+        """Pause the currently running program. If the machine is not in AUTO mode, it switches to AUTO before pausing."""
+        self.command.auto(linuxcnc.AUTO_PAUSE)
+
+    def cycle_stop(self):
+        """Stop the currently running program. This will abort the execution and switch to MANUAL mode."""
+        self.command.abort()
+        self.command.wait_complete()
+        self.command.mode(linuxcnc.MODE_MANUAL)
+
+    def cycle_step(self):
+        """Execute one line of G-code in AUTO mode. If the machine is not in AUTO mode, it switches to AUTO before stepping."""
+        self.status.poll()
+        if not self.status.file or not all(self.status.homed[:3]):
+            return
+        if self.status.task_mode != linuxcnc.MODE_AUTO:
+            self.command.mode(linuxcnc.MODE_AUTO)
+            self.command.wait_complete()
+
+        self.command.auto(linuxcnc.AUTO_STEP)
+    
     # --- HELPERS / GETTERS ---
 
     def is_idle(self):
@@ -256,8 +289,7 @@ class MachineController:
             
             # Current file loaded in LinuxCNC
             'current_file': self.status.file,        
-            'motion_line': self.status.motion_line,  
-            'is_idle': self.is_interpreter_idle(),   
+            'motion_line': self.status.motion_line,
         }
 
     def can_home(self):

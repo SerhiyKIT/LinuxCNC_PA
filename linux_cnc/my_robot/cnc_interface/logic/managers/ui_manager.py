@@ -10,7 +10,9 @@ class UIManager:
         self.cnc = machine_controller
         self.widgets = widgets
         
+        # Initialize state variables
         self.file_manager = FileManager(self.cnc, self.widgets)
+        # Track the last loaded file to detect changes
         self.last_loaded_file = self.cnc.get_last_file()
         
         # State for manual panel selection (joint vs axis)
@@ -190,46 +192,53 @@ class UIManager:
 
 
     def _update_cycle_buttons(self, states):
-        """Logic to enable/disable cycle control buttons based on machine state"""
-        ready = states['is_ready'] and states['all_homed']
-        
+        """Update the enabled state and styles of cycle control buttons (Start, Pause, Continue, Stop, Step) based on current machine status and file state"""
+        ready = states.get('is_ready', False) and states.get('all_homed', False)
+        is_idle = states.get('is_idle', False)
+        is_idle = states.get('is_idle', False)
+        is_paused = states.get('is_paused', False)
+        is_running = states.get('is_running', False)
+        has_file = states.get('has_file', False)
+
+        # 1. START and STEP buttons can only be active if we have a file loaded, machine is ready, and we are either idle, paused, or running (for step)
+        can_step = has_file and ready and (is_idle or is_paused or is_running)
+
+        # 2. CONTINUE can only be active if we are currently paused and machine is ready (we allow continue from paused state even if not idle, to let users resume after a pause)
+        can_continue = is_paused and not is_running
+
+        # 3. PAUSE can only be active if we are currently running and machine is ready
+        can_pause = is_running and ready
+
         conditions = {
-            'btn_cycle_start':    states['is_idle'] and states['has_file'] and ready,
-            'btn_cycle_pause':    states['is_running'] and ready,
-            'btn_cycle_continue': states['is_paused'] and ready,
-            'btn_cycle_stop':     (states['is_running'] or states['is_paused']) and ready,
-            'btn_cycle_step':     states['has_file'] and ready and (states['is_idle'] or states['is_paused'])
+            'btn_cycle_start':    is_idle and has_file and ready,
+            'btn_cycle_pause':    can_pause,
+            'btn_cycle_continue': can_continue,
+            'btn_cycle_stop':     (is_running or is_paused) and ready,
+            'btn_cycle_step':     can_step
         }
 
         for btn_name in self.cycle_buttons:
             self._set_btn_state(btn_name, conditions.get(btn_name, False))
             
     def _update_file_buttons(self, states):
-        """
-        Оновлення кнопок файлового менеджера (Open, Edit, Reload, Save As)
-        на основі стану станка та прапорця потреби у перезавантаженні.
-        """
+        """Update the state and style of file management buttons based on machine state and file status"""
         is_idle = states.get('is_idle', True)
-        # Перевіряємо наявність файлу через шлях у контролері
         has_file = bool(self.cnc.get_last_file())
-        is_ready = states.get('is_ready', False)  # Power ON + No E-Stop
+        is_ready = states.get('is_ready', False) 
 
-        # 1. Умови для кожної кнопки
+        # 1. Determine conditions for each file button
     
-        # Відкрити файл: можна, якщо станок в IDLE та готовий
         can_open = is_idle and is_ready
     
-        # Редагувати / Перезавантажити: можна, якщо завантажений файл і станок в IDLE
         can_edit_reload = is_idle and has_file and is_ready
     
-        # Зберегти як: перевіряємо, чи є текст у в'юшці
         has_content = False
         gcode_view = getattr(self.widgets, 'list_gcode_view', None)
         if gcode_view and gcode_view.model():
             has_content = gcode_view.model().rowCount() > 0
         can_save = is_idle and has_content and is_ready
 
-        # 2. Мапа умов
+        # 2. Update button states and styles based on conditions
         conditions = {
             'btn_file_open':    can_open,
             'btn_file_edit':    can_edit_reload,
@@ -237,7 +246,6 @@ class UIManager:
             'btn_file_save_as': can_save
         }
 
-        # Список кнопок для оновлення (можна використовувати self.file_buttons, якщо він визначений в __init__)
         file_buttons = ['btn_file_open', 'btn_file_edit', 'btn_file_reload', 'btn_file_save_as']
 
         for btn_name in file_buttons:
@@ -246,27 +254,21 @@ class UIManager:
                 continue
         
             is_enabled = conditions.get(btn_name, False)
-        
-            # Оновлюємо доступність кнопки
+
             if btn.isEnabled() != is_enabled:
                 btn.setEnabled(is_enabled)
 
-            # 3. ЛОГІКА СТИЛІВ
+            # 3. Apply styles based on enabled state and specific conditions (e.g., reload warning)
             target_style = ""
         
             if not is_enabled:
-                # Якщо кнопка вимкнена (наприклад, йде робота), ставимо неактивний стиль
                 target_style = getattr(self, 'STYLE_GCODE_INACTIVE', "")
             else:
-                # Якщо кнопка активна, перевіряємо спеціальний стан для Reload
                 if btn_name == 'btn_file_reload' and getattr(self.cnc, 'reload_needed', False):
-                    # ЯКЩО ПРАПОРЕЦЬ reload_needed АКТИВНИЙ — тримаємо жовтий стиль
                     target_style = self.file_manager.STYLE_GCODE_WARN
                 else:
-                    # Звичайний активний стиль
                     target_style = getattr(self, 'STYLE_GCODE_ACTIVE', "")
 
-            # Застосовуємо стиль тільки якщо він змінився (щоб уникнути мерехтіння)
             if btn.styleSheet() != target_style:
                 btn.setStyleSheet(target_style)
 

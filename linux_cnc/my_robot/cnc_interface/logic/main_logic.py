@@ -8,6 +8,7 @@ from managers import JointManager
 from managers import AxisManager
 from managers import OverridesManager
 from managers import FileManager
+from managers import CycleManager
 import config
 
 class HandlerClass:
@@ -37,6 +38,8 @@ class HandlerClass:
         self.overrides_manager = OverridesManager(self.cnc, self.widgets)
         # Initialize file manager
         self.file_manager = FileManager(self.cnc, self.widgets)
+        # Initialize cycle manager
+        self.cycle_manager = CycleManager(self.cnc, self.widgets)
         
 
     def initialized__(self):
@@ -98,9 +101,11 @@ class HandlerClass:
         if hasattr(self.widgets, 'list_gcode_view'):
             self.widgets.list_gcode_view.setStyleSheet(self.STYLE_GCODE_LIST)
             
+        # Connect cycle control buttons
+        self.cycle_manager.connect_cycle_buttons()
+            
         # Allow editing G-code lines directly in the list view
         if hasattr(self.widgets, 'list_gcode_view'):
-            # Дозволяє почати друкувати одразу після виділення рядка
             self.widgets.list_gcode_view.setEditTriggers(
             self.widgets.list_gcode_view.AnyKeyPressed | 
             self.widgets.list_gcode_view.DoubleClicked
