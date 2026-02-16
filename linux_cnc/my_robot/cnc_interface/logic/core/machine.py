@@ -1,6 +1,7 @@
 # logic/core/machine.py
 import linuxcnc
 import config
+import os
 
 class MachineController:
     """
@@ -25,6 +26,9 @@ class MachineController:
         self.angular_jog_speed = 30.0
         
         self.manual_mode = config.DEFAULT_MANUAL_MODE
+        
+        self.last_loaded_file = None
+        self.reload_needed = False
         
         # Parameters for jog control Sand teleop
         self.JOG_CMD_FLAG = self.params.get("JOG_CMD_FLAG", 1)
@@ -148,6 +152,32 @@ class MachineController:
         """velocity: float (units per minute)"""
         self.command.maxvel(velocity / 60.0)
         
+    # --- FILE MANAGEMENT ---
+    
+    def is_interpreter_idle(self):
+        """Перевірка, чи вільний інтерпретатор для маніпуляцій з файлом"""
+        self.status.poll()
+        return self.status.interp_state == linuxcnc.INTERP_IDLE
+
+    def open_program(self, filepath):
+        """Команда LinuxCNC на відкриття файлу з перевіркою стану"""
+        if not os.path.exists(filepath):
+            raise FileNotFoundError(f"Файл не знайдено: {filepath}")
+            
+        if not self.is_interpreter_idle():
+            raise RuntimeError("Неможливо відкрити файл: інтерпретатор зайнятий (RUNNING/PAUSED)")
+
+        try:
+            self.command.program_open(filepath)
+            self.last_loaded_file = filepath
+            return True
+        except Exception as e:
+            raise Exception(f"LinuxCNC program_open error: {e}")
+
+    def get_last_file(self):
+        """Повертає шлях до останнього успішно завантаженого файлу"""
+        return self.last_loaded_file
+    
     # --- PROGRAM EXECUTION ---
 
     def run_program(self, line_number=0):
@@ -223,6 +253,11 @@ class MachineController:
             'gcodes': self.status.gcodes,
             'mcodes': self.status.mcodes,
             'settings': self.status.settings,
+            
+            # Current file loaded in LinuxCNC
+            'current_file': self.status.file,        
+            'motion_line': self.status.motion_line,  
+            'is_idle': self.is_interpreter_idle(),   
         }
 
     def can_home(self):

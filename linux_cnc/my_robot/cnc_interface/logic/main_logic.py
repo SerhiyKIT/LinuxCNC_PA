@@ -3,12 +3,11 @@ from PyQt5 import QtCore
 from core import MachineController
 from core import LoggerController
 from managers import ControlManager
-from managers import StyleManager
 from managers import UIManager
 from managers import JointManager
 from managers import AxisManager
 from managers import OverridesManager
-
+from managers import FileManager
 import config
 
 class HandlerClass:
@@ -17,6 +16,8 @@ class HandlerClass:
         self.widgets = widgets
         self.paths = paths
         
+        self.STYLE_GCODE_LIST = config.STYLES.get('GCODE_LIST', '')
+        
         # Load machine parameters from config
         self.params = config.MACHINE_PARAMS
         
@@ -24,8 +25,6 @@ class HandlerClass:
         self.cnc = MachineController()
         # Initialize logger controller
         self.logger_ctrl = LoggerController(self.cnc)
-        # Initialize style manager
-        self.styles = StyleManager()
         # Initialize UI manager
         self.ui_manager = UIManager(self.cnc, self.widgets)
         # Initialize control manager
@@ -36,6 +35,8 @@ class HandlerClass:
         self.axis_manager = AxisManager(self.cnc, self.widgets)
         # Initialize overrides manager
         self.overrides_manager = OverridesManager(self.cnc, self.widgets)
+        # Initialize file manager
+        self.file_manager = FileManager(self.cnc, self.widgets)
         
 
     def initialized__(self):
@@ -91,6 +92,19 @@ class HandlerClass:
         if hasattr(self.widgets, 'combo_axis_mode'):
             self.widgets.combo_axis_mode.clear()
             self.widgets.combo_axis_mode.addItems(self.params.get("JOG_MODES", []))
+        
+        # Setup file management buttons
+        self.file_manager.connect_file_buttons()
+        if hasattr(self.widgets, 'list_gcode_view'):
+            self.widgets.list_gcode_view.setStyleSheet(self.STYLE_GCODE_LIST)
+            
+        # Allow editing G-code lines directly in the list view
+        if hasattr(self.widgets, 'list_gcode_view'):
+            # Дозволяє почати друкувати одразу після виділення рядка
+            self.widgets.list_gcode_view.setEditTriggers(
+            self.widgets.list_gcode_view.AnyKeyPressed | 
+            self.widgets.list_gcode_view.DoubleClicked
+        )
         
         # Setup output panel if the widget exists
         if hasattr(self.widgets, 'list_output_view'):
