@@ -131,7 +131,7 @@ class HandlerClass:
         
         # Setup output panel if the widget exists
         if hasattr(self.widgets, 'list_output_view'):
-            self.ui_manager.setup_output_panel()
+            self.ui_manager.logger_display_manager.setup_output_panel()
         
         # Connect keyboard events to the keyboard manager
         self.widgets.window().keyPressEvent = lambda event: self.keyboard_manager.processed_key_event(event, True)
@@ -152,8 +152,8 @@ class HandlerClass:
         res = self.cnc.poll_errors()
         if res:
             text, level = res
-            self.ui_manager.log_message(text, level)
+            self.ui_manager.logger_display_manager.log_message(text, level)
 
     def log_internal_message(self, message, level="info"):
         """Log internal events or errors to the UI log panel"""
-        self.ui_manager.log_message(message, level)
+        self.ui_manager.logger_display_manager.log_message(message, level)

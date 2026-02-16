@@ -62,6 +62,7 @@ class StyleManager:
         self.STYLE_GRIP_INACTIVE = STYLES['GRIP_INACTIVE']
 
     def _set_logger_styles(self):
+        self.STYLE_LOG_CONTAINER = STYLES.get('LOG_CONTAINER', '')
         self.STYLE_COPY_BTN = STYLES.get('COPY_BTN', '')
         self.STYLE_SEPARATOR_LINE = STYLES.get('SEPARATOR_LINE', '')
         self.STYLE_CLIPBOARD = STYLES.get('CLIPBOARD', '')
