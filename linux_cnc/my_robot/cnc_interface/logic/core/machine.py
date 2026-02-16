@@ -221,6 +221,39 @@ class MachineController:
             self.command.wait_complete()
 
         self.command.auto(linuxcnc.AUTO_STEP)
+        
+    # --- MDI and Custom Commands ---
+    
+    def send_mdi(self, code):
+        """Send an MDI command to LinuxCNC. Checks if the interpreter is idle before sending the command to prevent conflicts with running programs."""
+        self.status.poll()
+        if self.status.interp_state != linuxcnc.INTERP_IDLE:
+            print(f"WARNING: MDI '{code}' rejected: machine is busy")
+            return False
+
+        prev_mode = self.status.task_mode
+        try:
+            if prev_mode != linuxcnc.MODE_MDI:
+                self.command.mode(linuxcnc.MODE_MDI)
+                self.command.wait_complete()
+            
+            self.command.mdi(code)
+            self.command.wait_complete()
+            
+            if prev_mode != linuxcnc.MODE_MDI:
+                self.command.mode(prev_mode)
+                self.command.wait_complete()
+            return True
+        except Exception as e:
+            print(f"ERROR: MDI execution failed: {e}")
+            return False
+
+    def set_gripper_force(self, value_0_to_1):
+        """
+        Set the force of the gripper by writing to an analog output pin in HAL.
+        The value should be between 0.0 and 1.0, where 1.0 corresponds to maximum force.
+        """
+        self.command.set_analog_output(1, float(value_0_to_1))
     
     # --- HELPERS / GETTERS ---
 

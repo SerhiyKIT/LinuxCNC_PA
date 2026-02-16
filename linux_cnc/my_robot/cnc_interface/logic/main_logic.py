@@ -9,6 +9,7 @@ from managers import AxisManager
 from managers import OverridesManager
 from managers import FileManager
 from managers import CycleManager
+from managers import ToolManager
 import config
 
 class HandlerClass:
@@ -40,6 +41,8 @@ class HandlerClass:
         self.file_manager = FileManager(self.cnc, self.widgets)
         # Initialize cycle manager
         self.cycle_manager = CycleManager(self.cnc, self.widgets)
+        # Initialize tool manager
+        self.tool_manager = ToolManager(self.cnc, self.widgets)
         
 
     def initialized__(self):
@@ -103,6 +106,9 @@ class HandlerClass:
             
         # Connect cycle control buttons
         self.cycle_manager.connect_cycle_buttons()
+        
+        # Connect tool management buttons
+        self.tool_manager.connect_tool_buttons()
             
         # Allow editing G-code lines directly in the list view
         if hasattr(self.widgets, 'list_gcode_view'):
