@@ -3,6 +3,7 @@ from managers.style_manager import StyleManager
 from managers.file_manager import FileManager
 from config import CYCLE_BUTTONS, FILE_BUTTONS
 from PyQt5.QtWidgets import QAbstractItemView
+from PyQt5.QtCore import QCoreApplication
 
 class GCodeDisplayManager:
     def __init__(self, machine_controller, widgets):
@@ -192,7 +193,9 @@ class GCodeDisplayManager:
                         percent = int((current_line / total_lines) * 100)
                         percent = min(100, max(0, percent))
                 
-                    lbl_progress.setText(f"PROGRESS {percent}%")
+                    template = QCoreApplication.translate("MainWindow", "PROGRESS %1%")
+                    display_text = template.replace("%1", str(percent))
+                    lbl_progress.setText(display_text)
 
     def _set_btn_state(self, btn_name, is_enabled):
         """Activate/deactivate a button and apply appropriate style based on its state"""

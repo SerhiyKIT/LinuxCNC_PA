@@ -1,5 +1,7 @@
 # logic/main_logic.py
 from PyQt5 import QtCore
+from PyQt5.QtCore import QTranslator, QCoreApplication, QEvent
+import os
 from core import MachineController
 from core import LoggerController
 from managers import ControlManager
@@ -11,7 +13,8 @@ from managers import FileManager
 from managers import CycleManager
 from managers import ToolManager
 from managers import KeyboardManager
-import config
+from config import STYLES, MACHINE_PARAMS, MGR_CONTROL, MGR_CYCLE, MGR_FILE, MGR_TOOL
+from managers.ui.ui_mapping import UI_TEXT_MAPPING, UI_TOOLTIP_MAPPING
 
 class HandlerClass:
     def __init__(self, halcomp, widgets, paths):
@@ -19,10 +22,12 @@ class HandlerClass:
         self.widgets = widgets
         self.paths = paths
         
-        self.STYLE_GCODE_LIST = config.STYLES.get('GCODE_LIST', '')
+        self.translator = QTranslator()
+        
+        self.STYLE_GCODE_LIST = STYLES.get('GCODE_LIST', '')
         
         # Load machine parameters from config
-        self.params = config.MACHINE_PARAMS
+        self.params = MACHINE_PARAMS
         
         # Initialize core controllers
         self.cnc = MachineController()
@@ -47,10 +52,10 @@ class HandlerClass:
         
         # Create a mapping of manager keys to their instances for easy access from the keyboard manager
         self.managers_map = {
-            config.MGR_CONTROL: self.control,
-            config.MGR_CYCLE:   self.cycle_manager,
-            config.MGR_TOOL:    self.tool_manager,
-            config.MGR_FILE:    self.file_manager
+            MGR_CONTROL: self.control,
+            MGR_CYCLE:   self.cycle_manager,
+            MGR_TOOL:    self.tool_manager,
+            MGR_FILE:    self.file_manager
         }
         
         # Initialize keyboard manager with references to other managers for command execution
@@ -70,6 +75,9 @@ class HandlerClass:
         
         # Setup UI connections
         self._setup_connections()
+        
+        # 
+        self.set_default_language("ua")
 
     def _setup_connections(self):
         # Connect E-Stop button
@@ -136,6 +144,13 @@ class HandlerClass:
         # Connect keyboard events to the keyboard manager
         self.widgets.window().keyPressEvent = lambda event: self.keyboard_manager.processed_key_event(event, True)
         self.widgets.window().keyReleaseEvent = lambda event: self.keyboard_manager.processed_key_event(event, False)
+        
+        # 
+        if hasattr(self.widgets, 'combo_language'):
+            self.widgets.combo_language.clear()
+            self.widgets.combo_language.addItem("EN", "en")
+            self.widgets.combo_language.addItem("UA", "ua")
+            self.widgets.combo_language.currentIndexChanged.connect(self.change_language)
 
     def _update_ui(self):
         """Main loop for polling machine status and updating UI"""
@@ -157,3 +172,69 @@ class HandlerClass:
     def log_internal_message(self, message, level="info"):
         """Log internal events or errors to the UI log panel"""
         self.ui_manager.logger_display_manager.log_message(message, level)
+        
+    def change_language(self, index):
+        """"""
+        if not hasattr(self.widgets, 'combo_language'):
+            return
+            
+        lang_code = self.widgets.combo_language.itemData(index)
+        
+        QCoreApplication.removeTranslator(self.translator)
+        
+        if lang_code == "ua":
+            qm_path = os.path.join(os.path.dirname(__file__), "i18n", "lang_ua.qm")
+            
+            if self.translator.load(qm_path):
+                QCoreApplication.installTranslator(self.translator)
+                print(f"DEBUG: SUCCESS! Loaded: {qm_path}")
+            else:
+                print(f"DEBUG: ERROR! File not found at: {qm_path}")
+        else:
+            print("DEBUG: Language set to English (Default)")
+
+        self.refresh_interface_texts()
+
+    def refresh_interface_texts(self):
+        ctx = "MainWindow"
+        
+        # 1.
+        for obj_name, source_text in UI_TEXT_MAPPING.items():
+            if hasattr(self.widgets, obj_name):
+                widget = getattr(self.widgets, obj_name)
+                translated = QCoreApplication.translate(ctx, source_text)
+                widget.setText(translated)
+
+        # 2.
+        for obj_name, source_text in UI_TOOLTIP_MAPPING.items():
+            if hasattr(self.widgets, obj_name):
+                widget = getattr(self.widgets, obj_name)
+                translated = QCoreApplication.translate(ctx, source_text)
+                widget.setToolTip(translated)
+
+        # 3.
+        if hasattr(self.widgets, 'combo_joint_mode'):
+            combo = self.widgets.combo_joint_mode
+            translated_cont = QCoreApplication.translate(ctx, "Continuous")
+            combo.setItemText(0, translated_cont)
+            
+        if hasattr(self.widgets, 'combo_axis_mode'):
+            combo = self.widgets.combo_axis_mode
+            translated_cont = QCoreApplication.translate(ctx, "Continuous")
+            combo.setItemText(0, translated_cont)
+            
+        self.overrides_manager.refresh_all_labels()
+            
+    
+    def changeEvent(self, event):
+        """"""
+        if event is not None and event.type() == QEvent.LanguageChange:
+            self.refresh_interface_texts()
+            
+    def set_default_language(self, lang_code):
+        """Set"""
+        if hasattr(self.widgets, 'combo_language'):
+            index = self.widgets.combo_language.findData(lang_code)
+            if index >= 0:
+                self.widgets.combo_language.setCurrentIndex(index)
+                print(f"DEBUG: Default language set to: {lang_code}")

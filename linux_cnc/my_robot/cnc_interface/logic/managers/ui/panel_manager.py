@@ -1,5 +1,6 @@
 # logic/managers/ui/panel_manager.py
 from managers.style_manager import StyleManager
+from PyQt5.QtCore import QCoreApplication
 
 class PanelManager:
     def __init__(self, machine_controller, widgets):
@@ -32,7 +33,10 @@ class PanelManager:
             style = self.style_manager.STYLE_POWER_ON if is_active else self.style_manager.STYLE_POWER_OFF
             
             btn_power.setStyleSheet(style)
-            btn_power.setText("ON" if is_active else "OFF")
+            status_key = "ON" if is_active else "OFF"
+            translated_text = QCoreApplication.translate("MainWindow", status_key)
+        
+            btn_power.setText(translated_text)
             
     def update_status_display(self, states):
         """Update the main status display text based on machine state (E-Stop, Power, Homing)"""
@@ -41,15 +45,16 @@ class PanelManager:
             return
         
         if states['estop_off'] == False:
-            msg = "EMERGENCY STOP"
+            msg_key = "EMERGENCY STOP"
         elif not states['power_on']:
-            msg = "POWER OFF"
+            msg_key = "POWER OFF"
         elif not states['all_homed']:
-            msg = "HOMING REQUIRED"
+            msg_key = "HOMING REQUIRED"
         else:
-            msg = "SYSTEM READY"
+            msg_key = "SYSTEM READY"
 
-        txt_display.setText(msg)
+        translated_msg = QCoreApplication.translate("MainWindow", msg_key)
+        txt_display.setText(translated_msg)
 
     def update_home_button_state(self, states):
         """Update the state and style of the 'Home All' button based on machine readiness"""

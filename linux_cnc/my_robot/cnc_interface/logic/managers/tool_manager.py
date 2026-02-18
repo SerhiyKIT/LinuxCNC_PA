@@ -1,4 +1,5 @@
 # logic/managers/tool_manager.py
+from PyQt5.QtCore import QCoreApplication
 from config import STYLES
 
 class ToolManager:
@@ -31,7 +32,8 @@ class ToolManager:
         btn = self.widgets.btn_tool_arm
         is_armed = btn.isChecked()
         
-        btn.setText("ARMED" if is_armed else "DISARMED")
+        status_key = "ARMED" if is_armed else "DISARMED"
+        btn.setText(QCoreApplication.translate("MainWindow", status_key))
         btn.setStyleSheet(self.STYLE_TOOL_ARMED if is_armed else self.STYLE_TOOL_DISARMED)
         
         if not is_armed:
@@ -44,12 +46,11 @@ class ToolManager:
                 self.cnc.send_mdi("M102")
             else:
                 print("DEBUG: [GRIPPER] Skip M102: Machine not homed")
-                
-            if hasattr(self.widgets, 'lbl_tool_status'):
-                self.widgets.lbl_tool_status.setText("STATUS: LOCKED")
-        else:
-            if hasattr(self.widgets, 'lbl_tool_status'):
-                self.widgets.lbl_tool_status.setText("STATUS: READY")
+        
+        if hasattr(self.widgets, 'lbl_tool_status'):
+            status_message = "STATUS: READY" if is_armed else "STATUS: LOCKED"
+            translated_label = QCoreApplication.translate("MainWindow", status_message)
+            self.widgets.lbl_tool_status.setText(translated_label)
 
     def on_btn_tool_action_clicked(self):
         """Handler for the Grip/Release button. It checks safety conditions before sending the appropriate M-code to grip or release, and updates the UI accordingly."""
@@ -84,16 +85,18 @@ class ToolManager:
             print(f"DEBUG: [GRIPPER] Force: {value}%")
 
     def _update_action_button_ui(self, is_grip):
-        """Update the Grip/Release button text and style based on whether it's gripping or not, and also update the status label if it exists."""
+        """Update the Grip/Release button text and style with localization."""
         btn = getattr(self.widgets, 'btn_tool_action', None)
         lbl = getattr(self.widgets, 'lbl_tool_status', None)
         if not btn: return
 
         if is_grip:
-            btn.setText("RELEASE")
+            btn.setText(QCoreApplication.translate("MainWindow", "RELEASE"))
             btn.setStyleSheet(self.STYLE_GRIP_ACTIVE)
-            if lbl: lbl.setText("STATUS: HOLDING")
+            if lbl: 
+                lbl.setText(QCoreApplication.translate("MainWindow", "STATUS: HOLDING"))
         else:
-            btn.setText("GRIP")
+            btn.setText(QCoreApplication.translate("MainWindow", "GRIP"))
             btn.setStyleSheet(self.STYLE_GRIP_INACTIVE)
-            if lbl: lbl.setText("STATUS: OPEN")
+            if lbl: 
+                lbl.setText(QCoreApplication.translate("MainWindow", "STATUS: OPEN"))

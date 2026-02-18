@@ -1,7 +1,4 @@
 # logic/managers/ui_manager.py
-from PyQt5 import QtWidgets, QtCore
-from datetime import datetime
-from config import STYLES
 from managers.ui.motion_display import MotionDisplayManager
 from managers.ui.panel_manager import PanelManager
 from managers.ui.gcode_display import GCodeDisplayManager

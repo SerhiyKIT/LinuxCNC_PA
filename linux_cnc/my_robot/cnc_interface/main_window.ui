@@ -247,6 +247,49 @@ QToolButton:hover{
       <string>HOME ALL</string>
      </property>
     </widget>
+    <widget class="QComboBox" name="combo_language">
+     <property name="geometry">
+      <rect>
+       <x>540</x>
+       <y>30</y>
+       <width>90</width>
+       <height>50</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>JetBrains Mono</family>
+       <pointsize>12</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:8pt; font-weight:400; color:#ffffff;&quot;&gt;Select jog increment&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
+     <property name="layoutDirection">
+      <enum>Qt::LeftToRight</enum>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">#combo_language {
+    border-radius: 10px;
+	border: 3px solid #333333;
+	background-color: #161616;
+	color: #fff;
+	padding: 10px;
+}</string>
+     </property>
+     <item>
+      <property name="text">
+       <string>EN</string>
+      </property>
+     </item>
+     <item>
+      <property name="text">
+       <string>UA</string>
+      </property>
+     </item>
+    </widget>
    </widget>
    <widget class="QFrame" name="frame_2">
     <property name="geometry">
@@ -550,7 +593,7 @@ color: #fff;
 </string>
        </property>
        <property name="text">
-        <string>PROGRESS 0%</string>
+        <string>PROGRESS %1%</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignCenter</set>
@@ -2048,7 +2091,7 @@ color: #fff;
        </font>
       </property>
       <property name="toolTip">
-       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:8pt; font-weight:400; color:#ffffff;&quot;&gt;Select jog increment&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       <string/>
       </property>
       <property name="styleSheet">
        <string notr="true">QComboBox {
@@ -2554,7 +2597,7 @@ color: #fff;
        </font>
       </property>
       <property name="toolTip">
-       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:8pt; font-weight:400; color:#ffffff;&quot;&gt;Select jog increment&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       <string/>
       </property>
       <property name="styleSheet">
        <string notr="true">border: 3px solid #333333;
@@ -3454,7 +3497,7 @@ QSlider::add-page:horizontal {
        <rect>
         <x>15</x>
         <y>10</y>
-        <width>117</width>
+        <width>200</width>
         <height>23</height>
        </rect>
       </property>
@@ -3480,7 +3523,7 @@ color: #fff;
        <rect>
         <x>15</x>
         <y>42</y>
-        <width>125</width>
+        <width>200</width>
         <height>23</height>
        </rect>
       </property>
@@ -3506,7 +3549,7 @@ color: #fff;
        <rect>
         <x>15</x>
         <y>74</y>
-        <width>138</width>
+        <width>200</width>
         <height>23</height>
        </rect>
       </property>
@@ -3532,7 +3575,7 @@ color: #fff;
        <rect>
         <x>15</x>
         <y>106</y>
-        <width>137</width>
+        <width>200</width>
         <height>23</height>
        </rect>
       </property>
@@ -3558,7 +3601,7 @@ color: #fff;
        <rect>
         <x>15</x>
         <y>138</y>
-        <width>151</width>
+        <width>200</width>
         <height>23</height>
        </rect>
       </property>
@@ -3584,7 +3627,7 @@ color: #fff;
        <rect>
         <x>15</x>
         <y>170</y>
-        <width>107</width>
+        <width>200</width>
         <height>23</height>
        </rect>
       </property>
@@ -3610,7 +3653,7 @@ color: #fff;
        <rect>
         <x>15</x>
         <y>202</y>
-        <width>177</width>
+        <width>200</width>
         <height>23</height>
        </rect>
       </property>
@@ -4001,7 +4044,7 @@ color: #fff;
 </string>
       </property>
       <property name="text">
-       <string>51 in/min </string>
+       <string>%1 in/min </string>
       </property>
       <property name="alignment">
        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -4030,7 +4073,7 @@ color: #fff;
 </string>
       </property>
       <property name="text">
-       <string>6059 deg/min </string>
+       <string>%1 deg/min </string>
       </property>
       <property name="alignment">
        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -4059,7 +4102,7 @@ color: #fff;
 </string>
       </property>
       <property name="text">
-       <string>600 in/min </string>
+       <string>%1 in/min</string>
       </property>
       <property name="alignment">
        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
