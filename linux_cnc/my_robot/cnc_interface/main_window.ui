@@ -58,9 +58,9 @@
     <widget class="QLabel" name="lbl_status">
      <property name="geometry">
       <rect>
-       <x>875</x>
+       <x>859</x>
        <y>40</y>
-       <width>84</width>
+       <width>85</width>
        <height>26</height>
       </rect>
      </property>
@@ -84,6 +84,9 @@
      </property>
      <property name="text">
       <string>STATUS:</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
      </property>
     </widget>
     <widget class="QToolButton" name="btn_power_off">
@@ -154,7 +157,7 @@ QToolButton:hover{
       </font>
      </property>
      <property name="toolTip">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:8pt; font-weight:400; color:#ffffff;&quot;&gt;Toggle Emergency Stop [F1]&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; font-weight:400; color:#ffffff; background-color: #161616; border-radius: 10px; border: 3px solid #333333;&quot;&gt;Toggle Emergency Stop [F1]&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="styleSheet">
       <string notr="true">QPushButton {
@@ -277,6 +280,15 @@ QToolButton:hover{
 	background-color: #161616;
 	color: #fff;
 	padding: 10px;
+}
+QComboBox QAbstractItemView {
+	border-radius: 10px;
+	border: 3px solid #FE5C0D;
+    outline: none;
+}
+
+QComboBox {
+    combobox-popup: 0;
 }</string>
      </property>
      <item>
@@ -3627,7 +3639,7 @@ color: #fff;
        <rect>
         <x>15</x>
         <y>170</y>
-        <width>200</width>
+        <width>231</width>
         <height>23</height>
        </rect>
       </property>

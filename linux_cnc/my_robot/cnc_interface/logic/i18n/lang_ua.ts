@@ -11,7 +11,7 @@
     <message>
         <location filename="../../main_window.ui" line="86"/>
         <source>STATUS:</source>
-        <translation>СТАТУС:</translation>
+        <translation>СТАН:</translation>
     </message>
     <message>
         <source>EMERGENCY STOP</source>
@@ -23,7 +23,7 @@
     </message>
     <message>
         <source>HOMING REQUIRED</source>
-        <translation>ПОТРІБНЕ ГЛАВУВАННЯ</translation>
+        <translation>ПОТРІБНЕ БАЗУВАННЯ</translation>
     </message>
     <message>
         <source>SYSTEM READY</source>
@@ -37,7 +37,7 @@
     <message>
         <location filename="../../main_window.ui" line="130"/>
         <source>ON</source>
-        <translation>ВІМК</translation>
+        <translation>УВІМК</translation>
     </message>
     <message>
         <location filename="../../main_window.ui" line="130"/>
@@ -52,7 +52,7 @@
     <message>
         <location filename="../../main_window.ui" line="172"/>
         <source>E-STOP</source>
-        <translation>СТОП</translation>
+        <translation>E-STOP</translation>
     </message>
     <message>
         <location filename="../../main_window.ui" line="231"/>
@@ -88,8 +88,7 @@
         <location filename="../../main_window.ui" line="410"/>
         <source>START
 CYCLE</source>
-        <translation>ПУСК
-ЦИКЛУ</translation>
+        <translation>СТАРТ</translation>
     </message>
     <message>
         <location filename="../../main_window.ui" line="438"/>
@@ -109,7 +108,7 @@ CYCLE</source>
     <message>
         <location filename="../../main_window.ui" line="489"/>
         <source>RESUME</source>
-        <translation>ПУСК</translation>
+        <translation>ПРОДОВЖ.</translation>
     </message>
     <message>
         <location filename="../../main_window.ui" line="516"/>
@@ -179,7 +178,7 @@ CYCLE</source>
     <message>
         <location filename="../../main_window.ui" line="839"/>
         <source>Controls</source>
-        <translation>Керування</translation>
+        <translation>Управління</translation>
     </message>
     <message>
         <location filename="../../main_window.ui" line="864"/>
@@ -194,12 +193,12 @@ CYCLE</source>
     <message>
         <location filename="../../main_window.ui" line="956"/>
         <source>CW</source>
-        <translation>↻</translation>
+        <translation>CW</translation>
     </message>
     <message>
         <location filename="../../main_window.ui" line="1034"/>
         <source>CCW</source>
-        <translation>↺</translation>
+        <translation>CCW</translation>
     </message>
     <message>
         <location filename="../../main_window.ui" line="1081"/>
@@ -209,7 +208,7 @@ CYCLE</source>
     <message>
         <location filename="../../main_window.ui" line="1115"/>
         <source>Spindle Control</source>
-        <translation>Керування шпинделем</translation>
+        <translation>Шпиндель</translation>
     </message>
     <message>
         <location filename="../../main_window.ui" line="1180"/>
@@ -219,7 +218,7 @@ CYCLE</source>
     <message>
         <location filename="../../main_window.ui" line="1219"/>
         <source>GRIP</source>
-        <translation>ЗАЖАТИ</translation>
+        <translation>ЗАХВАТ</translation>
     </message>
     <message>
         <source>RELEASE</source>
@@ -236,7 +235,7 @@ CYCLE</source>
     <message>
         <location filename="../../main_window.ui" line="1245"/>
         <source>TOOL STATUS</source>
-        <translation>СТАТУС ІНСТРУМЕНТА</translation>
+        <translation>СТАН ІНСТРУМЕНТА</translation>
     </message>
     <message>
         <source>STATUS: LOCKED</source>
@@ -262,7 +261,7 @@ CYCLE</source>
     <message>
         <location filename="../../main_window.ui" line="1358"/>
         <source>Tool Control</source>
-        <translation>Керування інструментом</translation>
+        <translation>Інструмент</translation>
     </message>
     <message>
         <location filename="../../main_window.ui" line="1399"/>
@@ -312,7 +311,7 @@ CYCLE</source>
     <message>
         <location filename="../../main_window.ui" line="2605"/>
         <source>Continuous</source>
-        <translation>Безперервно</translation>
+        <translation>Continuous</translation>
     </message>
     <message>
         <location filename="../../main_window.ui" line="2610"/>
@@ -382,7 +381,7 @@ CYCLE</source>
     <message>
         <location filename="../../main_window.ui" line="3381"/>
         <source>CNC Control &amp; Overrides</source>
-        <translation>Керування та корекції</translation>
+        <translation>Налаштування</translation>
     </message>
     <message>
         <location filename="../../main_window.ui" line="3515"/>
@@ -392,7 +391,7 @@ CYCLE</source>
     <message>
         <location filename="../../main_window.ui" line="3541"/>
         <source>Rapid Override:</source>
-        <translation>Холостий хід:</translation>
+        <translation>Корекція прискорення:</translation>
     </message>
     <message>
         <location filename="../../main_window.ui" line="3567"/>
@@ -412,7 +411,7 @@ CYCLE</source>
     <message>
         <location filename="../../main_window.ui" line="3645"/>
         <source>Max Velocity:</source>
-        <translation>Макс. швидкість:</translation>
+        <translation>Максимальна швидкість:</translation>
     </message>
     <message>
         <location filename="../../main_window.ui" line="3671"/>
@@ -432,7 +431,7 @@ CYCLE</source>
     <message>
         <location filename="../../main_window.ui" line="4073"/>
         <source>%1 deg/min </source>
-        <translation>%1 °/хв </translation>
+        <translation>%1 гр/хв </translation>
     </message>
     <message>
         <location filename="../../main_window.ui" line="4102"/>
@@ -442,7 +441,7 @@ CYCLE</source>
     <message>
         <location filename="../../main_window.ui" line="4129"/>
         <source>Output</source>
-        <translation>Вивід</translation>
+        <translation>Повідомлення</translation>
     </message>
 </context>
 </TS>

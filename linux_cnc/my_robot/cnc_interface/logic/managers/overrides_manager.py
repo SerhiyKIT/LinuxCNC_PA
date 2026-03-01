@@ -55,7 +55,7 @@ class OverridesManager:
         self.cnc.angular_jog_speed = actual_value
         label = getattr(self.widgets, 'val_angular_jog_speed', None)
         if label:
-            template = QCoreApplication.translate("MainWindow", "%1 deg/min")
+            template = QCoreApplication.translate("MainWindow", "%1 deg/min ")
             label.setText(template.replace("%1", f"{actual_value:.2f}"))
 
     def on_sld_max_velocity_changed(self, value):

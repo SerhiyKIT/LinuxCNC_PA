@@ -198,7 +198,7 @@ class HandlerClass:
     def refresh_interface_texts(self):
         ctx = "MainWindow"
         
-        # 1.
+        # 1. 
         for obj_name, source_text in UI_TEXT_MAPPING.items():
             if hasattr(self.widgets, obj_name):
                 widget = getattr(self.widgets, obj_name)
@@ -222,14 +222,18 @@ class HandlerClass:
             combo = self.widgets.combo_axis_mode
             translated_cont = QCoreApplication.translate(ctx, "Continuous")
             combo.setItemText(0, translated_cont)
+        
+        if hasattr(self.widgets, 'combo_language'):
+            combo = self.widgets.combo_language
+            idx_en = combo.findData("en")
+            idx_ua = combo.findData("ua")
+            if idx_en >= 0:
+                combo.setItemText(idx_en, QCoreApplication.translate(ctx, "EN"))
+            if idx_ua >= 0:
+                combo.setItemText(idx_ua, QCoreApplication.translate(ctx, "UA"))
             
+        # 4.
         self.overrides_manager.refresh_all_labels()
-            
-    
-    def changeEvent(self, event):
-        """"""
-        if event is not None and event.type() == QEvent.LanguageChange:
-            self.refresh_interface_texts()
             
     def set_default_language(self, lang_code):
         """Set"""
