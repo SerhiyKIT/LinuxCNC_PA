@@ -120,17 +120,21 @@ class MachineController:
 
     def jog(self, index, direction, speed, increment, is_joint):
         """Jog a joint or axis. Handles both continuous and incremental jogging based on increment value"""
+        index = int(index)
+        direction = float(direction)
+        speed = float(speed)
+        increment = float(increment)
+        
         flag = self.JOG_CMD_FLAG if is_joint else 0
-
         vel = (speed / 60.0)
         
         if increment == 0:
             # Continuous
-            self.command.jog(linuxcnc.JOG_CONTINUOUS, flag, int(index), float(direction) * vel)
+            self.command.jog(linuxcnc.JOG_CONTINUOUS, flag, index, direction * vel)
         else:
             # Increment
-            self.command.jog(linuxcnc.JOG_INCREMENT, flag, int(index), float(direction) * vel, float(increment))
-
+            self.command.jog(linuxcnc.JOG_INCREMENT, flag, index, direction * vel, increment)
+    
     # --- OVERRIDES ---
     def stop_jog(self, index, is_joint):
         flag = self.JOG_CMD_FLAG if is_joint else 0
@@ -346,7 +350,7 @@ class MachineController:
         return all(self.status.homed[i] for i in range(count))
 
     def home_all_sequence(self):
-        """Сама команда для LinuxCNC"""
+        """Command LinuxCNC"""
         self.set_mode(linuxcnc.MODE_MANUAL)
         self.set_teleop(False)
         self.command.home(-1) 
