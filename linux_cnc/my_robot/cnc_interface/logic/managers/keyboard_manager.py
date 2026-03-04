@@ -42,15 +42,15 @@ class KeyboardManager:
 
         # Cycle controls
         elif self._match(key, modifiers, hk["RUN"]):
-            self._call(config.MGR_CYCLE, 'on_btn_cycle_start_clicked')
+            self._call(config.MGR_CYCLE, 'start_cycle')
         elif self._match(key, modifiers, hk["STOP"]):
-            self._call(config.MGR_CYCLE, 'on_btn_cycle_stop_clicked')
+            self._call(config.MGR_CYCLE, 'stop_cycle')
         elif self._match(key, modifiers, hk["PAUSE"]):
-            self._call(config.MGR_CYCLE, 'on_btn_cycle_pause_clicked')
+            self._call(config.MGR_CYCLE, 'pause_cycle')
         elif self._match(key, modifiers, hk["RESUME"]):
-            self._call(config.MGR_CYCLE, 'on_btn_cycle_continue_clicked')
+            self._call(config.MGR_CYCLE, 'resume_cycle')
         elif self._match(key, modifiers, hk["STEP"]):
-            self._call(config.MGR_CYCLE, 'on_btn_cycle_step_clicked')
+            self._call(config.MGR_CYCLE, 'step_cycle')
 
     def _match(self, key, current_mods, target):
         """
