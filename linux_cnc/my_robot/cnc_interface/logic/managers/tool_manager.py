@@ -1,102 +1,123 @@
-# logic/managers/tool_manager.py
 from PyQt5.QtCore import QCoreApplication
 from config import STYLES
 
 class ToolManager:
-    def __init__(self, machine_controller, widgets):
+    """Відповідає за безпеку та логіку керування інструментом (Gripper)"""
+    def __init__(self, machine_controller):
         self.cnc = machine_controller
+
+    def arm_tool(self, armed: bool):
+        """Логіка активації живлення інструменту"""
+        if not armed:
+            # При знятті з озброєння — безпечне розтискання
+            if all(self.cnc.status.homed[:3]):
+                self.cnc.send_mdi("M102")
+            return False
+        return True
+
+    def perform_action(self, is_grip: bool, is_armed: bool) -> bool:
+        """Спроба затиснути або розтиснути інструмент"""
+        # Перевірка безпеки 1: Чи озброєний інструмент?
+        if not is_armed:
+            print("WARNING: [GRIPPER] Access Denied: Arm Tool first!")
+            return False
+
+        # Перевірка безпеки 2: Чи зроблено Home?
+        if not all(self.cnc.status.homed[:3]):
+            print("WARNING: [GRIPPER] Access Denied: Home joints first!")
+            return False
+
+        cmd = "M101" if is_grip else "M102"
+        return self.cnc.send_mdi(cmd)
+
+    def set_power(self, percentage: int):
+        """Встановлення сили затискання (0.1 - 1.0)"""
+        force = percentage / 100.0
+        self.cnc.set_gripper_force(force)
+        return force
+
+
+class ToolUIBinder:
+    """Відповідає за стан кнопок, слайдери та стилі інструменту в UI"""
+    def __init__(self, tool_manager, widgets):
+        self.manager = tool_manager
         self.widgets = widgets
         
+        # Стилі з конфігу
         self.STYLE_TOOL_ARMED = STYLES.get('TOOL_ARMED', '')
         self.STYLE_TOOL_DISARMED = STYLES.get('TOOL_DISARMED', '')
         self.STYLE_GRIP_ACTIVE = STYLES.get('GRIP_ACTIVE', '')
         self.STYLE_GRIP_INACTIVE = STYLES.get('GRIP_INACTIVE', '')
 
     def connect_tool_buttons(self):
-        """Connect tool management buttons with their handlers"""
-        if hasattr(self.widgets, 'btn_tool_arm'):
-            self.widgets.btn_tool_arm.setCheckable(True)
-            self.widgets.btn_tool_arm.clicked.connect(self.on_btn_tool_arm_clicked)
+        # Налаштування кнопки Arm
+        btn_arm = getattr(self.widgets, 'btn_tool_arm', None)
+        if btn_arm:
+            btn_arm.setCheckable(True)
+            btn_arm.clicked.connect(self._on_arm_clicked)
 
-        if hasattr(self.widgets, 'btn_tool_action'):
-            self.widgets.btn_tool_action.setCheckable(True)
-            self.widgets.btn_tool_action.clicked.connect(self.on_btn_tool_action_clicked)
+        # Налаштування кнопки Action (Grip/Release)
+        btn_action = getattr(self.widgets, 'btn_tool_action', None)
+        if btn_action:
+            btn_action.setCheckable(True)
+            btn_action.clicked.connect(self._on_action_clicked)
 
-        if hasattr(self.widgets, 'sld_tool_power'):
-            self.widgets.sld_tool_power.setMinimum(10)
-            self.widgets.sld_tool_power.setMaximum(100)
-            self.widgets.sld_tool_power.valueChanged.connect(self.on_sld_tool_power_changed)
+        # Налаштування слайдера потужності
+        sld_power = getattr(self.widgets, 'sld_tool_power', None)
+        if sld_power:
+            sld_power.setMinimum(10)
+            sld_power.setMaximum(100)
+            sld_power.valueChanged.connect(self._on_power_changed)
 
-    def on_btn_tool_arm_clicked(self):
-        """Handler for the Arm/Disarm button. When disarming, it also attempts to release the tool if it was gripping, and updates the UI accordingly."""
+    def _on_arm_clicked(self):
         btn = self.widgets.btn_tool_arm
         is_armed = btn.isChecked()
         
-        status_key = "ARMED" if is_armed else "DISARMED"
-        btn.setText(QCoreApplication.translate("MainWindow", status_key))
+        self.manager.arm_tool(is_armed)
+        
+        # Оновлення UI
+        txt = "ARMED" if is_armed else "DISARMED"
+        btn.setText(QCoreApplication.translate("MainWindow", txt))
         btn.setStyleSheet(self.STYLE_TOOL_ARMED if is_armed else self.STYLE_TOOL_DISARMED)
         
         if not is_armed:
-            print("DEBUG: [GRIPPER] Safety Trigger: Disarming tool")
-            if hasattr(self.widgets, 'btn_tool_action'):
-                self.widgets.btn_tool_action.setChecked(False)
-                self._update_action_button_ui(False)
-            
-            if all(self.cnc.status.homed[:3]):
-                self.cnc.send_mdi("M102")
-            else:
-                print("DEBUG: [GRIPPER] Skip M102: Machine not homed")
+            self._update_action_ui(False) # Скидання кнопки затискання
+
+        self._update_status_label(is_armed)
+
+    def _on_action_clicked(self):
+        btn_action = self.widgets.btn_tool_action
+        is_armed = self.widgets.btn_tool_arm.isChecked()
+        is_grip = btn_action.isChecked()
+
+        success = self.manager.perform_action(is_grip, is_armed)
         
-        if hasattr(self.widgets, 'lbl_tool_status'):
-            status_message = "STATUS: READY" if is_armed else "STATUS: LOCKED"
-            translated_label = QCoreApplication.translate("MainWindow", status_message)
-            self.widgets.lbl_tool_status.setText(translated_label)
-
-    def on_btn_tool_action_clicked(self):
-        """Handler for the Grip/Release button. It checks safety conditions before sending the appropriate M-code to grip or release, and updates the UI accordingly."""
-        # 1. Check if tool is armed
-        if not self.widgets.btn_tool_arm.isChecked():
-            print("WARNING: [GRIPPER] Access Denied: Arm Tool first!")
-            self.widgets.btn_tool_action.setChecked(False)
-            return
-
-        # 2. Check if machine is homed (safety check before allowing grip/release)
-        if not all(self.cnc.status.homed[:3]):
-            print("WARNING: [GRIPPER] Access Denied: Home joints first!")
-            self.widgets.btn_tool_action.setChecked(False)
-            return
-
-        is_grip = self.widgets.btn_tool_action.isChecked()
-        cmd = "M101" if is_grip else "M102"
-        
-        if self.cnc.send_mdi(cmd):
-            self._update_action_button_ui(is_grip)
-            print(f"DEBUG: [GRIPPER] {cmd} sent successfully")
-
-    def on_sld_tool_power_changed(self, value):
-        """Handler for the power slider. It converts the slider value (10-100) to a force percentage (0.1-1.0) and sends it to the CNC controller, while also updating the UI label."""
-        force_float = value / 100.0
-        self.cnc.set_gripper_force(force_float)
-        
-        if hasattr(self.widgets, 'lbl_tool_power_val'):
-            self.widgets.lbl_tool_power_val.setText(f"{value} %")
-        
-        if value % 10 == 0:
-            print(f"DEBUG: [GRIPPER] Force: {value}%")
-
-    def _update_action_button_ui(self, is_grip):
-        """Update the Grip/Release button text and style with localization."""
-        btn = getattr(self.widgets, 'btn_tool_action', None)
-        lbl = getattr(self.widgets, 'lbl_tool_status', None)
-        if not btn: return
-
-        if is_grip:
-            btn.setText(QCoreApplication.translate("MainWindow", "RELEASE"))
-            btn.setStyleSheet(self.STYLE_GRIP_ACTIVE)
-            if lbl: 
-                lbl.setText(QCoreApplication.translate("MainWindow", "STATUS: HOLDING"))
+        if success:
+            self._update_action_ui(is_grip)
         else:
-            btn.setText(QCoreApplication.translate("MainWindow", "GRIP"))
-            btn.setStyleSheet(self.STYLE_GRIP_INACTIVE)
-            if lbl: 
-                lbl.setText(QCoreApplication.translate("MainWindow", "STATUS: OPEN"))
+            btn_action.setChecked(False) # Відкат стану при помилці
+
+    def _on_power_changed(self, value):
+        self.manager.set_power(value)
+        lbl = getattr(self.widgets, 'lbl_tool_power_val', None)
+        if lbl: lbl.setText(f"{value} %")
+
+    def _update_action_ui(self, is_grip):
+        btn = getattr(self.widgets, 'btn_tool_action', None)
+        if not btn: return
+        
+        btn.setChecked(is_grip)
+        btn.setText(QCoreApplication.translate("MainWindow", "RELEASE" if is_grip else "GRIP"))
+        btn.setStyleSheet(self.STYLE_GRIP_ACTIVE if is_grip else self.STYLE_GRIP_INACTIVE)
+        
+        # Оновлення статусу текстом
+        lbl = getattr(self.widgets, 'lbl_tool_status', None)
+        if lbl:
+            status_txt = "STATUS: HOLDING" if is_grip else "STATUS: OPEN"
+            lbl.setText(QCoreApplication.translate("MainWindow", status_txt))
+
+    def _update_status_label(self, is_armed):
+        lbl = getattr(self.widgets, 'lbl_tool_status', None)
+        if lbl:
+            status_msg = "STATUS: READY" if is_armed else "STATUS: LOCKED"
+            lbl.setText(QCoreApplication.translate("MainWindow", status_msg))
