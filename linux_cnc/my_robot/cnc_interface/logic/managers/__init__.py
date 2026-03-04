@@ -6,27 +6,32 @@ from logic.managers import ControlManager, CycleManager, ToolManager, JointManag
 
 try:
     from .control_manager import ControlManager
-    from .cycle_manager import CycleManager
-    from .tool_manager import ToolManager
-    from .joint_manager import JointManager
+    from .cycle_manager import CycleManager, CycleUIBinder
+    from .tool_manager import ToolManager, ToolUIBinder
+    from .joint_manager import JointManager, JointUIBinder
     from .file_manager import FileManager
     from .keyboard_manager import KeyboardManager
-    from .overrides_manager import OverridesManager
+    from .overrides_manager import OverridesManager, OverridesUIBinder
     from .style_manager import StyleManager
     from .ui_manager import UIManager
-    from .axis_manager import AxisManager
+    from .axis_manager import AxisManager, AxisUIBinder
 except ImportError as e:
     print(f"DEBUG: Error in managers/__init__.py: {e}")
 
 __all__ = [
     'ControlManager',
     'CycleManager',
+    'CycleUIBinder',
     'ToolManager',
+    'ToolUIBinder',
     'JointManager',
+    'JointUIBinder',
     'FileManager',
     'KeyboardManager',
     'OverridesManager',
+    'OverridesUIBinder',
     'StyleManager',
     'UIManager',
-    'AxisManager'
+    'AxisManager',
+    'AxisUIBinder'
 ]
