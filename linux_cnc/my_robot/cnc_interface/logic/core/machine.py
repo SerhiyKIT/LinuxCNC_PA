@@ -1,356 +1,486 @@
 # logic/core/machine.py
+from __future__ import annotations
+
+import os
+import logging
+from typing import Any
+
 import linuxcnc
 import config
-import os
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+_JOG_CONTINUOUS = linuxcnc.JOG_CONTINUOUS
+_JOG_INCREMENT  = linuxcnc.JOG_INCREMENT
+_JOG_STOP       = linuxcnc.JOG_STOP
+
+_MODE_MANUAL = linuxcnc.MODE_MANUAL
+_MODE_MDI    = linuxcnc.MODE_MDI
+_MODE_AUTO   = linuxcnc.MODE_AUTO
+
+_STATE_ON           = linuxcnc.STATE_ON
+_STATE_OFF          = linuxcnc.STATE_OFF
+_STATE_ESTOP        = linuxcnc.STATE_ESTOP
+_STATE_ESTOP_RESET  = linuxcnc.STATE_ESTOP_RESET
+
+_INTERP_IDLE    = linuxcnc.INTERP_IDLE
+_INTERP_PAUSED  = linuxcnc.INTERP_PAUSED
+_INTERP_READING = linuxcnc.INTERP_READING
+_INTERP_WAITING = linuxcnc.INTERP_WAITING
+
+_ERROR_KINDS = (linuxcnc.NML_ERROR, linuxcnc.OPERATOR_ERROR)
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _severity(kind: int) -> str:
+    """Map a LinuxCNC error kind to a human-readable severity string."""
+    if kind in _ERROR_KINDS:
+        return "error"
+    if kind == linuxcnc.NML_TEXT:
+        return "warning"
+    return "info"
+
+
+# ---------------------------------------------------------------------------
+# Controller
+# ---------------------------------------------------------------------------
 
 class MachineController:
     """
-    Low-level controller to interact with LinuxCNC API.
-    Uses logic/config.py for machine parameters and limits.
+    Low-level controller for the LinuxCNC API.
+    Uses *logic/config.py* for machine parameters and joint limits.
+
+    Public method names are intentionally preserved for API compatibility.
     """
-    def __init__(self):
-        # Initialize LinuxCNC communication
-        self.status = linuxcnc.stat()
-        self.command = linuxcnc.command()
-        
-        # Channel for receiving error messages from LinuxCNC
+
+    def __init__(self) -> None:
+        # LinuxCNC communication handles
+        self.status        = linuxcnc.stat()
+        self.command       = linuxcnc.command()
         self.error_channel = linuxcnc.error_channel()
-        
-        # Load local copies of essential config data
+
+        # Config snapshots
         self.params = config.MACHINE_PARAMS
         self.limits = config.JOINT_LIMITS
-        
-        self.speed = self.params.get("LINEAR_VEL", 1.0) * 60
-        
-        self.linear_jog_speed = 300.0
+
+        # Derived settings
+        self.speed             = self.params.get("LINEAR_VEL", 1.0) * 60
+        self.linear_jog_speed  = 300.0
         self.angular_jog_speed = 30.0
-        
-        self.manual_mode = config.DEFAULT_MANUAL_MODE
-        
-        self.last_loaded_file = None
-        self.reload_needed = False
-        
-        # Parameters for jog control Sand teleop
-        self.JOG_CMD_FLAG = self.params.get("JOG_CMD_FLAG", 1)
-        self.TELEOP_ENABLE_VAL = self.params.get("TELEOP_ENABLE_VAL", 0)
+        self.manual_mode       = config.DEFAULT_MANUAL_MODE
 
-    # --- POLLING / STATUS ---
+        # File tracking
+        self.last_loaded_file: str | None = None
+        self.reload_needed                = False
 
-    def poll(self):
-        """Update machine status data"""
+        # Jog / teleop flags from config
+        self.JOG_CMD_FLAG       = self.params.get("JOG_CMD_FLAG", 1)
+        self.TELEOP_ENABLE_VAL  = self.params.get("TELEOP_ENABLE_VAL", 0)
+
+    # -----------------------------------------------------------------------
+    # Polling / Status
+    # -----------------------------------------------------------------------
+
+    def poll(self) -> None:
+        """Refresh machine status from LinuxCNC."""
         self.status.poll()
 
-    def poll_errors(self):
-        """Check for new messages from LinuxCNC and return them with a severity level"""
-        error = self.error_channel.poll()
-        if error:
-            kind, text = error
-            level = "info"
-            if kind in (linuxcnc.NML_ERROR, linuxcnc.OPERATOR_ERROR):
-                level = "error"
-            elif kind == linuxcnc.NML_TEXT:
-                level = "warning"
-            return text, level
-        return None
-    
-    # --- STATE CONTROL ---
-    
-    def toggle_estop(self):
-        """Toggle Emergency Stop state"""
-        self.poll()
-        new_state = linuxcnc.STATE_ESTOP_RESET if self.status.estop == linuxcnc.STATE_ESTOP else linuxcnc.STATE_ESTOP
-        self.command.state(new_state)
-
-    def set_power(self, state: bool):
-        """Switch Machine Power ON/OFF"""
-        new_state = linuxcnc.STATE_ON if state else linuxcnc.STATE_OFF
-        self.command.state(new_state)
-
-    def set_mode(self, mode):
+    def poll_errors(self) -> tuple[str, str] | None:
         """
-        Switch task mode (MANUAL, MDI, AUTO).
-        mode: linuxcnc.MODE_MANUAL, etc.
+        Check for new messages from LinuxCNC.
+
+        Returns:
+            ``(message_text, severity)`` where severity is one of
+            ``"info"``, ``"warning"``, or ``"error"``; or ``None`` when there
+            is no pending message.
+        """
+        error = self.error_channel.poll()
+        if not error:
+            return None
+
+        kind, text = error
+        return text, _severity(kind)
+
+    # -----------------------------------------------------------------------
+    # State Control
+    # -----------------------------------------------------------------------
+
+    def toggle_estop(self) -> None:
+        """Toggle the Emergency Stop state."""
+        self.poll()
+        if self.status.estop == _STATE_ESTOP:
+            self.command.state(_STATE_ESTOP_RESET)
+        else:
+            self.command.state(_STATE_ESTOP)
+
+    def set_power(self, state: bool) -> None:
+        """Switch machine power ON (``True``) or OFF (``False``)."""
+        self.command.state(_STATE_ON if state else _STATE_OFF)
+
+    def set_mode(self, mode: int) -> None:
+        """
+        Switch task mode (MANUAL / MDI / AUTO).
+
+        The command is skipped when the machine is already in the requested
+        mode so that unnecessary ``wait_complete`` round-trips are avoided.
         """
         self.poll()
         if self.status.task_mode != mode:
             self.command.mode(mode)
             self.command.wait_complete()
 
-    # --- MOTION CONTROL ---
+    # -----------------------------------------------------------------------
+    # Motion Control
+    # -----------------------------------------------------------------------
 
-    def home_axis(self, axis_num):
+    def home_axis(self, axis_num: int) -> None:
         """
-        Home a specific axis or all axes (-1).
-        Enforces Manual mode and disables teleop.
+        Home a specific axis or all axes (pass ``-1`` for all).
+        Switches to MANUAL mode and disables teleop beforehand.
         """
-        self.set_mode(linuxcnc.MODE_MANUAL)
+        self.set_mode(_MODE_MANUAL)
         self.command.teleop_enable(0)
         self.command.home(int(axis_num))
 
-    def set_teleop(self, enable: bool):
-        """Enable or disable teleoperation mode (for jogging)"""
+    def set_teleop(self, enable: bool) -> None:
+        """Enable or disable teleoperation (World-mode jogging)."""
         self.poll()
-        state = 1 if enable else 0
-        if self.status.kinematics_type != state:
-            self.command.teleop_enable(state)
+        value = 1 if enable else 0
+        if self.status.kinematics_type != value:
+            self.command.teleop_enable(value)
             self.command.wait_complete()
 
-    def is_ready(self):
+    def is_ready(self) -> bool:
+        """Return ``True`` when the machine is powered on and not in E-Stop."""
         try:
             self.status.poll()
-            return not self.status.estop and (self.status.task_state == linuxcnc.STATE_ON)
-        except:
+            return (
+                not self.status.estop
+                and self.status.task_state == _STATE_ON
+            )
+        except Exception:
             return False
 
-    def sync_mode(self, want_teleop):
-        """want_teleop: True для World mode (Axes), False для Joint mode"""
+    def sync_mode(self, want_teleop: bool) -> bool:
+        """
+        Synchronise kinematics mode.
+
+        Args:
+            want_teleop: ``True`` for World mode (Axes), ``False`` for Joint mode.
+
+        Returns:
+            ``True`` on success, ``False`` on failure.
+        """
         try:
             self.status.poll()
-            if self.status.task_mode != linuxcnc.MODE_MANUAL:
-                self.command.mode(linuxcnc.MODE_MANUAL)
-                self.command.wait_complete()
-            
-            val = 1 if want_teleop else 0
-            self.command.teleop_enable(val)
+            self.set_mode(_MODE_MANUAL)
+            self.command.teleop_enable(1 if want_teleop else 0)
             self.command.wait_complete()
             return True
-        except Exception as e:
-            print(f"ERROR: Sync modes failed: {e}")
+        except Exception as exc:
+            logger.error("sync_mode failed: %s", exc)
             return False
 
-    def jog(self, index, direction, speed, increment, is_joint):
-        """Jog a joint or axis. Handles both continuous and incremental jogging based on increment value"""
-        index = int(index)
+    def jog(
+        self,
+        index: int,
+        direction: float,
+        speed: float,
+        increment: float,
+        is_joint: bool,
+    ) -> None:
+        """
+        Jog a joint or axis.
+
+        Continuous jogging is used when *increment* is ``0``; otherwise an
+        incremental jog is issued.
+        """
+        index     = int(index)
         direction = float(direction)
-        speed = float(speed)
+        speed     = float(speed)
         increment = float(increment)
-        
+
         flag = self.JOG_CMD_FLAG if is_joint else 0
-        vel = (speed / 60.0)
-        
+        vel  = speed / 60.0
+
         if increment == 0:
-            # Continuous
-            self.command.jog(linuxcnc.JOG_CONTINUOUS, flag, index, direction * vel)
+            self.command.jog(_JOG_CONTINUOUS, flag, index, direction * vel)
         else:
-            # Increment
-            self.command.jog(linuxcnc.JOG_INCREMENT, flag, index, direction * vel, increment)
-    
-    # --- OVERRIDES ---
-    def stop_jog(self, index, is_joint):
+            self.command.jog(_JOG_INCREMENT, flag, index, direction * vel, increment)
+
+    def stop_jog(self, index: int, is_joint: bool) -> None:
+        """Stop an active jog on *index*."""
         flag = self.JOG_CMD_FLAG if is_joint else 0
-        self.command.jog(linuxcnc.JOG_STOP, flag, int(index))
-        
-    def set_feed_override(self, rate):
-        """rate: float (1.0 = 100%)"""
+        self.command.jog(_JOG_STOP, flag, int(index))
+
+    # -----------------------------------------------------------------------
+    # Overrides
+    # -----------------------------------------------------------------------
+
+    def set_feed_override(self, rate: float) -> None:
+        """Set feed-rate override (``1.0`` == 100 %)."""
         self.command.feedrate(rate)
 
-    def set_rapid_override(self, rate):
-        """rate: float (1.0 = 100%)"""
+    def set_rapid_override(self, rate: float) -> None:
+        """Set rapid-rate override (``1.0`` == 100 %)."""
         self.command.rapidrate(rate)
 
-    def set_spindle_override(self, rate):
-        """rate: float (1.0 = 100%)"""
+    def set_spindle_override(self, rate: float) -> None:
+        """Set spindle-speed override (``1.0`` == 100 %)."""
         self.command.spindleoverride(rate)
 
-    def set_max_velocity(self, velocity):
-        """velocity: float (units per minute)"""
+    def set_max_velocity(self, velocity: float) -> None:
+        """Set the maximum axis velocity (units per minute)."""
         self.command.maxvel(velocity / 60.0)
-        
-    # --- FILE MANAGEMENT ---
-    
-    def is_interpreter_idle(self):
-        """Check if the G-code interpreter is idle (not running or paused). This is used to determine if we can safely load a new program or allow edits to the current program."""
-        self.status.poll()
-        return self.status.interp_state == linuxcnc.INTERP_IDLE
 
-    def open_program(self, filepath):
-        """Load a G-code file into LinuxCNC. Checks if the file exists and if the interpreter is idle before attempting to load."""
+    # -----------------------------------------------------------------------
+    # File Management
+    # -----------------------------------------------------------------------
+
+    def is_interpreter_idle(self) -> bool:
+        """
+        Return ``True`` when the G-code interpreter is idle.
+
+        Used to guard against loading a new programme while one is running or
+        paused.
+        """
+        self.status.poll()
+        return self.status.interp_state == _INTERP_IDLE
+
+    def open_program(self, filepath: str) -> bool:
+        """
+        Load a G-code file into LinuxCNC.
+
+        Raises:
+            FileNotFoundError: When *filepath* does not exist on disk.
+            RuntimeError: When the interpreter is busy (RUNNING / PAUSED).
+            Exception: On any LinuxCNC ``program_open`` error.
+        """
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"Файл не знайдено: {filepath}")
-            
+
         if not self.is_interpreter_idle():
-            raise RuntimeError("Неможливо відкрити файл: інтерпретатор зайнятий (RUNNING/PAUSED)")
+            raise RuntimeError(
+                "Неможливо відкрити файл: інтерпретатор зайнятий (RUNNING/PAUSED)"
+            )
 
         try:
             self.command.program_open(filepath)
             self.last_loaded_file = filepath
             return True
-        except Exception as e:
-            raise Exception(f"LinuxCNC program_open error: {e}")
+        except Exception as exc:
+            raise Exception(f"LinuxCNC program_open error: {exc}") from exc
 
-    def get_last_file(self):
-        """Return the last loaded file path, or None if no file has been loaded yet. This is used for the "Reload" functionality to know which file to reload."""
+    def get_last_file(self) -> str | None:
+        """Return the path of the last successfully loaded file, or ``None``."""
         return self.last_loaded_file
-    
-    # --- PROGRAM EXECUTION ---
 
-    def cycle_start(self, line_number=0):
-        """Start execution of the loaded G-code program from a specific line number (default 0). Checks for necessary conditions before starting."""
+    # -----------------------------------------------------------------------
+    # Program Execution
+    # -----------------------------------------------------------------------
+
+    def cycle_start(self, line_number: int = 0) -> None:
+        """
+        Start execution of the loaded G-code programme from *line_number*.
+
+        Raises:
+            Exception: When no file is loaded or not all joints are homed.
+        """
         self.status.poll()
+
         if not self.status.file:
             raise Exception("Файл не завантажено")
         if not all(self.status.homed[:3]):
             raise Exception("Виконайте Home All перед запуском")
-            
-        self.command.mode(linuxcnc.MODE_AUTO)
+
+        self.command.mode(_MODE_AUTO)
         self.command.wait_complete()
         self.command.auto(linuxcnc.AUTO_RUN, line_number)
 
-    def cycle_resume(self):
-        """Resume execution of a paused program. If the machine is not in AUTO mode, it switches to AUTO before resuming."""
+    def cycle_resume(self) -> None:
+        """Resume a paused programme, switching to AUTO mode if necessary."""
         self.status.poll()
-        if self.status.interp_state == linuxcnc.INTERP_PAUSED:
-            if self.status.task_mode != linuxcnc.MODE_AUTO:
-                self.command.mode(linuxcnc.MODE_AUTO)
-                self.command.wait_complete()
-            self.command.auto(linuxcnc.AUTO_RESUME)
+        if self.status.interp_state != _INTERP_PAUSED:
+            return
+        if self.status.task_mode != _MODE_AUTO:
+            self.command.mode(_MODE_AUTO)
+            self.command.wait_complete()
+        self.command.auto(linuxcnc.AUTO_RESUME)
 
-    def cycle_pause(self):
-        """Pause the currently running program. If the machine is not in AUTO mode, it switches to AUTO before pausing."""
+    def cycle_pause(self) -> None:
+        """Pause the currently running programme."""
         self.command.auto(linuxcnc.AUTO_PAUSE)
 
-    def cycle_stop(self):
-        """Stop the currently running program. This will abort the execution and switch to MANUAL mode."""
+    def cycle_stop(self) -> None:
+        """Abort execution and return the machine to MANUAL mode."""
         self.command.abort()
         self.command.wait_complete()
-        self.command.mode(linuxcnc.MODE_MANUAL)
+        self.command.mode(_MODE_MANUAL)
 
-    def cycle_step(self):
-        """Execute one line of G-code in AUTO mode. If the machine is not in AUTO mode, it switches to AUTO before stepping."""
+    def cycle_step(self) -> None:
+        """Execute a single G-code line in AUTO mode (step-by-step debugging)."""
         self.status.poll()
+
         if not self.status.file or not all(self.status.homed[:3]):
             return
-        if self.status.task_mode != linuxcnc.MODE_AUTO:
-            self.command.mode(linuxcnc.MODE_AUTO)
+
+        if self.status.task_mode != _MODE_AUTO:
+            self.command.mode(_MODE_AUTO)
             self.command.wait_complete()
 
         self.command.auto(linuxcnc.AUTO_STEP)
-        
-    # --- MDI and Custom Commands ---
-    
-    def send_mdi(self, code):
-        """Send an MDI command to LinuxCNC. Checks if the interpreter is idle before sending the command to prevent conflicts with running programs."""
+
+    # -----------------------------------------------------------------------
+    # MDI and Custom Commands
+    # -----------------------------------------------------------------------
+
+    def send_mdi(self, code: str) -> bool:
+        """
+        Send an MDI command string to LinuxCNC.
+
+        The command is rejected (returns ``False``) when the interpreter is
+        busy so that conflicts with running programmes are avoided.  The
+        previous task mode is restored after execution.
+        """
         self.status.poll()
-        if self.status.interp_state != linuxcnc.INTERP_IDLE:
-            print(f"WARNING: MDI '{code}' rejected: machine is busy")
+
+        if self.status.interp_state != _INTERP_IDLE:
+            logger.warning("MDI '%s' rejected: machine is busy", code)
             return False
 
         prev_mode = self.status.task_mode
         try:
-            if prev_mode != linuxcnc.MODE_MDI:
-                self.command.mode(linuxcnc.MODE_MDI)
+            if prev_mode != _MODE_MDI:
+                self.command.mode(_MODE_MDI)
                 self.command.wait_complete()
-            
+
             self.command.mdi(code)
             self.command.wait_complete()
-            
-            if prev_mode != linuxcnc.MODE_MDI:
+
+            if prev_mode != _MODE_MDI:
                 self.command.mode(prev_mode)
                 self.command.wait_complete()
+
             return True
-        except Exception as e:
-            print(f"ERROR: MDI execution failed: {e}")
+        except Exception as exc:
+            logger.error("MDI execution failed: %s", exc)
             return False
 
-    def set_gripper_force(self, value_0_to_1):
+    def set_gripper_force(self, value_0_to_1: float) -> None:
         """
-        Set the force of the gripper by writing to an analog output pin in HAL.
-        The value should be between 0.0 and 1.0, where 1.0 corresponds to maximum force.
+        Set gripper force via a HAL analogue output pin.
+
+        Args:
+            value_0_to_1: Normalised force in the range ``[0.0, 1.0]``
+                where ``1.0`` is maximum force.
         """
         self.command.set_analog_output(1, float(value_0_to_1))
-    
-    # --- HELPERS / GETTERS ---
 
-    def is_idle(self):
-        """Check if interpreter is doing nothing"""
+    # -----------------------------------------------------------------------
+    # Helpers / Getters
+    # -----------------------------------------------------------------------
+
+    def is_idle(self) -> bool:
+        """Return ``True`` when the interpreter is doing nothing."""
         self.poll()
-        return self.status.interp_state == linuxcnc.INTERP_IDLE
+        return self.status.interp_state == _INTERP_IDLE
 
-    def get_position(self):
-        """Return current Cartesian position (X, Y, Z, A, B, C)"""
+    def get_position(self) -> tuple:
+        """Return the current Cartesian position ``(X, Y, Z, A, B, C)``."""
         self.poll()
         return self.status.position
-    
-    def get_states(self):
-        """Return a dictionary of key machine states for UI logic and control decisions"""
-        self.poll()
-        
-        # 1. Basic states: Power, E-Stop
-        task_state = self.status.task_state
-        estop_state = self.status.estop
-        
-        power_on = (task_state == linuxcnc.STATE_ON)
-        estop_off = (estop_state != linuxcnc.STATE_ESTOP)
-        
-        # 2. States of the interpreter (Idle, Paused, Running)
-        interp = self.status.interp_state
-        is_idle = (interp == linuxcnc.INTERP_IDLE)
-        is_paused = (interp == linuxcnc.INTERP_PAUSED)
-        is_running = (interp in [linuxcnc.INTERP_READING, linuxcnc.INTERP_WAITING])
 
-        # 3. Homing status 
-        homed_status = self.status.homed
+    def get_states(self) -> dict[str, Any]:
+        """
+        Return a snapshot of key machine states for UI logic and control decisions.
+
+        Includes power/E-Stop state, interpreter state, homing status,
+        current positions, loaded file information, and active G/M-codes.
+        """
+        self.poll()
+
+        task_state  = self.status.task_state
+        estop_state = self.status.estop
+
+        power_on  = task_state == _STATE_ON
+        estop_off = estop_state != _STATE_ESTOP
+
+        interp     = self.status.interp_state
+        is_idle    = interp == _INTERP_IDLE
+        is_paused  = interp == _INTERP_PAUSED
+        is_running = interp in (_INTERP_READING, _INTERP_WAITING)
+
         joints_count = self.params.get("JOINTS_COUNT", 6)
-        all_homed = all(homed_status[i] for i in range(min(joints_count, len(homed_status))))
-        
-        # Additionally, we can include actual positions for more detailed state info
-        actual_pos = self.status.actual_position
-        joint_pos = self.status.joint_actual_position
-        
+        homed_status = self.status.homed
+        all_homed    = all(
+            homed_status[i]
+            for i in range(min(joints_count, len(homed_status)))
+        )
+
         return {
-            'power_on': power_on,
-            'estop_off': estop_off,
-            'is_ready': power_on and estop_off,
-            'all_homed': all_homed,
-            
-            # States of the interpreter
-            'is_idle': is_idle,
-            'is_paused': is_paused,
-            'is_running': is_running,
-            
-            # Positions (for potential use in UI or logic)
-            'actual_position': actual_pos,
-            'joint_position': joint_pos,
-            
-            # File loaded status
-            'has_file': bool(self.status.file),
-            'manual_mode': getattr(self, 'manual_mode', 'axis'),
-            
-            # Kinematics type (for teleop mode)
-            'teleop': self.status.kinematics_type == 1,
-            
-            # G-code and M-code information (for potential use in UI)
-            'gcodes': self.status.gcodes,
-            'mcodes': self.status.mcodes,
-            'settings': self.status.settings,
-            
-            # Current file loaded in LinuxCNC
-            'current_file': self.status.file,        
-            'motion_line': self.status.motion_line,
+            # Power / safety
+            "power_on":  power_on,
+            "estop_off": estop_off,
+            "is_ready":  power_on and estop_off,
+            "all_homed": all_homed,
+
+            # Interpreter state
+            "is_idle":    is_idle,
+            "is_paused":  is_paused,
+            "is_running": is_running,
+
+            # Positions
+            "actual_position": self.status.actual_position,
+            "joint_position":  self.status.joint_actual_position,
+
+            # File / mode
+            "has_file":    bool(self.status.file),
+            "manual_mode": getattr(self, "manual_mode", "axis"),
+            "teleop":      self.status.kinematics_type == 1,
+
+            # G-code context
+            "gcodes":   self.status.gcodes,
+            "mcodes":   self.status.mcodes,
+            "settings": self.status.settings,
+
+            # Execution tracking
+            "current_file": self.status.file,
+            "motion_line":  self.status.motion_line,
         }
 
-    def can_home(self):
-        """"Check if machine is in a state that allows homing (not in error, power on, idle)"""
+    def can_home(self) -> bool:
+        """
+        Return ``True`` when the machine state permits homing.
+
+        All three conditions must hold: not in E-Stop, power on, interpreter idle.
+        """
         self.poll()
-        
-        is_not_in_error = (self.status.estop != linuxcnc.STATE_ESTOP)
-        is_power_on = (self.status.task_state == linuxcnc.STATE_ON)
-        is_idle = (self.status.interp_state == linuxcnc.INTERP_IDLE)
+
+        is_not_in_error = self.status.estop != _STATE_ESTOP
+        is_power_on     = self.status.task_state == _STATE_ON
+        is_idle         = self.status.interp_state == _INTERP_IDLE
 
         if not (is_not_in_error and is_power_on and is_idle):
-            print(f"DEBUG: Homing blocked logic -> NotInError:{is_not_in_error}, "
-                  f"PowerOn:{is_power_on}, Idle:{is_idle}")
-        
+            logger.debug(
+                "Homing blocked — NotInError:%s, PowerOn:%s, Idle:%s",
+                is_not_in_error, is_power_on, is_idle,
+            )
+
         return is_not_in_error and is_power_on and is_idle
 
-    def is_all_homed(self):
-        """Check if all joints are homed. This is used to determine if we need to show the "Re-Home?" confirmation dialog."""
+    def is_all_homed(self) -> bool:
+        """Return ``True`` when every configured joint has been homed."""
         self.poll()
         count = self.params.get("JOINTS_COUNT", 6)
         return all(self.status.homed[i] for i in range(count))
 
-    def home_all_sequence(self):
-        """Command LinuxCNC"""
-        self.set_mode(linuxcnc.MODE_MANUAL)
+    def home_all_sequence(self) -> None:
+        """Switch to MANUAL mode, disable teleop, then home all joints."""
+        self.set_mode(_MODE_MANUAL)
         self.set_teleop(False)
-        self.command.home(-1) 
+        self.command.home(-1)
