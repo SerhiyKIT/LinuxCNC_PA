@@ -3,10 +3,12 @@ class CycleManager:
     def __init__(self, machine_controller):
         self.cnc = machine_controller
 
-    def start_cycle(self, start_line: int = 0):
+    def start_cycle(self, start_line=0, *args, **kwargs):
+        line = start_line if isinstance(start_line, int) else 0
+        
         try:
-            self.cnc.cycle_start(start_line)
-            print(f"DEBUG: Cycle started from line {start_line}")
+            self.cnc.cycle_start(line)
+            print(f"DEBUG: Cycle started from line {line}")
         except Exception as e:
             print(f"WARNING: Failed to start cycle: {e}")
 
