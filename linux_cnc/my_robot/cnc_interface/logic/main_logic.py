@@ -6,12 +6,12 @@ from core import MachineController
 from core import LoggerController
 from managers import ControlManager
 from managers import UIManager
-from managers import JointManager
-from managers import AxisManager
-from managers import OverridesManager
+from managers import JointManager, JointUIBinder
+from managers import AxisManager, AxisUIBinder
+from managers import OverridesManager, OverridesUIBinder
 from managers import FileManager
-from managers import CycleManager
-from managers import ToolManager
+from managers import CycleManager, CycleUIBinder
+from managers import ToolManager, ToolUIBinder
 from managers import KeyboardManager
 from config import STYLES, MACHINE_PARAMS, MGR_CONTROL, MGR_CYCLE, MGR_FILE, MGR_TOOL
 from managers.ui.ui_mapping import UI_TEXT_MAPPING, UI_TOOLTIP_MAPPING
@@ -38,17 +38,22 @@ class HandlerClass:
         # Initialize control manager
         self.control = ControlManager(self.cnc, self.widgets)
         # Initialize joint manager
-        self.joint_manager = JointManager(self.cnc, self.widgets)
+        self.joint_manager = JointManager(self.cnc)
+        self.joint_binder = JointUIBinder(self.joint_manager, self.widgets)
         # Initialize axis manager
-        self.axis_manager = AxisManager(self.cnc, self.widgets)
+        self.axis_manager = AxisManager(self.cnc)
+        self.axis_ui_binder = AxisUIBinder(self.axis_manager, self.widgets)
         # Initialize overrides manager
-        self.overrides_manager = OverridesManager(self.cnc, self.widgets)
+        self.overrides_manager = OverridesManager(self.cnc)
+        self.overrides_ui_binder = OverridesUIBinder(self.overrides_manager, self.widgets)
         # Initialize file manager
         self.file_manager = FileManager(self.cnc, self.widgets)
         # Initialize cycle manager
-        self.cycle_manager = CycleManager(self.cnc, self.widgets)
+        self.cycle_manager = CycleManager(self.cnc)
+        self.cycle_ui_binder = CycleUIBinder(self.cycle_manager, self.widgets)
         # Initialize tool manager
-        self.tool_manager = ToolManager(self.cnc, self.widgets)
+        self.tool_manager = ToolManager(self.cnc)
+        self.tool_ui_binder = ToolUIBinder(self.tool_manager, self.widgets)
         
         # Create a mapping of manager keys to their instances for easy access from the keyboard manager
         self.managers_map = {
@@ -102,13 +107,13 @@ class HandlerClass:
             self.widgets.axis_control_overlay.mousePressEvent = lambda e: self.control.on_overlay_clicked(self.cnc.get_states(), "axis")
         
         # Connect joint buttons
-        self.joint_manager.connect_all_jog_buttons()
+        self.joint_binder.connect_buttons()
         
         # Connect axis buttons
-        self.axis_manager.connect_all_axis_buttons()
+        self.axis_ui_binder.connect_buttons()
         
         # Connect override sliders
-        self.overrides_manager.setup_overrides()
+        self.overrides_ui_binder.setup_overrides()
         
         # Populate jog mode ComboBox
         if hasattr(self.widgets, 'combo_joint_mode'):
@@ -125,10 +130,10 @@ class HandlerClass:
             self.widgets.list_gcode_view.setStyleSheet(self.STYLE_GCODE_LIST)
             
         # Connect cycle control buttons
-        self.cycle_manager.connect_cycle_buttons()
+        self.cycle_ui_binder.connect_buttons()
         
         # Connect tool management buttons
-        self.tool_manager.connect_tool_buttons()
+        self.tool_ui_binder.connect_tool_buttons()
             
         # Allow editing G-code lines directly in the list view
         if hasattr(self.widgets, 'list_gcode_view'):
@@ -233,7 +238,7 @@ class HandlerClass:
                 combo.setItemText(idx_ua, QCoreApplication.translate(ctx, "UA"))
             
         # 4.
-        self.overrides_manager.refresh_all_labels()
+        self.overrides_ui_binder.refresh_all_labels()
             
     def set_default_language(self, lang_code):
         """Set"""
