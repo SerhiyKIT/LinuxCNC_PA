@@ -1,56 +1,63 @@
-# logic/managers/cycle_manager.py
-
 class CycleManager:
-    def __init__(self, machine_controller, widgets):
+    """Відповідає виключно за логіку керування циклом виконання програми (G-code)"""
+    def __init__(self, machine_controller):
         self.cnc = machine_controller
-        self.widgets = widgets
 
-    def connect_cycle_buttons(self):
-        """Connect cycle control buttons (Start, Pause, Continue, Stop, Step) to their respective handlers"""
-        mapping = {
-            'btn_cycle_start': self.on_btn_cycle_start_clicked,
-            'btn_cycle_pause': self.on_btn_cycle_pause_clicked,
-            'btn_cycle_continue': self.on_btn_cycle_continue_clicked,
-            'btn_cycle_stop': self.on_btn_cycle_stop_clicked,
-            'btn_cycle_step': self.on_btn_cycle_step_clicked
-        }
-        for btn_name, handler in mapping.items():
-            btn = getattr(self.widgets, btn_name, None)
-            if btn:
-                btn.clicked.connect(handler)
-
-    def on_btn_cycle_start_clicked(self):
+    def start_cycle(self, start_line: int = 0):
         try:
-            self.cnc.cycle_start(0)
-            print("DEBUG: Цикл запущено")
+            self.cnc.cycle_start(start_line)
+            print(f"DEBUG: Cycle started from line {start_line}")
         except Exception as e:
-            print(f"WARNING: Не вдалося почати цикл: {e}")
+            print(f"WARNING: Failed to start cycle: {e}")
 
-    def on_btn_cycle_continue_clicked(self):
+    def resume_cycle(self):
         try:
             self.cnc.cycle_resume()
-            print("DEBUG: Виконання продовжено")
+            print("DEBUG: Cycle resumed")
         except Exception as e:
-            print(f"ERROR: Помилка продовження: {e}")
+            print(f"ERROR: Resume failed: {e}")
 
-    def on_btn_cycle_pause_clicked(self):
+    def pause_cycle(self):
         try:
             self.cnc.cycle_pause()
-            print("DEBUG: Пауза (Feed Hold)")
+            print("DEBUG: Pause (Feed Hold) activated")
         except Exception as e:
-            print(f"ERROR: Помилка паузи: {e}")
+            print(f"ERROR: Pause failed: {e}")
 
-    def on_btn_cycle_stop_clicked(self):
+    def stop_cycle(self):
         try:
             self.cnc.cycle_stop()
-            print("DEBUG: Програму зупинено")
+            print("DEBUG: Program stopped")
         except Exception as e:
-            print(f"ERROR: Помилка зупинки: {e}")
+            print(f"ERROR: Stop failed: {e}")
 
-    def on_btn_cycle_step_clicked(self):
+    def step_cycle(self):
         try:
             self.cnc.cycle_step()
-            self.cnc.status.poll()
-            print("DEBUG: Виконано один крок (Step)")
+            self.cnc.status.poll() # Оновлюємо статус після кроку
+            print("DEBUG: Single step executed")
         except Exception as e:
-            print(f"WARNING: Покрокове виконання недоступне: {e}")
+            print(f"WARNING: Step execution unavailable: {e}")
+
+
+class CycleUIBinder:
+    """Відповідає за прив'язку кнопок керування циклом до менеджера логіки"""
+    def __init__(self, cycle_manager, widgets):
+        self.manager = cycle_manager
+        self.widgets = widgets
+
+    def connect_buttons(self):
+        """З'єднує події 'clicked' з відповідними методами логіки"""
+        mapping = {
+            'btn_cycle_start': self.manager.start_cycle,
+            'btn_cycle_pause': self.manager.pause_cycle,
+            'btn_cycle_continue': self.manager.resume_cycle,
+            'btn_cycle_stop': self.manager.stop_cycle,
+            'btn_cycle_step': self.manager.step_cycle
+        }
+        
+        for btn_name, method in mapping.items():
+            btn = getattr(self.widgets, btn_name, None)
+            if btn:
+                # Використовуємо просту прив'язку, оскільки аргументи не передаються через UI клік
+                btn.clicked.connect(method)
