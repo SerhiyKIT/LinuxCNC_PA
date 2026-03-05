@@ -81,11 +81,17 @@ _config_mock.HOTKEYS     = {
     "STEP":     _KEY_STEP,
 }
 
-sys.modules.setdefault("PyQt5",              MagicMock())
 sys.modules["PyQt5.QtCore"]    = _QtCore_mock
 sys.modules["PyQt5.QtWidgets"] = _QtWidgets_mock
 sys.modules["PyQt5"]           = MagicMock(QtCore=_QtCore_mock, QtWidgets=_QtWidgets_mock)
 sys.modules["config"]          = _config_mock
+
+# Force re-import of the production module so it binds to OUR mocks
+# regardless of import order. Test files are explicitly excluded to avoid
+# a KeyError during pytest collection.
+for _mod_name in list(sys.modules):
+    if "keyboard_manager" in _mod_name and "test_" not in _mod_name:
+        del sys.modules[_mod_name]
 
 from logic.managers.keyboard_manager import (  # noqa: E402
     KeyboardManager,
