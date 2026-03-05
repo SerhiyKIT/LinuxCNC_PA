@@ -61,6 +61,13 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
+# Force re-import of the production module so it binds to OUR linuxcnc_mock
+# regardless of import order. Test files are explicitly excluded to avoid
+# a KeyError during pytest collection.
+for _mod_name in list(sys.modules):
+    if "machine" in _mod_name and "test_" not in _mod_name:
+        del sys.modules[_mod_name]
+
 # Import after mocking
 import linuxcnc  # noqa: E402  (this is the mock)
 from logic.core.machine import MachineController  # noqa: E402
