@@ -185,11 +185,12 @@ class TestSetMaxVelocity:
         mock_cnc.set_max_velocity.side_effect = Exception("Value out of range")
         manager.set_max_velocity(999999.0)   # must not raise
 
-    def test_exception_is_logged_as_error(self, manager, mock_cnc):
+    def test_exception_is_logged_as_error(self, manager, mock_cnc, caplog):
+        import logging
         mock_cnc.set_max_velocity.side_effect = Exception("out of range")
-        with patch("logic.managers.overrides_manager.logger") as mock_log:
+        with caplog.at_level(logging.ERROR):
             manager.set_max_velocity(999999.0)
-        mock_log.error.assert_called_once()
+        assert any("Max Velocity Update" in r.message for r in caplog.records)
 
     def test_cnc_not_called_after_exception(self, manager, mock_cnc):
         """After an exception the method must not attempt a second call."""
