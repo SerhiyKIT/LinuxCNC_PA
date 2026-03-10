@@ -22,8 +22,8 @@ _SLIDER_CONFIG: tuple[tuple[str, str, float, str, str], ...] = (
     ("sld_feed_override",      "val_feed_override",      100.0,  "set_feed",         "%1 %"),
     ("sld_rapid_override",     "val_rapid_override",     100.0,  "set_rapid",        "%1 %"),
     ("sld_spindle_override",   "val_spindle_override",   100.0,  "set_spindle",      "%1 %"),
-    ("sld_linear_jog_speed",   "val_linear_jog_speed",   1000.0, "set_linear_speed", "%1 in/min"),
-    ("sld_angular_jog_speed",  "val_angular_jog_speed",  100.0,  "set_angular_speed","%1 deg/min"),
+    ("sld_linear_jog_speed",   "val_linear_jog_speed",   1000.0, "set_linear_speed", "%1 in/min "),
+    ("sld_angular_jog_speed",  "val_angular_jog_speed",  100.0,  "set_angular_speed","%1 deg/min "),
     ("sld_max_velocity",       "val_max_velocity",       1.0,    "set_max_velocity", "%1 in/min"),
 )
 
