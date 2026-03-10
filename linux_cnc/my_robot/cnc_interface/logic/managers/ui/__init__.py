@@ -7,3 +7,11 @@ try:
     from .tool_display import ToolDisplayManager
 except ImportError as e:
     print(f"DEBUG: Error in managers/ui/__init__.py: {e}")
+
+__all__ = [
+    'MotionDisplayManager',
+    'PanelManager',
+    'GCodeDisplayManager',
+    'LoggerDisplayManager',
+    'ToolDisplayManager'
+]

@@ -451,6 +451,8 @@ class MachineController:
             # Execution tracking
             "current_file": self.status.file,
             "motion_line":  self.status.motion_line,
+            
+            "linear_jog_speed": self.linear_jog_speed,
         }
 
     def can_home(self) -> bool:
