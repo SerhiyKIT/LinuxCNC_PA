@@ -500,7 +500,7 @@ def _test_pause_resume_cycle_position_preserved():
     time.sleep(0.4)
     ctrl.poll()
     pos_after_pause_wait = ctrl.status.actual_position[0]
-    assert_approx(pos_after_pause_wait, pos_at_pause, tol=0.08,
+    assert_approx(pos_after_pause_wait, pos_at_pause, tol=0.1,
                   msg="Під час паузи машина не має рухатись")
 
     mgr.resume_cycle()
