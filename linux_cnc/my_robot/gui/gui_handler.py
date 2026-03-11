@@ -41,7 +41,7 @@ class HandlerClass:
         ini_path = os.environ.get('INI_FILE_NAME')
         self.ini = linuxcnc.ini(ini_path)
         
-        self.SPEED = float(self.ini.find("DISPLAY", "DEFAULT_LINEAR_VELOCITY") or 600.0)
+        self.SPEED = float(self.ini.find("TRAJ", "DEFAULT_LINEAR_VELOCITY") or 600.0)
         self.SPEED = self.SPEED * 60
         
         self.JOINT_LIMITS = {}
@@ -928,39 +928,38 @@ class HandlerClass:
                 self.log_message(f"Error loading file: {e}", level="error")
     
     def _load_gcode_to_view(self, filepath):
-        """Зчитує текст файлу та оновлює модель QListView"""
         if not os.path.exists(filepath):
-            print(f"ERROR: Шлях {filepath} не знайдено")
             self.log_message(f"File not found: {filepath}", level="warning")
             return
 
-        # 1. Оновлюємо лейбл назви файлу
+        # Оновлюємо ім'я файлу
         if hasattr(self.widgets, 'lbl_filename'):
             self.widgets.lbl_filename.setText(os.path.basename(filepath))
 
-        # 2. Оновлюємо вміст через модель
+        # Скидаємо прогрес
+        if hasattr(self.widgets, 'lbl_progress_percent'):
+            self.widgets.lbl_progress_percent.setText("0%")
+
         if hasattr(self.widgets, 'list_gcode_view'):
             try:
-                # Читаємо файл заново з диска
                 with open(filepath, 'r', encoding='utf-8') as f:
-                    # Очищуємо кожен рядок від зайвих символів перенесення
                     lines = [line.strip() for line in f.readlines()]
-            
-                # Створюємо нову модель зі свіжими даними
+        
                 model = QStringListModel()
                 model.setStringList(lines)
-            
-                # Встановлюємо модель для в'юхи
                 self.widgets.list_gcode_view.setModel(model)
             
-                # Підключаємо сигнал редагування заново (якщо ви використовуєте збереження при правці в списку)
+                # Налаштування тригерів редагування
+                self.widgets.list_gcode_view.setEditTriggers(
+                    self.widgets.list_gcode_view.DoubleClicked | 
+                    self.widgets.list_gcode_view.EditKeyPressed
+                )
                 model.dataChanged.connect(self._on_gcode_edited)
             
-                print(f"DEBUG: Вікно G-коду оновлено ({len(lines)} рядків)")
-            
+                self.log_message(f"G-code loaded: {len(lines)} lines", level="info")
+        
             except Exception as e:
-                print(f"ERROR: Помилка завантаження G-коду в модель: {e}")
-                self.log_message(f"Error loading G-code to view: {e}", level="error")
+                self.log_message(f"Error loading G-code: {e}", level="error")
 
     def _on_overlay_clicked(self, panel_type):
         # Перемикання дозволено лише якщо система готова і хомінг виконано
@@ -1303,7 +1302,8 @@ class HandlerClass:
             else:
                 self.widgets.lbl_progress_percent.setText("PROGRESS 0%")
                 
-    def _load_gcode_to_view(self, filepath):
+    """def _load_gcode_to_view(self, filepath):
+        print(f"2 method")
         if hasattr(self.widgets, 'lbl_filename'):
             self.widgets.lbl_filename.setText(os.path.basename(filepath))
 
@@ -1316,12 +1316,10 @@ class HandlerClass:
                 model.setStringList(lines)
                 self.widgets.list_gcode_view.setModel(model)
             
-                # Дозволяємо редагування подвійним кліком або Enter
                 self.widgets.list_gcode_view.setEditTriggers(
                     self.widgets.list_gcode_view.DoubleClicked | 
                     self.widgets.list_gcode_view.EditKeyPressed
                 )
-                # Підключаємо сигнал завершення редагування
                 model.dataChanged.connect(self._on_gcode_edited)
             
             except Exception as e:
@@ -1329,6 +1327,7 @@ class HandlerClass:
                 
         if hasattr(self.widgets, 'lbl_progress_percent'):
             self.widgets.lbl_progress_percent.setText("PROGRESS 0%")
+    """
     
     def _handle_joint_soft_limits(self):
         """Перевірка лімітів суглобів та блокування відповідних кнопок"""
@@ -1396,15 +1395,6 @@ class HandlerClass:
             btn.setEnabled(not estop)
             btn.setStyleSheet(self.STYLE_POWER_ON if power_on and not estop else self.STYLE_POWER_OFF)
             btn.setText("ON" if power_on else "OFF")
-        
-        # Приклад логіки для кнопок циклу
-        is_auto = (self.status.task_mode == linuxcnc.MODE_AUTO)
-        is_running = (self.status.interp_state != linuxcnc.INTERP_IDLE)
-
-        if hasattr(self.widgets, 'btn_cycle_start'):
-            # Кнопка Start активна тільки якщо ми не в процесі руху або на паузі
-            can_start = self.status.interp_state in [linuxcnc.INTERP_IDLE, linuxcnc.INTERP_PAUSED]
-            self.widgets.btn_cycle_start.setEnabled(can_start)
 
     def _update_panel_access(self):
         """Оновлення доступу до панелей залежно від стану станка та виконання програми"""
