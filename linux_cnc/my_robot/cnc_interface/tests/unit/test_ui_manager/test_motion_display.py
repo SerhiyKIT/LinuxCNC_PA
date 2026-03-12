@@ -11,7 +11,7 @@ Unit-тести MotionDisplayManager
 import pytest
 from unittest.mock import MagicMock, patch
 
-from tests.gui.conftest import base_states
+from tests.unit.test_ui_manager.conftest import base_states
 
 
 @pytest.fixture
