@@ -1,0 +1,38 @@
+### --- LinuxCNC Специфіка --- ###
+*.var
+*.position
+*.bak
+*.old
+*.log
+linuxcnc.txt
+pydoc_*.txt
+
+### --- Python & Testing --- ###
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.env
+.venv
+.pytest_cache/
+.coverage
+htmlcov/
+
+### --- IDE & Editors --- ###
+.vscode/
+.idea/
+*.swp
+*~
+.directory
+.DS_Store
+
+### --- HAL Components (C/C++ Build Artifacts) --- ###
+*.o
+*.ko
+*.mod.c
+*.tmp_versions/
+modules.order
+Module.symvers
