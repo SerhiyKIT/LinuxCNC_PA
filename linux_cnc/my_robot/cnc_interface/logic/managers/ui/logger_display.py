@@ -1,5 +1,6 @@
 # logic/managers/ui/logger_display.py
 from PyQt5 import QtCore, QtWidgets
+from PyQt5 import sip
 from datetime import datetime
 from managers import StyleManager
 
@@ -93,5 +94,7 @@ class LoggerDisplayManager:
 
     def _reset_copy_button(self, button, old_text):
         """"Reset the copy button to its original state after showing feedback"""
+        if sip.isdeleted(button):
+            return
         button.setText(old_text)
         button.setStyleSheet(self.style_manager.STYLE_COPY_BTN)
