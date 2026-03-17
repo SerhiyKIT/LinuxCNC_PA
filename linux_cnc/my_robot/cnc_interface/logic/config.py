@@ -209,7 +209,7 @@ STYLES = {
         QScrollBar::handle:vertical {{ background: {COLORS['ACCENT']}; min-height: 15px; border-radius: 6px; }}
         QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0px; }}
         QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{ background: none; }}
-        QScrollBar:horizontal {{ background: {COLORS['SCROLLBAR_BG']}; hight: 12px; border-radius: 6px; }}
+        QScrollBar:horizontal {{ background: {COLORS['SCROLLBAR_BG']}; height: 12px; border-radius: 6px; }}
         QScrollBar::handle:horizontal {{ background: {COLORS['ACCENT']}; min-height: 20px; border-radius: 6px; }}
         QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{ height: 0px; }}
         QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {{ background: none; }}
