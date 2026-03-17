@@ -206,12 +206,42 @@ STYLES = {
         QListView::item:selected {{ background-color: {COLORS['ACCENT']}; color: white; border-radius: 3px; }}
         QListView::item:hover {{ background-color: {COLORS['BG_BTN_DEFAULT']}; }}
         QScrollBar:vertical {{ background: {COLORS['SCROLLBAR_BG']}; width: 12px; margin: 0px; border-radius: 6px; }}
-        QScrollBar::handle:vertical {{ background: {COLORS['ACCENT']}; min-height: 20px; border-radius: 6px; }}
+        QScrollBar::handle:vertical {{ background: {COLORS['ACCENT']}; min-height: 15px; border-radius: 6px; }}
         QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0px; }}
         QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{ background: none; }}
+        QScrollBar:horizontal {{ background: {COLORS['SCROLLBAR_BG']}; hight: 12px; border-radius: 6px; }}
+        QScrollBar::handle:horizontal {{ background: {COLORS['ACCENT']}; min-height: 20px; border-radius: 6px; }}
+        QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{ height: 0px; }}
+        QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {{ background: none; }}
         QListView QLineEdit {{ background-color: {COLORS['BG_WIDGET']}; color: {COLORS['EDIT_MODE_ITALIC']}; border: 1px solid {COLORS['ACCENT']}; border-radius: 2px; font-style: italic; }}
     """,
     
+    # --- Line Number Gutter ---
+    'LINE_NUMBER_AREA': f"""
+        QListView {{
+            background-color: {COLORS['BG_BTN_DEFAULT']};
+            border: none;
+            border-radius: 0px;
+            padding: 0px;
+            color: {COLORS['TEXT_INACTIVE']};
+        }}
+        QListView::item {{ padding: 4px; }}
+       QListView::item:selected {{ background-color: {COLORS['ACCENT']}; color: white; border-radius: 3px; }}
+        QScrollBar:vertical, QScrollBar:horizontal {{
+            width: 0px;
+            height: 0px;
+            background: transparent;
+        }}
+        QScrollBar::handle:vertical, QScrollBar::handle:horizontal,
+        QScrollBar::add-line, QScrollBar::sub-line,
+        QScrollBar::add-page, QScrollBar::sub-page {{
+            width: 0px;
+            height: 0px;
+            background: none;
+        }}
+        QListView QLineEdit {{ background-color: {COLORS['BG_WIDGET']}; color: {COLORS['EDIT_MODE_ITALIC']}; border: 1px solid {COLORS['ACCENT']}; border-radius: 2px; font-style: italic; }}
+    """,
+
     # --- Output/Log Panel ---
     'OUTPUT_VIEW': f" QListWidget {{ background-color: {COLORS['BG_MAIN']}; border: 1px solid {COLORS['BG_WIDGET']}; border-radius: 5px; outline: none; padding: 0px; }} QListWidget::item {{ background-color: transparent; padding: 0px; margin: 0px; border: none; }} QListWidget::item:selected {{ background-color: {COLORS['BG_PANEL']}; }}",
     

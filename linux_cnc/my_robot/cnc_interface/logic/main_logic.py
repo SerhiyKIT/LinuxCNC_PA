@@ -25,6 +25,7 @@ class HandlerClass:
         self.translator = QTranslator()
         
         self.STYLE_GCODE_LIST = STYLES.get('GCODE_LIST', '')
+        self.STYLE_LINE_NUMBER_AREA = STYLES.get('LINE_NUMBER_AREA', '')
         
         # Load machine parameters from config
         self.params = MACHINE_PARAMS
@@ -126,8 +127,7 @@ class HandlerClass:
         
         # Setup file management buttons
         self.file_manager.connect_file_buttons()
-        if hasattr(self.widgets, 'list_gcode_view'):
-            self.widgets.list_gcode_view.setStyleSheet(self.STYLE_GCODE_LIST)
+        self. _setup_gcode_sync()
             
         # Connect cycle control buttons
         self.cycle_ui_binder.connect_buttons()
@@ -247,3 +247,17 @@ class HandlerClass:
             if index >= 0:
                 self.widgets.combo_language.setCurrentIndex(index)
                 print(f"DEBUG: Default language set to: {lang_code}")
+
+
+    def _setup_gcode_sync(self):
+        if not (hasattr(self.widgets, 'list_gcode_view') and hasattr(self.widgets, 'list_gcode_num')):
+            return
+
+        self.scroll_bar_code = self.widgets.list_gcode_view.verticalScrollBar()
+        self.scroll_bar_numbers = self.widgets.list_gcode_num.verticalScrollBar()
+
+        self.scroll_bar_code.valueChanged.connect(self.scroll_bar_numbers.setValue)
+        self.scroll_bar_numbers.valueChanged.connect(self.scroll_bar_code.setValue)
+
+        self.widgets.list_gcode_view.setStyleSheet(self.STYLE_GCODE_LIST)
+        self.widgets.list_gcode_num.setStyleSheet(self.STYLE_LINE_NUMBER_AREA)

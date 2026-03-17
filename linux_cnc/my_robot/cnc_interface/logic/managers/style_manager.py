@@ -49,6 +49,7 @@ class StyleManager:
     def _set_dialog_styles(self):
         self.STYLE_MSGBOX = STYLES['MSGBOX']
         self.STYLE_GCODE_LIST = STYLES['GCODE_LIST']
+        self.STYLE_LINE_NUMBER_AREA = STYLES['LINE_NUMBER_AREA']
         
     def _set_list_styles(self):
         self.STYLE_OUTPUT_VIEW = STYLES.get('STYLE_OUTPUT_VIEW', '')

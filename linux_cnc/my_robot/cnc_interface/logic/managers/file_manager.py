@@ -7,7 +7,7 @@ import subprocess
 from typing import TYPE_CHECKING
 
 from PyQt5.QtCore import QStringListModel
-from PyQt5.QtWidgets import QAbstractItemView, QFileDialog
+from PyQt5.QtWidgets import QAbstractItemView, QFileDialog, QScrollBar
 
 from config import STYLES
 
@@ -200,7 +200,9 @@ class FileManager:
 
         Also resets the filename label and progress indicator.  Connects
         the model's ``dataChanged`` signal so that in-place edits are
-        persisted automatically.
+        persisted automatically.  Populates the line-number sidebar
+        (``list_gcode_num``) and wires scroll synchronisation between the
+        two views.
 
         Args:
             filepath: Absolute path to the G-code file to load.
@@ -220,12 +222,74 @@ class FileManager:
                 view.setEditTriggers(_EDIT_TRIGGERS)
                 model.dataChanged.connect(self._on_gcode_edited)
 
+            # Populate the line-number sidebar and wire scroll sync
+            self._sync_line_numbers(len(lines))
+
             self._set_label("lbl_filename", os.path.basename(filepath))
             self._set_label("lbl_progress_percent", "0%")
 
             logger.debug("G-code завантажено у перегляд: %d рядків", len(lines))
         except Exception as exc:
             logger.error("_load_gcode_to_view: %s", exc)
+
+    def _sync_line_numbers(self, line_count: int) -> None:
+        """
+        Populate ``list_gcode_num`` with sequential line numbers and
+        configure the widget so its scrollbar is hidden and its vertical
+        scroll is always driven by ``list_gcode_view``.
+
+        Scroll synchronisation is established in both directions so that
+        scrolling over either widget moves only the code view, which then
+        notifies the number view via ``valueChanged``.
+
+        Args:
+            line_count: Total number of lines in the currently loaded file.
+        """
+        num_view  = getattr(self.widgets, "list_gcode_num",  None)
+        code_view = getattr(self.widgets, "list_gcode_view", None)
+
+        if num_view is None:
+            return
+
+        # Fill with "1", "2", … "N"
+        num_model = QStringListModel()
+        num_model.setStringList([str(i + 1) for i in range(line_count)])
+        num_view.setModel(num_model)
+
+        # Make the number column read-only and non-selectable
+        num_view.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        num_view.setSelectionMode(QAbstractItemView.NoSelection)
+        num_view.setFocusPolicy(num_view.NoFocus)
+
+        # Hide the vertical scrollbar on the number view entirely
+        num_view.setVerticalScrollBarPolicy(num_view.ScrollBarAlwaysOff)
+        # Also hide horizontal scrollbar – numbers never need it
+        num_view.setHorizontalScrollBarPolicy(num_view.ScrollBarAlwaysOff)
+
+        if code_view is None:
+            return
+
+        # --- Scroll synchronisation ---
+        # Drive num_view's scrollbar from code_view's scrollbar so that
+        # any scroll on the code view is mirrored to the number view.
+        code_vbar = code_view.verticalScrollBar()
+        num_vbar  = num_view.verticalScrollBar()
+
+        # Disconnect previous connections to avoid duplicates on reload
+        try:
+            code_vbar.valueChanged.disconnect(num_vbar.setValue)
+        except TypeError:
+            pass  # was not connected yet
+
+        code_vbar.valueChanged.connect(num_vbar.setValue)
+
+        # Redirect wheel events that land on num_view to code_view so
+        # the user can scroll with the mouse over the number column too.
+        # Re-installing an event filter on every load is safe: Qt keeps
+        # only one filter per (watcher, watched) pair.
+        _LineNumScrollForwarder.install(num_view, code_view)
+
+        logger.debug("Нумерацію рядків синхронізовано: %d рядків", line_count)
 
     def _on_gcode_edited(self, top_left, bottom_right, roles) -> None:
         """
@@ -325,3 +389,72 @@ class FileManager:
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(cnc={self.cnc!r})"
+
+
+# ---------------------------------------------------------------------------
+# Scroll-forwarder event filter
+# ---------------------------------------------------------------------------
+
+from PyQt5.QtCore import QObject, QEvent  # noqa: E402  (placed after class body)
+
+
+class _LineNumScrollForwarder(QObject):
+    """
+    Event filter that forwards ``Wheel`` events received by the line-number
+    view (``list_gcode_num``) to the code view (``list_gcode_view``).
+
+    This makes mouse-wheel scrolling work identically whether the cursor
+    is positioned over the number column or the code column.
+
+    Install via :meth:`install` rather than constructing directly so that
+    only one forwarder is ever attached per (num_view, code_view) pair.
+    """
+
+    # Class-level registry: num_view id → forwarder instance.
+    # Keeps the QObject alive (owned by this dict) so Qt does not
+    # garbage-collect the installed filter.
+    _registry: dict[int, "_LineNumScrollForwarder"] = {}
+
+    def __init__(self, code_view: QAbstractItemView) -> None:
+        super().__init__(code_view)          # parent = code_view keeps lifetime tied
+        self._code_view = code_view
+
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def install(
+        cls,
+        num_view:  QAbstractItemView,
+        code_view: QAbstractItemView,
+    ) -> "_LineNumScrollForwarder":
+        """
+        Attach (or replace) a forwarder on *num_view* that redirects
+        wheel events to *code_view*.
+
+        Safe to call multiple times (e.g. on every file reload).
+        """
+        key = id(num_view)
+        old = cls._registry.get(key)
+        if old is not None:
+            num_view.removeEventFilter(old)
+
+        forwarder = cls(code_view)
+        num_view.installEventFilter(forwarder)
+        cls._registry[key] = forwarder
+        return forwarder
+
+    # ------------------------------------------------------------------
+
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:  # type: ignore[override]
+        """
+        Intercept ``Wheel`` events on the number view and re-post them
+        to the code view so the vertical scrollbar of the code view
+        moves – which in turn updates the number view via the
+        ``valueChanged`` connection set up in
+        :meth:`FileManager._sync_line_numbers`.
+        """
+        if event.type() == QEvent.Wheel:
+            from PyQt5.QtWidgets import QApplication
+            QApplication.sendEvent(self._code_view.verticalScrollBar(), event)
+            return True          # event consumed; do not let num_view scroll itself
+        return False             # pass all other events through normally
