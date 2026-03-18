@@ -337,36 +337,11 @@ border: 3px solid #333333;</string>
      <property name="frameShape">
       <enum>QFrame::NoFrame</enum>
      </property>
-     <widget class="QListView" name="list_gcode_view">
-      <property name="geometry">
-       <rect>
-        <x>41</x>
-        <y>50</y>
-        <width>531</width>
-        <height>321</height>
-       </rect>
-      </property>
-      <property name="font">
-       <font>
-        <family>Noto Sans Mono CJK SC</family>
-       </font>
-      </property>
-      <property name="styleSheet">
-       <string notr="true">background-color: #161616;
-border: none;
-padding: 0px;
-color: #fff;
-</string>
-      </property>
-      <property name="autoScrollMargin">
-       <number>5</number>
-      </property>
-     </widget>
      <widget class="QFrame" name="frame_6">
       <property name="geometry">
        <rect>
         <x>20</x>
-        <y>415</y>
+        <y>505</y>
         <width>275</width>
         <height>140</height>
        </rect>
@@ -616,7 +591,7 @@ color: #fff;
       <property name="geometry">
        <rect>
         <x>315</x>
-        <y>415</y>
+        <y>505</y>
         <width>275</width>
         <height>140</height>
        </rect>
@@ -798,7 +773,7 @@ background-color: #161616;</string>
         <x>20</x>
         <y>20</y>
         <width>570</width>
-        <height>361</height>
+        <height>451</height>
        </rect>
       </property>
       <property name="styleSheet">
@@ -808,6 +783,24 @@ border: 3px solid #333333;</string>
       <property name="frameShape">
        <enum>QFrame::NoFrame</enum>
       </property>
+      <widget class="GCodeEditorWidget" name="list_gcode_edit" native="true">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>30</y>
+         <width>551</width>
+         <height>411</height>
+        </rect>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background-color: #161616;
+border: none;
+border-radius: 0px;
+padding: 0px;
+color: #fff;
+</string>
+       </property>
+      </widget>
      </widget>
      <widget class="QFrame" name="gcode_control_overlay">
       <property name="geometry">
@@ -817,6 +810,9 @@ border: 3px solid #333333;</string>
         <width>610</width>
         <height>840</height>
        </rect>
+      </property>
+      <property name="acceptDrops">
+       <bool>false</bool>
       </property>
       <property name="styleSheet">
        <string notr="true">background-color: rgba(30, 30, 30, 150);
@@ -833,7 +829,7 @@ border: 3px solid #333333;</string>
       <property name="geometry">
        <rect>
         <x>30</x>
-        <y>390</y>
+        <y>480</y>
         <width>100</width>
         <height>20</height>
        </rect>
@@ -858,7 +854,7 @@ color: #9E9E9E</string>
       <property name="geometry">
        <rect>
         <x>325</x>
-        <y>390</y>
+        <y>480</y>
         <width>100</width>
         <height>20</height>
        </rect>
@@ -913,7 +909,7 @@ color: #9E9E9E;
       <property name="geometry">
        <rect>
         <x>310</x>
-        <y>595</y>
+        <y>685</y>
         <width>275</width>
         <height>140</height>
        </rect>
@@ -1109,7 +1105,7 @@ color: #fff;
       <property name="geometry">
        <rect>
         <x>320</x>
-        <y>570</y>
+        <y>660</y>
         <width>151</width>
         <height>20</height>
        </rect>
@@ -1137,7 +1133,7 @@ color: #9E9E9E</string>
       <property name="geometry">
        <rect>
         <x>20</x>
-        <y>595</y>
+        <y>685</y>
         <width>275</width>
         <height>140</height>
        </rect>
@@ -1352,7 +1348,7 @@ color: #fff;
       <property name="geometry">
        <rect>
         <x>30</x>
-        <y>570</y>
+        <y>660</y>
         <width>151</width>
         <height>20</height>
        </rect>
@@ -1377,7 +1373,6 @@ color: #9E9E9E</string>
       </property>
      </widget>
      <zorder>frame_10</zorder>
-     <zorder>list_gcode_view</zorder>
      <zorder>frame_6</zorder>
      <zorder>frame_8</zorder>
      <zorder>lbl_controls</zorder>
@@ -4219,7 +4214,13 @@ color: #FE5C0D</string>
   <customwidget>
    <class>GCodeGraphics</class>
    <extends>QWidget</extends>
-   <header location="global">qtvcp.widgets.gcode_graphics</header>
+   <header>qtvcp.widgets.gcode_graphics</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>GCodeEditorWidget</class>
+   <extends>QWidget</extends>
+   <header location="global">logic.managers.ui.gcode_editor</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

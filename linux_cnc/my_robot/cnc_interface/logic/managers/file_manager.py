@@ -1,4 +1,27 @@
 # logic/managers/file_manager.py
+"""
+FileManager – файлові операції G-коду: відкриття, збереження, перезавантаження
+та запуск зовнішнього редактора.
+
+Зміни відносно попередньої версії
+──────────────────────────────────
+• Повністю видалено логіку QListView / QStringListModel:
+    - _load_gcode_to_view()  → замінено на _load_into_editor()
+    - _sync_line_numbers()   → видалено (вбудована нумерація в GCodeEditorWidget)
+    - _on_gcode_edited()     → видалено (auto-save живе в GCodeEditorManager)
+    - _get_gcode_model()     → видалено
+    - _write_model_to_file() → видалено
+    - _EDIT_TRIGGERS         → видалено
+• Весь вміст файлу тепер завантажується у віджет ``list_gcode_edit``
+  (GCodeEditorWidget / QPlainTextEdit) через його метод ``load_text()``.
+• _LineNumScrollForwarder видалено — більше не потрібен.
+• connect_file_buttons() підключає лише btn_file_edit (зовнішній редактор);
+  btn_file_open / save_as / reload підключає GCodeEditorManager, щоб уникнути
+  подвійного з'єднання і конфлікту власника операцій.
+• Публічний метод load_file_into_editor() дозволяє GCodeEditorManager або
+  будь-якому іншому менеджеру перевикористати I/O-логіку FileManager
+  (читання файлу, оновлення міток) не дублюючи код.
+"""
 from __future__ import annotations
 
 import logging
@@ -6,8 +29,7 @@ import os
 import subprocess
 from typing import TYPE_CHECKING
 
-from PyQt5.QtCore import QStringListModel
-from PyQt5.QtWidgets import QAbstractItemView, QFileDialog, QScrollBar
+from PyQt5.QtWidgets import QFileDialog
 
 from config import STYLES
 
@@ -17,24 +39,15 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Constants
+# Константи
 # ---------------------------------------------------------------------------
 
 _DEFAULT_GCODE_DIR  = os.path.expanduser("~/linuxcnc-dev/configs/sim/axis/nc_files")
 _GCODE_FILTER       = "G-Code Files (*.ngc *.txt *.gcode);;All Files (*)"
 _SAVE_FILTER        = "G-Code Files (*.ngc *.txt)"
-_GCODE_EXTENSIONS   = (".ngc", ".txt")
+_GCODE_EXTENSIONS   = (".ngc", ".txt", ".gcode")
 _FALLBACK_EXTENSION = ".ngc"
 _CANDIDATE_EDITORS  = ("gedit", "mousepad", "leafpad", "xed", "nano")
-
-_BTN_METHOD_MAP: tuple[tuple[str, str], ...] = (
-    ("btn_file_open",    "on_btn_file_open_clicked"),
-    ("btn_file_save_as", "on_btn_file_save_as_clicked"),
-    ("btn_file_reload",  "on_btn_file_reload_clicked"),
-    ("btn_file_edit",    "on_btn_file_edit_clicked"),
-)
-
-_EDIT_TRIGGERS = QAbstractItemView.DoubleClicked | QAbstractItemView.EditKeyPressed
 
 
 # ---------------------------------------------------------------------------
@@ -43,92 +56,105 @@ _EDIT_TRIGGERS = QAbstractItemView.DoubleClicked | QAbstractItemView.EditKeyPres
 
 class FileManager:
     """
-    Manages G-code file operations: open, save-as, reload, and edit.
+    Управляє файловими операціями G-коду.
 
-    Bridges the file system and external editors with the LinuxCNC
-    controller and the G-code list view widget.  All Qt dialogs and widget
-    interactions are confined to this class so that the rest of the
-    application remains UI-agnostic.
+    Відповідає за:
+      • відкриття файлу через діалог → завантаження у редактор + cnc.open_program()
+      • збереження копії (Save As) → збереження з редактора на диск + open_program()
+      • перезавантаження останнього файлу з диска → редактор + open_program()
+      • відкриття у зовнішньому текстовому редакторі (gedit / mousepad / …)
 
-    Attributes:
-        cnc:             Reference to the active machine controller.
-        widgets:         UI widget container.
-        STYLE_GCODE_WARN: Stylesheet string applied to the reload button
-                          when unsaved edits are pending.
+    НЕ відповідає за:
+      • auto-save при редагуванні в редакторі (це GCodeEditorManager)
+      • підсвітку синтаксису та нумерацію рядків (це GCodeEditorWidget)
+      • підключення btn_file_open / save_as / reload (це GCodeEditorManager)
+
+    Параметри
+    ---------
+    machine_controller : MachineController
+    widgets            : об'єкт-контейнер UI-віджетів
     """
 
-    __slots__ = ("cnc", "widgets", "STYLE_GCODE_WARN", "__weakref__")
+    __slots__ = ("cnc", "widgets", "STYLE_GCODE_WARN", "_editor_widget", "__weakref__")
 
     def __init__(
         self,
-        machine_controller: MachineController,
+        machine_controller: "MachineController",
         widgets: object,
     ) -> None:
-        self.cnc             = machine_controller
-        self.widgets         = widgets
+        self.cnc              = machine_controller
+        self.widgets          = widgets
         self.STYLE_GCODE_WARN = STYLES.get("GCODE_WARN", "")
+        self._editor_widget   = None   # встановлюється з HandlerClass.initialized__
 
     # ------------------------------------------------------------------
-    # Button wiring
+    # Підключення кнопок
     # ------------------------------------------------------------------
 
     def connect_file_buttons(self) -> None:
         """
-        Connect each file-operation button's ``clicked`` signal to its
-        handler method.
+        Підключити лише btn_file_edit до on_btn_file_edit_clicked.
 
-        Buttons absent from the widget container are silently skipped so
-        that partial UI layouts do not raise errors.
+        btn_file_open / btn_file_reload / btn_file_save_as підключаються
+        окремо через GCodeEditorManager.connect_file_buttons(), щоб уникнути
+        подвійного сигналу і чіткіше розмежувати відповідальність.
         """
-        for btn_name, method_name in _BTN_METHOD_MAP:
-            btn = getattr(self.widgets, btn_name, None)
-            if btn is not None:
-                btn.clicked.connect(getattr(self, method_name))
+        btn = getattr(self.widgets, "btn_file_edit", None)
+        if btn is not None:
+            # Безпечне відключення попередніх з'єднань перед підключенням
+            try:
+                btn.clicked.disconnect()
+            except TypeError:
+                pass
+            btn.clicked.connect(self.on_btn_file_edit_clicked)
 
     # ------------------------------------------------------------------
-    # Button handlers
+    # Публічні обробники кнопок
     # ------------------------------------------------------------------
 
     def on_btn_file_open_clicked(self) -> None:
         """
-        Open a G-code file via a file dialog and load it into the
-        controller and list view.
+        Відкрити G-код файл через діалог, завантажити у редактор та
+        передати LinuxCNC.
         """
+        print("DEBUG: on_btn_file_open_clicked ВИКЛИКАНО")
         file_path, _ = QFileDialog.getOpenFileName(
             None,
-            "Open G-Code File",
+            "Відкрити G-код файл",
             _DEFAULT_GCODE_DIR,
             _GCODE_FILTER,
         )
+        print(f"DEBUG: вибраний файл: {file_path}")
         if not file_path:
             return
 
         try:
             self.cnc.open_program(file_path)
-            self._load_gcode_to_view(file_path)
+            self.load_file_into_editor(file_path)
         except Exception as exc:
             logger.error("Не вдалося завантажити файл: %s", exc)
 
     def on_btn_file_save_as_clicked(self) -> None:
         """
-        Save the current G-code content under a new path chosen via a
-        file dialog, then load the new file into the controller.
+        Зберегти поточний вміст редактора у новий файл і передати його
+        у LinuxCNC.
 
-        Blocked when the interpreter is busy or the view model is empty.
+        Заблоковано якщо інтерпретатор зайнятий або редактор порожній.
         """
         if not self.cnc.is_interpreter_idle():
             logger.warning("Save-as відхилено: інтерпретатор зайнятий")
             return
 
-        model = self._get_gcode_model()
-        if model is None or model.rowCount() == 0:
+        content = self._get_editor_content()
+        if not content.strip():
+            logger.warning("Save-as відхилено: редактор порожній")
             return
 
         last_file   = self.cnc.get_last_file()
         initial_dir = os.path.dirname(last_file) if last_file else os.path.expanduser("~")
 
         new_path, _ = QFileDialog.getSaveFileName(
-            None, "Save G-Code as...", initial_dir, _SAVE_FILTER
+            None, "Зберегти G-код як…", initial_dir, _SAVE_FILTER
         )
         if not new_path:
             return
@@ -137,20 +163,19 @@ class FileManager:
             new_path += _FALLBACK_EXTENSION
 
         try:
-            self._write_model_to_file(model, new_path)
+            self._write(new_path, content)
             self.cnc.open_program(new_path)
-            self._load_gcode_to_view(new_path)
+            # Оновлюємо мітку імені файлу
+            self._set_label("lbl_filename", os.path.basename(new_path))
             logger.debug("Збережено та завантажено: %s", new_path)
         except Exception as exc:
             logger.error("Помилка збереження: %s", exc)
 
     def on_btn_file_reload_clicked(self) -> None:
         """
-        Reload the last loaded file from disk into the controller and
-        list view.
+        Перезавантажити останній файл з диска у редактор та LinuxCNC.
 
-        Blocked when no file is recorded or the interpreter is busy.
-        Clears the reload-warning stylesheet on success.
+        Заблоковано якщо файл не записаний або станок зайнятий.
         """
         last_file = self.cnc.get_last_file()
         if not last_file or not self.cnc.is_interpreter_idle():
@@ -159,22 +184,22 @@ class FileManager:
 
         try:
             self.cnc.open_program(last_file)
-            self._load_gcode_to_view(last_file)
+            self.load_file_into_editor(last_file)
             self.cnc.reload_needed = False
             self._set_reload_style("")
-            logger.debug("%s оновлено", os.path.basename(last_file))
+            logger.debug("Файл перезавантажено: %s", os.path.basename(last_file))
         except Exception as exc:
-            logger.error("Помилка релоаду: %s", exc)
+            logger.error("Помилка перезавантаження: %s", exc)
 
     def on_btn_file_edit_clicked(self) -> None:
         """
-        Open the current G-code file in the first available text editor.
+        Відкрити поточний файл у зовнішньому текстовому редакторі.
 
-        Tries each editor in :data:`_CANDIDATE_EDITORS` in order and
-        launches the first one found.  Marks the file as requiring a
-        reload by setting the warning stylesheet on the reload button.
+        Шукає перший доступний редактор із :data:`_CANDIDATE_EDITORS`.
+        Встановлює прапорець reload_needed і попереджувальний стиль на
+        кнопці Reload.
 
-        Blocked when no file is recorded or the interpreter is busy.
+        Заблоковано якщо файл не записаний або станок зайнятий.
         """
         last_file = self.cnc.get_last_file()
         if not last_file or not self.cnc.is_interpreter_idle():
@@ -191,187 +216,147 @@ class FileManager:
         logger.debug("Файл відкрито в %s: %s", editor, last_file)
 
     # ------------------------------------------------------------------
-    # Private helpers – G-code view
+    # Публічний метод завантаження у редактор
     # ------------------------------------------------------------------
 
-    def _load_gcode_to_view(self, filepath: str) -> None:
+    def load_file_into_editor(self, filepath: str) -> None:
         """
-        Read *filepath* from disk and populate the G-code list view.
+        Зчитати *filepath* з диска і передати вміст у ``list_gcode_edit``
+        (GCodeEditorWidget).
 
-        Also resets the filename label and progress indicator.  Connects
-        the model's ``dataChanged`` signal so that in-place edits are
-        persisted automatically.  Populates the line-number sidebar
-        (``list_gcode_num``) and wires scroll synchronisation between the
-        two views.
+        Також оновлює мітки lbl_filename та lbl_progress_percent.
+
+        Це єдина точка входу для завантаження файлу в UI-редактор.
+        Викликається як із обробників кнопок цього класу, так і з
+        GCodeEditorManager (через делегування у update()).
 
         Args:
-            filepath: Absolute path to the G-code file to load.
+            filepath: Абсолютний шлях до G-код файлу.
         """
-        if not os.path.exists(filepath):
+        if not os.path.isfile(filepath):
             logger.error("Файл не знайдено: %s", filepath)
             return
 
         try:
-            lines = self._read_lines(filepath)
-            model = QStringListModel()
-            model.setStringList(lines)
-
-            view = getattr(self.widgets, "list_gcode_view", None)
-            if view is not None:
-                view.setModel(model)
-                view.setEditTriggers(_EDIT_TRIGGERS)
-                model.dataChanged.connect(self._on_gcode_edited)
-
-            # Populate the line-number sidebar and wire scroll sync
-            self._sync_line_numbers(len(lines))
-
-            self._set_label("lbl_filename", os.path.basename(filepath))
-            self._set_label("lbl_progress_percent", "0%")
-
-            logger.debug("G-code завантажено у перегляд: %d рядків", len(lines))
-        except Exception as exc:
-            logger.error("_load_gcode_to_view: %s", exc)
-
-    def _sync_line_numbers(self, line_count: int) -> None:
-        """
-        Populate ``list_gcode_num`` with sequential line numbers and
-        configure the widget so its scrollbar is hidden and its vertical
-        scroll is always driven by ``list_gcode_view``.
-
-        Scroll synchronisation is established in both directions so that
-        scrolling over either widget moves only the code view, which then
-        notifies the number view via ``valueChanged``.
-
-        Args:
-            line_count: Total number of lines in the currently loaded file.
-        """
-        num_view  = getattr(self.widgets, "list_gcode_num",  None)
-        code_view = getattr(self.widgets, "list_gcode_view", None)
-
-        if num_view is None:
+            text = self._read_text(filepath)
+        except OSError as exc:
+            logger.error("Помилка читання файлу: %s", exc)
             return
 
-        # Fill with "1", "2", … "N"
-        num_model = QStringListModel()
-        num_model.setStringList([str(i + 1) for i in range(line_count)])
-        num_view.setModel(num_model)
-
-        # Make the number column read-only and non-selectable
-        num_view.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        num_view.setSelectionMode(QAbstractItemView.NoSelection)
-        num_view.setFocusPolicy(num_view.NoFocus)
-
-        # Hide the vertical scrollbar on the number view entirely
-        num_view.setVerticalScrollBarPolicy(num_view.ScrollBarAlwaysOff)
-        # Also hide horizontal scrollbar – numbers never need it
-        num_view.setHorizontalScrollBarPolicy(num_view.ScrollBarAlwaysOff)
-
-        if code_view is None:
-            return
-
-        # --- Scroll synchronisation ---
-        # Drive num_view's scrollbar from code_view's scrollbar so that
-        # any scroll on the code view is mirrored to the number view.
-        code_vbar = code_view.verticalScrollBar()
-        num_vbar  = num_view.verticalScrollBar()
-
-        # Disconnect previous connections to avoid duplicates on reload
-        try:
-            code_vbar.valueChanged.disconnect(num_vbar.setValue)
-        except TypeError:
-            pass  # was not connected yet
-
-        code_vbar.valueChanged.connect(num_vbar.setValue)
-
-        # Redirect wheel events that land on num_view to code_view so
-        # the user can scroll with the mouse over the number column too.
-        # Re-installing an event filter on every load is safe: Qt keeps
-        # only one filter per (watcher, watched) pair.
-        _LineNumScrollForwarder.install(num_view, code_view)
-
-        logger.debug("Нумерацію рядків синхронізовано: %d рядків", line_count)
-
-    def _on_gcode_edited(self, top_left, bottom_right, roles) -> None:
-        """
-        Persist in-place G-code edits back to disk and re-sync LinuxCNC.
-
-        Called automatically via the ``dataChanged`` signal of the list
-        view model.  Blocked when the interpreter is busy.  Clears the
-        reload-warning stylesheet on success.
-        """
-        if not self.cnc.is_interpreter_idle():
-            logger.warning("Редагування заблоковано: програма виконується")
-            return
-
-        last_file = self.cnc.get_last_file()
-        if not last_file or not os.path.exists(last_file):
-            return
-
-        try:
-            model = self._get_gcode_model()
-            if model is None:
-                return
-
-            self._write_lines_to_file(model.stringList(), last_file)
-            self.cnc.open_program(last_file)
-            self.cnc.reload_needed = False
-            self._set_reload_style("")
-            logger.debug(
-                "Зміни збережено та синхронізовано: %s",
-                os.path.basename(last_file),
+        # ── Передати текст у GCodeEditorWidget (list_gcode_edit) ──────
+        editor = self._get_editor_widget()
+        if editor is not None:
+            # load_text() зупиняє debounce-таймер, тому не тригерить auto-save
+            editor.load_text(text)
+        else:
+            logger.warning(
+                "Віджет list_gcode_edit не знайдено або не має методу load_text(). "
+                "Переконайтесь, що GCodeEditorWidget правильно встановлено у .ui файлі."
             )
-        except Exception as exc:
-            logger.error("Не вдалося зберегти зміни: %s", exc)
+
+        # ── Оновити допоміжні мітки ───────────────────────────────────
+        self._set_label("lbl_filename",        os.path.basename(filepath))
+        self._set_label("lbl_progress_percent", "0%")
+
+        logger.debug(
+            "G-код завантажено у list_gcode_edit: %s (%d символів)",
+            os.path.basename(filepath),
+            len(text),
+        )
 
     # ------------------------------------------------------------------
-    # Private helpers – widgets
+    # Пряме посилання на редактор (встановлюється з HandlerClass)
     # ------------------------------------------------------------------
 
-    def _get_gcode_model(self) -> QStringListModel | None:
-        """Return the model attached to the G-code list view, or ``None``."""
-        view = getattr(self.widgets, "list_gcode_view", None)
-        return view.model() if view is not None else None
+    def set_editor_widget(self, editor_widget) -> None:
+        """
+        Зберегти пряме посилання на GCodeEditorWidget.
+
+        Викликати з HandlerClass.initialized__() після створення
+        GCodeEditorManager:
+            self.file_manager.set_editor_widget(self.editor_manager._editor)
+
+        Гарантує що FileManager завжди пише в той самий екземпляр
+        що відображається на екрані, незалежно від того як
+        GCodeEditorManager змонтував контейнер у layout.
+        """
+        self._editor_widget = editor_widget
+        logger.debug("FileManager: editor widget зареєстровано: %s", type(editor_widget).__name__)
+
+    # ------------------------------------------------------------------
+    # Приватні хелпери – доступ до редактора
+    # ------------------------------------------------------------------
+
+    def _get_editor_widget(self):
+        """
+        Повернути GCodeEditorWidget.
+
+        Пріоритет:
+          1. Пряме посилання через set_editor_widget() — найнадійніший спосіб.
+          2. Fallback: widgets.list_gcode_edit (якщо set_editor_widget
+             ще не було викликано).
+        """
+        # 1. Пряме посилання
+        direct = getattr(self, "_editor_widget", None)
+        if direct is not None:
+            return direct
+
+        # 2. Fallback через widgets
+        widget = getattr(self.widgets, "list_gcode_edit", None)
+        if widget is None:
+            return None
+        if hasattr(widget, "load_text"):
+            return widget
+        inner = getattr(widget, "editor", None)
+        if inner is not None and hasattr(inner, "load_text"):
+            return inner
+        return None
+
+    def _get_editor_content(self) -> str:
+        """Повернути поточний текст із редактора або порожній рядок."""
+        editor = self._get_editor_widget()
+        if editor is None:
+            return ""
+        # QPlainTextEdit.toPlainText() → str
+        return editor.toPlainText() if hasattr(editor, "toPlainText") else ""
+
+    # ------------------------------------------------------------------
+    # Приватні хелпери – віджети
+    # ------------------------------------------------------------------
 
     def _set_label(self, attr: str, text: str) -> None:
-        """Set *text* on a label widget if it exists."""
+        """Встановити текст на мітці, якщо вона існує."""
         label = getattr(self.widgets, attr, None)
         if label is not None:
             label.setText(text)
 
     def _set_reload_style(self, stylesheet: str) -> None:
-        """Apply *stylesheet* to the reload button if it exists."""
+        """Застосувати stylesheet до кнопки Reload, якщо вона існує."""
         btn = getattr(self.widgets, "btn_file_reload", None)
         if btn is not None:
             btn.setStyleSheet(stylesheet)
 
     # ------------------------------------------------------------------
-    # Private helpers – file I/O
+    # Приватні хелпери – файловий I/O
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _read_lines(filepath: str) -> list[str]:
-        """Read *filepath* and return a list of stripped lines."""
+    def _read_text(filepath: str) -> str:
+        """Прочитати файл повністю та повернути рядок."""
         with open(filepath, encoding="utf-8") as fh:
-            return [line.strip() for line in fh]
+            return fh.read()
 
     @staticmethod
-    def _write_lines_to_file(lines: list[str], filepath: str) -> None:
-        """Write *lines* to *filepath*, joining with newlines."""
+    def _write(filepath: str, content: str) -> None:
+        """Записати *content* у *filepath*."""
         with open(filepath, "w", encoding="utf-8") as fh:
-            fh.write("\n".join(lines) + "\n")
-
-    @staticmethod
-    def _write_model_to_file(model: QStringListModel, filepath: str) -> None:
-        """Extract all rows from *model* and write them to *filepath*."""
-        content = [model.index(i, 0).data() for i in range(model.rowCount())]
-        with open(filepath, "w", encoding="utf-8") as fh:
-            fh.write("\n".join(content))
+            fh.write(content)
 
     @staticmethod
     def _find_editor() -> str | None:
         """
-        Return the name of the first available editor from
-        :data:`_CANDIDATE_EDITORS`, or ``None`` if none are found.
+        Повернути назву першого доступного редактора із
+        :data:`_CANDIDATE_EDITORS`, або ``None`` якщо жоден не знайдено.
         """
         for editor in _CANDIDATE_EDITORS:
             result = subprocess.call(
@@ -384,77 +369,8 @@ class FileManager:
         return None
 
     # ------------------------------------------------------------------
-    # Dunder helpers
+    # Dunder
     # ------------------------------------------------------------------
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(cnc={self.cnc!r})"
-
-
-# ---------------------------------------------------------------------------
-# Scroll-forwarder event filter
-# ---------------------------------------------------------------------------
-
-from PyQt5.QtCore import QObject, QEvent  # noqa: E402  (placed after class body)
-
-
-class _LineNumScrollForwarder(QObject):
-    """
-    Event filter that forwards ``Wheel`` events received by the line-number
-    view (``list_gcode_num``) to the code view (``list_gcode_view``).
-
-    This makes mouse-wheel scrolling work identically whether the cursor
-    is positioned over the number column or the code column.
-
-    Install via :meth:`install` rather than constructing directly so that
-    only one forwarder is ever attached per (num_view, code_view) pair.
-    """
-
-    # Class-level registry: num_view id → forwarder instance.
-    # Keeps the QObject alive (owned by this dict) so Qt does not
-    # garbage-collect the installed filter.
-    _registry: dict[int, "_LineNumScrollForwarder"] = {}
-
-    def __init__(self, code_view: QAbstractItemView) -> None:
-        super().__init__(code_view)          # parent = code_view keeps lifetime tied
-        self._code_view = code_view
-
-    # ------------------------------------------------------------------
-
-    @classmethod
-    def install(
-        cls,
-        num_view:  QAbstractItemView,
-        code_view: QAbstractItemView,
-    ) -> "_LineNumScrollForwarder":
-        """
-        Attach (or replace) a forwarder on *num_view* that redirects
-        wheel events to *code_view*.
-
-        Safe to call multiple times (e.g. on every file reload).
-        """
-        key = id(num_view)
-        old = cls._registry.get(key)
-        if old is not None:
-            num_view.removeEventFilter(old)
-
-        forwarder = cls(code_view)
-        num_view.installEventFilter(forwarder)
-        cls._registry[key] = forwarder
-        return forwarder
-
-    # ------------------------------------------------------------------
-
-    def eventFilter(self, watched: QObject, event: QEvent) -> bool:  # type: ignore[override]
-        """
-        Intercept ``Wheel`` events on the number view and re-post them
-        to the code view so the vertical scrollbar of the code view
-        moves – which in turn updates the number view via the
-        ``valueChanged`` connection set up in
-        :meth:`FileManager._sync_line_numbers`.
-        """
-        if event.type() == QEvent.Wheel:
-            from PyQt5.QtWidgets import QApplication
-            QApplication.sendEvent(self._code_view.verticalScrollBar(), event)
-            return True          # event consumed; do not let num_view scroll itself
-        return False             # pass all other events through normally
