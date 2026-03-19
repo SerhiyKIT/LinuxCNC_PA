@@ -6,19 +6,19 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1580</width>
+    <width>1850</width>
     <height>960</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
-    <width>1580</width>
+    <width>1850</width>
     <height>960</height>
    </size>
   </property>
   <property name="maximumSize">
    <size>
-    <width>1580</width>
+    <width>1850</width>
     <height>960</height>
    </size>
   </property>
@@ -48,7 +48,7 @@
      <rect>
       <x>0</x>
       <y>0</y>
-      <width>1580</width>
+      <width>1850</width>
       <height>80</height>
      </rect>
     </property>
@@ -58,7 +58,7 @@
     <widget class="QLabel" name="lbl_status">
      <property name="geometry">
       <rect>
-       <x>859</x>
+       <x>990</x>
        <y>40</y>
        <width>85</width>
        <height>26</height>
@@ -92,10 +92,10 @@
     <widget class="QToolButton" name="btn_power_off">
      <property name="geometry">
       <rect>
-       <x>1376</x>
+       <x>1556</x>
        <y>30</y>
        <width>83</width>
-       <height>49</height>
+       <height>50</height>
       </rect>
      </property>
      <property name="sizePolicy">
@@ -136,10 +136,10 @@ QToolButton:hover{
     <widget class="QPushButton" name="btn_estop">
      <property name="geometry">
       <rect>
-       <x>1465</x>
+       <x>1645</x>
        <y>30</y>
        <width>92</width>
-       <height>46</height>
+       <height>50</height>
       </rect>
      </property>
      <property name="sizePolicy">
@@ -178,9 +178,9 @@ QPushButton:hover{
     <widget class="QLabel" name="txt_status_display">
      <property name="geometry">
       <rect>
-       <x>964</x>
+       <x>1084</x>
        <y>30</y>
-       <width>281</width>
+       <width>341</width>
        <height>50</height>
       </rect>
      </property>
@@ -209,7 +209,7 @@ border: 3px solid #333333;
     <widget class="QToolButton" name="btn_home_all">
      <property name="geometry">
       <rect>
-       <x>1250</x>
+       <x>1430</x>
        <y>30</y>
        <width>121</width>
        <height>50</height>
@@ -253,7 +253,7 @@ QToolButton:hover{
     <widget class="QComboBox" name="combo_language">
      <property name="geometry">
       <rect>
-       <x>540</x>
+       <x>1740</x>
        <y>30</y>
        <width>90</width>
        <height>50</height>
@@ -306,7 +306,7 @@ QComboBox {
    <widget class="QFrame" name="frame_2">
     <property name="geometry">
      <rect>
-      <x>0</x>
+      <x>365</x>
       <y>80</y>
       <width>640</width>
       <height>880</height>
@@ -593,7 +593,7 @@ color: #fff;
         <x>315</x>
         <y>505</y>
         <width>275</width>
-        <height>140</height>
+        <height>110</height>
        </rect>
       </property>
       <property name="sizePolicy">
@@ -908,10 +908,10 @@ color: #9E9E9E;
      <widget class="QFrame" name="frm_spindle_control">
       <property name="geometry">
        <rect>
-        <x>310</x>
-        <y>685</y>
+        <x>315</x>
+        <y>655</y>
         <width>275</width>
-        <height>140</height>
+        <height>170</height>
        </rect>
       </property>
       <property name="sizePolicy">
@@ -932,7 +932,7 @@ background-color: #161616;</string>
        <property name="geometry">
         <rect>
          <x>15</x>
-         <y>55</y>
+         <y>15</y>
          <width>70</width>
          <height>30</height>
         </rect>
@@ -971,7 +971,7 @@ background-color: #161616;</string>
        <property name="geometry">
         <rect>
          <x>103</x>
-         <y>55</y>
+         <y>15</y>
          <width>70</width>
          <height>30</height>
         </rect>
@@ -1010,7 +1010,7 @@ background-color: #161616;</string>
        <property name="geometry">
         <rect>
          <x>190</x>
-         <y>55</y>
+         <y>15</y>
          <width>70</width>
          <height>30</height>
         </rect>
@@ -1051,7 +1051,7 @@ background-color: #161616;</string>
          <x>0</x>
          <y>0</y>
          <width>275</width>
-         <height>140</height>
+         <height>170</height>
         </rect>
        </property>
        <property name="styleSheet">
@@ -1070,7 +1070,7 @@ border: 3px solid #333333;</string>
        <property name="geometry">
         <rect>
          <x>15</x>
-         <y>95</y>
+         <y>125</y>
          <width>245</width>
          <height>30</height>
         </rect>
@@ -1095,17 +1095,130 @@ color: #fff;
         <set>Qt::AlignCenter</set>
        </property>
       </widget>
+      <widget class="QLabel" name="val_spindle_override">
+       <property name="geometry">
+        <rect>
+         <x>-1</x>
+         <y>90</y>
+         <width>51</width>
+         <height>23</height>
+        </rect>
+       </property>
+       <property name="font">
+        <font>
+         <family>JetBrains Mono</family>
+         <pointsize>10</pointsize>
+         <weight>50</weight>
+         <bold>false</bold>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">border: none;
+color: #fff;
+</string>
+       </property>
+       <property name="text">
+        <string>100 %</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+      <widget class="QLabel" name="lbl_spindle_override">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="geometry">
+        <rect>
+         <x>60</x>
+         <y>60</y>
+         <width>200</width>
+         <height>23</height>
+        </rect>
+       </property>
+       <property name="font">
+        <font>
+         <family>JetBrains Mono</family>
+         <pointsize>10</pointsize>
+         <weight>50</weight>
+         <bold>false</bold>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">border: none;
+color: #fff;
+background: none;</string>
+       </property>
+       <property name="text">
+        <string>Spindle Override:</string>
+       </property>
+      </widget>
+      <widget class="QSlider" name="sld_spindle_override">
+       <property name="geometry">
+        <rect>
+         <x>60</x>
+         <y>90</y>
+         <width>201</width>
+         <height>23</height>
+        </rect>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">QSlider::groove:horizontal {
+    background: #FE5C0D;
+	border-radius: 10px;
+	border: 3px solid #333333;
+}
+
+QSlider::handle:horizontal {
+    background: #FE5C0D;
+    width: 18px;
+    height: 18px;
+    margin: -6px 0; 
+    border-radius: 9px; 
+}
+
+QSlider::handle:horizontal:hover {
+	background-color: rgb(254, 81, 13);
+    border: 2px solid rgb(254, 174, 13);
+}
+
+QSlider::sub-page:horizontal {
+    background: #161616;
+    height: 8px;
+    border-radius: 9px;
+}
+
+QSlider::add-page:horizontal {
+    background: #161616;
+    border: 1px solid #333333;
+    height: 8px;
+    border-radius: 9px;
+}</string>
+       </property>
+       <property name="maximum">
+        <number>200</number>
+       </property>
+       <property name="value">
+        <number>100</number>
+       </property>
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+      </widget>
       <zorder>btn_spindle_cw</zorder>
       <zorder>btn_spindle_stop</zorder>
       <zorder>btn_spindle_ccw</zorder>
       <zorder>lbl_spindle_status</zorder>
+      <zorder>val_spindle_override</zorder>
+      <zorder>lbl_spindle_override</zorder>
+      <zorder>sld_spindle_override</zorder>
       <zorder>spindle_control_overlay</zorder>
      </widget>
      <widget class="QLabel" name="lbl_spindle_control">
       <property name="geometry">
        <rect>
         <x>320</x>
-        <y>660</y>
+        <y>630</y>
         <width>151</width>
         <height>20</height>
        </rect>
@@ -1406,16 +1519,16 @@ color: #9E9E9E</string>
 color: #9E9E9E</string>
      </property>
      <property name="text">
-      <string>G-Code Control</string>
+      <string>Code Control</string>
      </property>
     </widget>
    </widget>
    <widget class="QFrame" name="frame_3">
     <property name="geometry">
      <rect>
-      <x>640</x>
+      <x>1005</x>
       <y>80</y>
-      <width>940</width>
+      <width>845</width>
       <height>880</height>
      </rect>
     </property>
@@ -1425,7 +1538,7 @@ color: #9E9E9E</string>
     <widget class="QFrame" name="frm_joint_control">
      <property name="geometry">
       <rect>
-       <x>10</x>
+       <x>5</x>
        <y>45</y>
        <width>295</width>
        <height>330</height>
@@ -2369,7 +2482,7 @@ border: 3px solid #333333;
     <widget class="QFrame" name="frm_axis_control">
      <property name="geometry">
       <rect>
-       <x>15</x>
+       <x>5</x>
        <y>405</y>
        <width>295</width>
        <height>330</height>
@@ -3311,7 +3424,7 @@ border: 3px solid #333333;
     <widget class="QLabel" name="lbl_joint_control">
      <property name="geometry">
       <rect>
-       <x>15</x>
+       <x>10</x>
        <y>20</y>
        <width>150</width>
        <height>20</height>
@@ -3334,7 +3447,7 @@ color: #9E9E9E</string>
     <widget class="QLabel" name="lbl_axis_control">
      <property name="geometry">
       <rect>
-       <x>20</x>
+       <x>10</x>
        <y>380</y>
        <width>150</width>
        <height>20</height>
@@ -3357,9 +3470,9 @@ color: #9E9E9E</string>
     <widget class="GCodeGraphics" name="robot_view" native="true">
      <property name="geometry">
       <rect>
-       <x>326</x>
+       <x>316</x>
        <y>25</y>
-       <width>590</width>
+       <width>510</width>
        <height>350</height>
       </rect>
      </property>
@@ -3371,7 +3484,7 @@ border: 3px solid #333333;</string>
     <widget class="QLabel" name="lbl_cnc_control">
      <property name="geometry">
       <rect>
-       <x>330</x>
+       <x>321</x>
        <y>380</y>
        <width>161</width>
        <height>20</height>
@@ -3394,9 +3507,9 @@ color: #FE5C0D</string>
     <widget class="QFrame" name="frm_cnc_control">
      <property name="geometry">
       <rect>
-       <x>330</x>
+       <x>316</x>
        <y>405</y>
-       <width>590</width>
+       <width>510</width>
        <height>330</height>
       </rect>
      </property>
@@ -3417,9 +3530,9 @@ border: 3px solid #FE5C0D;</string>
       <property name="geometry">
        <rect>
         <x>15</x>
-        <y>235</y>
-        <width>560</width>
-        <height>80</height>
+        <y>202</y>
+        <width>480</width>
+        <height>111</height>
        </rect>
       </property>
       <property name="font">
@@ -3450,9 +3563,9 @@ border: 3px solid #333333;
      <widget class="QSlider" name="sld_feed_override">
       <property name="geometry">
        <rect>
-        <x>385</x>
+        <x>345</x>
         <y>10</y>
-        <width>190</width>
+        <width>150</width>
         <height>23</height>
        </rect>
       </property>
@@ -3551,37 +3664,11 @@ color: #fff;
        <string>Rapid Override:</string>
       </property>
      </widget>
-     <widget class="QLabel" name="lbl_spindle_override">
-      <property name="geometry">
-       <rect>
-        <x>15</x>
-        <y>74</y>
-        <width>200</width>
-        <height>23</height>
-       </rect>
-      </property>
-      <property name="font">
-       <font>
-        <family>JetBrains Mono</family>
-        <pointsize>12</pointsize>
-        <weight>75</weight>
-        <bold>true</bold>
-       </font>
-      </property>
-      <property name="styleSheet">
-       <string notr="true">border: none;
-color: #fff;
-</string>
-      </property>
-      <property name="text">
-       <string>Spindle Override:</string>
-      </property>
-     </widget>
      <widget class="QLabel" name="lbl_linear_jog_speed">
       <property name="geometry">
        <rect>
         <x>15</x>
-        <y>106</y>
+        <y>74</y>
         <width>200</width>
         <height>23</height>
        </rect>
@@ -3607,8 +3694,8 @@ color: #fff;
       <property name="geometry">
        <rect>
         <x>15</x>
-        <y>138</y>
-        <width>200</width>
+        <y>106</y>
+        <width>231</width>
         <height>23</height>
        </rect>
       </property>
@@ -3633,7 +3720,7 @@ color: #fff;
       <property name="geometry">
        <rect>
         <x>15</x>
-        <y>170</y>
+        <y>138</y>
         <width>231</width>
         <height>23</height>
        </rect>
@@ -3659,7 +3746,7 @@ color: #fff;
       <property name="geometry">
        <rect>
         <x>15</x>
-        <y>202</y>
+        <y>170</y>
         <width>200</width>
         <height>23</height>
        </rect>
@@ -3684,9 +3771,9 @@ color: #fff;
      <widget class="QSlider" name="sld_rapid_override">
       <property name="geometry">
        <rect>
-        <x>385</x>
+        <x>345</x>
         <y>42</y>
-        <width>190</width>
+        <width>150</width>
         <height>23</height>
        </rect>
       </property>
@@ -3725,58 +3812,6 @@ QSlider::add-page:horizontal {
       </property>
       <property name="maximum">
        <number>100</number>
-      </property>
-      <property name="value">
-       <number>100</number>
-      </property>
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-     </widget>
-     <widget class="QSlider" name="sld_spindle_override">
-      <property name="geometry">
-       <rect>
-        <x>385</x>
-        <y>74</y>
-        <width>190</width>
-        <height>23</height>
-       </rect>
-      </property>
-      <property name="styleSheet">
-       <string notr="true">QSlider::groove:horizontal {
-    background: #FE5C0D;
-	border-radius: 10px;
-	border: 3px solid #333333;
-}
-
-QSlider::handle:horizontal {
-    background: #FE5C0D;
-    width: 18px;
-    height: 18px;
-    margin: -6px 0; 
-    border-radius: 9px; 
-}
-
-QSlider::handle:horizontal:hover {
-	background-color: rgb(254, 81, 13);
-    border: 2px solid rgb(254, 174, 13);
-}
-
-QSlider::sub-page:horizontal {
-    background: #161616;
-    height: 8px;
-    border-radius: 9px;
-}
-
-QSlider::add-page:horizontal {
-    background: #161616;
-    border: 1px solid #333333;
-    height: 8px;
-    border-radius: 9px;
-}</string>
-      </property>
-      <property name="maximum">
-       <number>200</number>
       </property>
       <property name="value">
        <number>100</number>
@@ -3788,9 +3823,9 @@ QSlider::add-page:horizontal {
      <widget class="QSlider" name="sld_linear_jog_speed">
       <property name="geometry">
        <rect>
-        <x>385</x>
-        <y>106</y>
-        <width>190</width>
+        <x>345</x>
+        <y>74</y>
+        <width>150</width>
         <height>23</height>
        </rect>
       </property>
@@ -3840,9 +3875,9 @@ QSlider::add-page:horizontal {
      <widget class="QSlider" name="sld_angular_jog_speed">
       <property name="geometry">
        <rect>
-        <x>385</x>
-        <y>138</y>
-        <width>190</width>
+        <x>345</x>
+        <y>106</y>
+        <width>150</width>
         <height>23</height>
        </rect>
       </property>
@@ -3892,9 +3927,9 @@ QSlider::add-page:horizontal {
      <widget class="QSlider" name="sld_max_velocity">
       <property name="geometry">
        <rect>
-        <x>385</x>
-        <y>170</y>
-        <width>190</width>
+        <x>345</x>
+        <y>138</y>
+        <width>150</width>
         <height>23</height>
        </rect>
       </property>
@@ -3944,7 +3979,7 @@ QSlider::add-page:horizontal {
      <widget class="QLabel" name="val_feed_override">
       <property name="geometry">
        <rect>
-        <x>250</x>
+        <x>210</x>
         <y>10</y>
         <width>125</width>
         <height>23</height>
@@ -3973,37 +4008,8 @@ color: #fff;
      <widget class="QLabel" name="val_rapid_override">
       <property name="geometry">
        <rect>
-        <x>250</x>
+        <x>210</x>
         <y>42</y>
-        <width>125</width>
-        <height>23</height>
-       </rect>
-      </property>
-      <property name="font">
-       <font>
-        <family>JetBrains Mono</family>
-        <pointsize>12</pointsize>
-        <weight>75</weight>
-        <bold>true</bold>
-       </font>
-      </property>
-      <property name="styleSheet">
-       <string notr="true">border: none;
-color: #fff;
-</string>
-      </property>
-      <property name="text">
-       <string>100 %</string>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-      </property>
-     </widget>
-     <widget class="QLabel" name="val_spindle_override">
-      <property name="geometry">
-       <rect>
-        <x>250</x>
-        <y>74</y>
         <width>125</width>
         <height>23</height>
        </rect>
@@ -4031,8 +4037,8 @@ color: #fff;
      <widget class="QLabel" name="val_linear_jog_speed">
       <property name="geometry">
        <rect>
-        <x>250</x>
-        <y>106</y>
+        <x>210</x>
+        <y>74</y>
         <width>125</width>
         <height>23</height>
        </rect>
@@ -4060,9 +4066,9 @@ color: #fff;
      <widget class="QLabel" name="val_angular_jog_speed">
       <property name="geometry">
        <rect>
-        <x>234</x>
-        <y>138</y>
-        <width>141</width>
+        <x>184</x>
+        <y>106</y>
+        <width>151</width>
         <height>23</height>
        </rect>
       </property>
@@ -4089,8 +4095,8 @@ color: #fff;
      <widget class="QLabel" name="val_max_velocity">
       <property name="geometry">
        <rect>
-        <x>250</x>
-        <y>170</y>
+        <x>210</x>
+        <y>138</y>
         <width>125</width>
         <height>23</height>
        </rect>
@@ -4119,7 +4125,7 @@ color: #fff;
     <widget class="QLabel" name="lbl_output">
      <property name="geometry">
       <rect>
-       <x>20</x>
+       <x>10</x>
        <y>740</y>
        <width>160</width>
        <height>20</height>
@@ -4142,9 +4148,9 @@ color: #FE5C0D</string>
     <widget class="QFrame" name="frm_output">
      <property name="geometry">
       <rect>
-       <x>15</x>
+       <x>5</x>
        <y>765</y>
-       <width>905</width>
+       <width>825</width>
        <height>100</height>
       </rect>
      </property>
@@ -4169,7 +4175,7 @@ color: #FE5C0D</string>
        <rect>
         <x>5</x>
         <y>5</y>
-        <width>895</width>
+        <width>815</width>
         <height>90</height>
        </rect>
       </property>
@@ -4204,6 +4210,167 @@ color: #FE5C0D</string>
       </property>
       <property name="autoScrollMargin">
        <number>5</number>
+      </property>
+     </widget>
+    </widget>
+   </widget>
+   <widget class="QFrame" name="frame_4">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>80</y>
+      <width>365</width>
+      <height>880</height>
+     </rect>
+    </property>
+    <property name="frameShape">
+     <enum>QFrame::NoFrame</enum>
+    </property>
+    <widget class="QLabel" name="lbl_project_manager">
+     <property name="geometry">
+      <rect>
+       <x>30</x>
+       <y>0</y>
+       <width>151</width>
+       <height>20</height>
+      </rect>
+     </property>
+     <property name="font">
+      <font>
+       <family>JetBrains Mono</family>
+       <pointsize>10</pointsize>
+       <weight>50</weight>
+       <bold>false</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">border: none;
+color: #FE5C0D</string>
+     </property>
+     <property name="text">
+      <string>Project Manager</string>
+     </property>
+    </widget>
+    <widget class="QFrame" name="frm_project_manager">
+     <property name="geometry">
+      <rect>
+       <x>20</x>
+       <y>25</y>
+       <width>345</width>
+       <height>840</height>
+      </rect>
+     </property>
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">border-radius: 10px;
+border: 3px solid #FE5C0D;</string>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::NoFrame</enum>
+     </property>
+     <widget class="QWidget" name="widget_project_manager" native="true">
+      <property name="geometry">
+       <rect>
+        <x>20</x>
+        <y>70</y>
+        <width>305</width>
+        <height>751</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">background-color: #161616;
+border: 3px solid #333333;</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="btn_create_new_project">
+      <property name="geometry">
+       <rect>
+        <x>180</x>
+        <y>20</y>
+        <width>145</width>
+        <height>30</height>
+       </rect>
+      </property>
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="font">
+       <font>
+        <family>JetBrains Mono</family>
+        <pointsize>12</pointsize>
+        <weight>50</weight>
+        <bold>false</bold>
+       </font>
+      </property>
+      <property name="mouseTracking">
+       <bool>true</bool>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">QPushButton {
+	background-color: #FE5C0D;
+	color: #FFFFFF;
+	padding: 5px;
+	border-radius: 10px;
+	border: none;
+}
+QPushButton:hover{
+	background-color: rgb(254, 81, 13);
+    border: 2px solid rgb(254, 174, 13);
+}</string>
+      </property>
+      <property name="text">
+       <string>CREATE</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="btn_open_project">
+      <property name="geometry">
+       <rect>
+        <x>20</x>
+        <y>20</y>
+        <width>145</width>
+        <height>30</height>
+       </rect>
+      </property>
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="font">
+       <font>
+        <family>JetBrains Mono</family>
+        <pointsize>12</pointsize>
+        <weight>50</weight>
+        <bold>false</bold>
+       </font>
+      </property>
+      <property name="mouseTracking">
+       <bool>true</bool>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">QPushButton {
+	background-color: #FE5C0D;
+	color: #FFFFFF;
+	padding: 5px;
+	border-radius: 10px;
+	border: none;
+}
+QPushButton:hover{
+	background-color: rgb(254, 81, 13);
+    border: 2px solid rgb(254, 174, 13);
+}</string>
+      </property>
+      <property name="text">
+       <string>OPEN</string>
       </property>
      </widget>
     </widget>

@@ -27,7 +27,9 @@ from PyQt5.QtGui     import (
     QTextCharFormat, QTextCursor, QTextDocument, QTextFormat,
 )
 from PyQt5.QtWidgets import (
-    QHBoxLayout, QLabel, QLineEdit,
+    QCheckBox, QComboBox, QDialog,
+    QFormLayout, QGroupBox, QHBoxLayout,
+    QLabel, QLineEdit,
     QMenu, QPlainTextEdit, QPushButton,
     QShortcut, QTextEdit, QVBoxLayout, QWidget,
 )
@@ -46,36 +48,443 @@ _FALLBACK_EXT      = ".ngc"
 _AUTOSAVE_DELAY_MS = 800
 
 # Палітра
-_CLR_BACKGROUND  = QColor("#1e1e2e")
-_CLR_FOREGROUND  = QColor("#cdd6f4")
-_CLR_LINE_NUM_BG = QColor("#181825")
-_CLR_LINE_NUM_FG = QColor("#6c7086")
-_CLR_ACTIVE_LINE = QColor("#313244")
-_CLR_EXEC_LINE   = QColor("#45475a")
+_CLR_BACKGROUND  = QColor("#121212")
+_CLR_FOREGROUND  = QColor("#F1F1F1")
+_CLR_LINE_NUM_BG = QColor("#161616")
+_CLR_LINE_NUM_FG = QColor("#9E9E9E")
+_CLR_ACTIVE_LINE = QColor("#333333")
+_CLR_EXEC_LINE   = QColor("#333333")
 _CLR_G_CODE      = QColor("#89b4fa")
 _CLR_M_CODE      = QColor("#a6e3a1")
 _CLR_COORD       = QColor("#fab387")
 _CLR_FEED        = QColor("#f38ba8")
-_CLR_COMMENT     = QColor("#6c7086")
+_CLR_COMMENT     = QColor("#5B5B5B")
 _CLR_NUMBER      = QColor("#f9e2af")
 
 _TEMPLATES: dict[str, str] = {
-    "Шапка програми": (
-        "%\nO0001 (НАЗВА ПРОГРАМИ)\n"
-        "G21 G17 G90 G94\n"
-        "G28 G91 Z0.\nG90\n"
+    "PTP (Point-to-Point)": (
+        "PTP {POS} [CONT] [VEL] [ACC] [TOOL] [BASE];"
     ),
-    "Зміна інструменту": (
-        "M5\nG28 G91 Z0.\nG90\n"
-        "T{n} M6\nG43 H{n}\nS{rpm} M3\n"
+    "LIN (Linear)": (
+        "LIN {POS} [CONT] [ORI_TYPE] [VEL] [ACC] [TOOL] [BASE];"
     ),
-    "Завершення (M30)": (
-        "M5\nM9\n"
-        "G28 G91 Z0.\nG90\n"
-        "G28 G91 X0. Y0.\nG90\n"
-        "M30\n%\n"
+    "CIRC (Circular)": (
+        "CIRC {AUX_POS} {TARGET_POS} [CONT] [ORI_TYPE] [CIRC_TYPE] [VEL] [ACC] [TOOL] [BASE];"
     ),
 }
+
+
+# ===========================================================================
+# 0. Діалог вставки команди руху (PTP / LIN / CIRC)
+# ===========================================================================
+
+_DIALOG_STYLE = """
+QDialog          { background:#1E1E1E; color:#F1F1F1; }
+QGroupBox        { border:1px solid #333333; border-radius:4px;
+                   margin-top:8px; color:#FE5C0D; }
+QGroupBox::title { subcontrol-origin:margin; left:8px; padding:0 4px; }
+QLabel           { color:#F1F1F1; }
+QLineEdit        { background:#121212; color:#F1F1F1;
+                   border:1px solid #333333; border-radius:3px;
+                   padding:3px 6px; min-width:80px; }
+QLineEdit:focus  { border-color:#FE5C0D; }
+QLineEdit[invalid="true"] { border-color:#f38ba8; }
+QComboBox        { background:#121212; color:#F1F1F1;
+                   border:1px solid #333333; border-radius:3px; padding:3px 6px; }
+QComboBox::drop-down { border:none; }
+QComboBox QAbstractItemView { background:#121212; color:#F1F1F1;
+                               selection-background-color:#333333; }
+QCheckBox        { color:#F1F1F1; spacing:6px; }
+QCheckBox::indicator { width:16px; height:16px; border:1px solid #333333;
+                        border-radius:3px; background:#121212; }
+QCheckBox::indicator:checked { background:#FE5C0D; border-color:#FE5C0D; }
+QPushButton      { background:#333333; color:#F1F1F1; border:none;
+                   border-radius:4px; padding:5px 14px; min-height:28px; }
+QPushButton:hover   { background:#5B5B5B; }
+QPushButton:pressed { background:#121212; }
+QPushButton:disabled{ background:#121212; color:#9E9E9E; }
+QDialogButtonBox QPushButton[text="Insert"] { background:#FE5C0D; color:#1E1E1E;}
+QDialogButtonBox QPushButton[text="Insert"]:disabled { background:#333333; color:#9E9E9E; }
+"""
+
+_POS_AXES = ("X", "Y", "Z", "A", "B", "C")
+
+
+class _PosGroup(QGroupBox):
+    """Група з 6 полями координат + кнопка Get Current POS."""
+
+    def __init__(self, title: str, cnc=None, limits: dict | None = None, parent=None):
+        super().__init__(title, parent)
+        self._cnc    = cnc
+        # limits: {'X': (min, max), 'Y': (min, max), ...}
+        # якщо None — перевіряємо лише що значення є float
+        self._limits = limits or {}
+        self._fields: dict[str, QLineEdit] = {}
+
+        grid = QHBoxLayout(self)
+        grid.setSpacing(8)
+
+        for axis in _POS_AXES:
+            col = QVBoxLayout()
+            col.setSpacing(2)
+
+            lo, hi = self._limits.get(axis, (None, None))
+            tooltip = f"{axis}: [{lo}, {hi}]" if lo is not None else axis
+            lbl = QLabel(axis)
+            lbl.setAlignment(Qt.AlignCenter)
+            lbl.setToolTip(tooltip)
+
+            fld = QLineEdit("0.0")
+            fld.setAlignment(Qt.AlignRight)
+            fld.setToolTip(tooltip)
+            # Вимикаємо autoDefault щоб Enter не тригерив кнопку Insert
+            fld.setFocusPolicy(Qt.StrongFocus)
+            fld.textChanged.connect(lambda _, f=fld, ax=axis: self._mark_validity(f, ax))
+
+            col.addWidget(lbl)
+            col.addWidget(fld)
+            grid.addLayout(col)
+            self._fields[axis] = fld
+
+        btn = QPushButton("Поточні коорд.")
+        btn.setToolTip("Зчитати поточні координати з LinuxCNC")
+        btn.setAutoDefault(False)   # Enter не активує кнопку
+        btn.setDefault(False)
+        btn.clicked.connect(self._get_current_pos)
+        btn.setEnabled(cnc is not None)
+        grid.addWidget(btn)
+
+    # ------------------------------------------------------------------
+
+    def _in_range(self, axis: str, value: float) -> bool:
+        lo, hi = self._limits.get(axis, (None, None))
+        if lo is None:
+            return True
+        return lo <= value <= hi
+
+    def _mark_validity(self, field: QLineEdit, axis: str) -> None:
+        ok = self._field_valid(field, axis)
+        field.setProperty("invalid", "" if ok else "true")
+        field.style().unpolish(field)
+        field.style().polish(field)
+
+    def _field_valid(self, field: QLineEdit, axis: str) -> bool:
+        try:
+            val = float(field.text())
+            return self._in_range(axis, val)
+        except ValueError:
+            return False
+
+    def _get_current_pos(self) -> None:
+        if self._cnc is None:
+            return
+        try:
+            self._cnc.poll()
+            pos = self._cnc.status.actual_position
+            for i, axis in enumerate(_POS_AXES):
+                if i < len(pos):
+                    self._fields[axis].setText(f"{pos[i]:.4f}")
+        except Exception as exc:
+            logger.error("Get Current POS помилка: %s", exc)
+
+    # ------------------------------------------------------------------
+
+    def is_valid(self) -> bool:
+        return all(
+            self._field_valid(f, ax)
+            for ax, f in self._fields.items()
+        )
+
+    def is_empty(self) -> bool:
+        return any(f.text().strip() == "" for f in self._fields.values())
+
+    def to_pos_string(self) -> str:
+        parts = ", ".join(
+            f"{ax} {self._fields[ax].text()}" for ax in _POS_AXES
+        )
+        return "{" + parts + "}"
+
+
+class MotionCommandDialog(QDialog):
+    """
+    Модальний діалог для формування команди PTP / LIN / CIRC.
+
+    Параметри
+    ---------
+    motion_type : 'PTP' | 'LIN' | 'CIRC'
+    cnc         : MachineController або None
+    """
+
+    # Діапазони числових параметрів
+    _VEL_MIN, _VEL_MAX = 0.0, 100.0
+    _ACC_MIN, _ACC_MAX = 0.0, 100.0
+
+    def __init__(self, motion_type: str, cnc=None, parent=None):
+        super().__init__(parent)
+        self._motion_type = motion_type.upper()
+        self._cnc         = cnc
+
+        # Витягуємо ліміти осей з MachineController
+        # Структура cnc.limits: {0: {"min": -360.0, "max": 360.0}, 1: {...}, ...}
+        # де індекс відповідає осі: 0=X, 1=Y, 2=Z, 3=A, 4=B, 5=C
+        limits: dict = {}
+        if cnc is not None and hasattr(cnc, "limits"):
+            raw = cnc.limits
+            if isinstance(raw, dict):
+                for idx, axis in enumerate(_POS_AXES):
+                    joint = raw.get(idx)
+                    if isinstance(joint, dict):
+                        lo = joint.get("min")
+                        hi = joint.get("max")
+                        if lo is not None and hi is not None:
+                            limits[axis] = (float(lo), float(hi))
+
+        self.setWindowTitle(f"Вставити команду {self._motion_type}")
+        self.setMinimumWidth(720)
+        self.setStyleSheet(_DIALOG_STYLE)
+        self.setModal(True)
+
+        # КРИТИЧНО: вимикаємо поведінку Enter = Accept для всього діалогу
+        # Перший QPushButton у діалозі стає default — тому встановлюємо
+        # це явно нижче після створення кнопок
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
+
+        root = QVBoxLayout(self)
+        root.setSpacing(12)
+        root.setContentsMargins(14, 14, 14, 14)
+
+        # ── Координатні групи ─────────────────────────────────────────
+        if self._motion_type == "CIRC":
+            self._aux_pos    = _PosGroup("Проміжна точка",    cnc, limits, self)
+            self._target_pos = _PosGroup("Цільова точка",  cnc, limits, self)
+            root.addWidget(self._aux_pos)
+            root.addWidget(self._target_pos)
+        else:
+            self._pos = _PosGroup("Цільова точка", cnc, limits, self)
+            root.addWidget(self._pos)
+
+        # ── Параметри руху ────────────────────────────────────────────
+        params_box = QGroupBox("Параметри руху")
+        params_lay = QFormLayout(params_box)
+        params_lay.setSpacing(8)
+        params_lay.setLabelAlignment(Qt.AlignRight)
+
+        # CONT
+        self._cont = QCheckBox("(не зупинятись у точці)")
+        params_lay.addRow("Безперервний рух:", self._cont)
+
+        # ORI_TYPE — тільки для LIN і CIRC
+        if self._motion_type in ("LIN", "CIRC"):
+            self._ori_type = QComboBox()
+            self._ori_type.addItems(["ORI_VAR", "ORI_CONST"])
+            params_lay.addRow("Тип орієнтації:", self._ori_type)
+        else:
+            self._ori_type = None
+
+        # CIRC_TYPE — тільки для CIRC
+        if self._motion_type == "CIRC":
+            self._circ_type = QComboBox()
+            self._circ_type.addItems(["CIRC_PATH", "CIRC_BASE"])
+            params_lay.addRow("Тип кругової орієнтації:", self._circ_type)
+        else:
+            self._circ_type = None
+
+        # VEL
+        self._vel = QLineEdit("100.0")
+        self._vel.setToolTip(f"Швидкість: {self._VEL_MIN}…{self._VEL_MAX}")
+        self._vel.textChanged.connect(self._on_param_changed)
+        params_lay.addRow(f"Швидкість:", self._vel)
+
+        # ACC
+        self._acc = QLineEdit("100.0")
+        self._acc.setToolTip(f"Прискорення: {self._ACC_MIN}…{self._ACC_MAX}")
+        self._acc.textChanged.connect(self._on_param_changed)
+        params_lay.addRow(f"Прискорення:", self._acc)
+
+        # TOOL
+        self._tool = QLineEdit("1")
+        self._tool.setToolTip("Номер інструменту (ціле число ≥ 0)")
+        self._tool.textChanged.connect(self._on_param_changed)
+        params_lay.addRow("Інструмент:", self._tool)
+
+        # BASE
+        self._base = QLineEdit("0")
+        self._base.setToolTip("Система координат (ціле число ≥ 0)")
+        self._base.textChanged.connect(self._on_param_changed)
+        params_lay.addRow("Система координат:", self._base)
+
+        root.addWidget(params_box)
+
+        # ── Превʼю рядка ─────────────────────────────────────────────
+        preview_box = QGroupBox("Результат")
+        preview_lay = QVBoxLayout(preview_box)
+        self._preview = QLabel("")
+        self._preview.setStyleSheet(
+            "font-family:Monospace; font-size:12px; color:#F1F1F1;"
+            "padding:6px; background:#121212; border-radius:3px;"
+        )
+        self._preview.setWordWrap(True)
+        preview_lay.addWidget(self._preview)
+        root.addWidget(preview_box)
+
+        # ── Кнопки ───────────────────────────────────────────────────
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+
+        self._btn_cancel = QPushButton("Скасувати")
+        self._btn_cancel.setAutoDefault(False)
+        self._btn_cancel.setDefault(False)
+        self._btn_cancel.clicked.connect(self.reject)
+
+        self._btn_insert = QPushButton("Вставити")
+        self._btn_insert.setAutoDefault(False)   # Enter НЕ активує Insert
+        self._btn_insert.setDefault(False)        # Enter НЕ активує Insert
+        self._btn_insert.setEnabled(False)
+        self._btn_insert.setStyleSheet(
+            "QPushButton{background:#FE5C0D;color:#FFFFFF;"
+            "border-radius:4px;padding:5px 20px;min-height:28px;}"
+            "QPushButton:disabled{background:#333333;color:#9E9E9E;}"
+            "QPushButton:hover:!disabled{background:#FF7533;}"
+        )
+        self._btn_insert.clicked.connect(self.accept)
+
+        btn_row.addWidget(self._btn_cancel)
+        btn_row.addWidget(self._btn_insert)
+        root.addLayout(btn_row)
+
+        # Підключаємо сигнали і запускаємо першу валідацію
+        self._connect_pos_signals()
+        self._on_param_changed()
+
+    # ------------------------------------------------------------------
+    # Перехоплення Enter — не закривати діалог
+    # ------------------------------------------------------------------
+
+    def keyPressEvent(self, event):
+        # Блокуємо Enter і Return щоб вони не тригерили жодну кнопку
+        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            event.ignore()
+            return
+        super().keyPressEvent(event)
+
+    # ------------------------------------------------------------------
+    # Підключення сигналів
+    # ------------------------------------------------------------------
+
+    def _connect_pos_signals(self) -> None:
+        if self._motion_type == "CIRC":
+            for fld in self._aux_pos._fields.values():
+                fld.textChanged.connect(self._on_param_changed)
+            for fld in self._target_pos._fields.values():
+                fld.textChanged.connect(self._on_param_changed)
+        else:
+            for fld in self._pos._fields.values():
+                fld.textChanged.connect(self._on_param_changed)
+        if self._ori_type:
+            self._ori_type.currentIndexChanged.connect(self._on_param_changed)
+        if self._circ_type:
+            self._circ_type.currentIndexChanged.connect(self._on_param_changed)
+        self._cont.stateChanged.connect(self._on_param_changed)
+
+    # ------------------------------------------------------------------
+    # Валідація
+    # ------------------------------------------------------------------
+
+    def _in_range(self, text: str, lo: float, hi: float) -> bool:
+        try:
+            v = float(text)
+            return lo < v <= hi   # lo < v (строго більше нуля для VEL/ACC)
+        except ValueError:
+            return False
+
+    @staticmethod
+    def _is_non_negative_int(text: str) -> bool:
+        try:
+            return int(text) >= 0
+        except ValueError:
+            return False
+
+    def _mark_field(self, field: QLineEdit, ok: bool) -> None:
+        field.setProperty("invalid", "" if ok else "true")
+        field.style().unpolish(field)
+        field.style().polish(field)
+
+    def _validate(self) -> bool:
+        ok = True
+
+        # Координати
+        if self._motion_type == "CIRC":
+            if not self._aux_pos.is_valid() or self._aux_pos.is_empty():
+                ok = False
+            if not self._target_pos.is_valid() or self._target_pos.is_empty():
+                ok = False
+        else:
+            if not self._pos.is_valid() or self._pos.is_empty():
+                ok = False
+
+        # VEL: 0 < v ≤ 100
+        vel_ok = self._in_range(self._vel.text(), self._VEL_MIN, self._VEL_MAX)
+        self._mark_field(self._vel, vel_ok)
+        if not vel_ok:
+            ok = False
+
+        # ACC: 0 < v ≤ 100
+        acc_ok = self._in_range(self._acc.text(), self._ACC_MIN, self._ACC_MAX)
+        self._mark_field(self._acc, acc_ok)
+        if not acc_ok:
+            ok = False
+
+        # TOOL і BASE: int >= 0
+        tool_ok = self._is_non_negative_int(self._tool.text())
+        self._mark_field(self._tool, tool_ok)
+        if not tool_ok:
+            ok = False
+
+        base_ok = self._is_non_negative_int(self._base.text())
+        self._mark_field(self._base, base_ok)
+        if not base_ok:
+            ok = False
+
+        return ok
+
+    # ------------------------------------------------------------------
+    # Генерація рядка команди
+    # ------------------------------------------------------------------
+
+    def build_command(self) -> str:
+        parts = [self._motion_type]
+
+        if self._motion_type == "CIRC":
+            parts.append(self._aux_pos.to_pos_string())
+            parts.append(self._target_pos.to_pos_string())
+        else:
+            parts.append(self._pos.to_pos_string())
+
+        if self._cont.isChecked():
+            parts.append("CONT")
+
+        if self._ori_type is not None:
+            parts.append(self._ori_type.currentText())
+
+        if self._circ_type is not None:
+            parts.append(self._circ_type.currentText())
+
+        parts.append(f"VEL {self._vel.text()}")
+        parts.append(f"ACC {self._acc.text()}")
+        parts.append(f"TOOL {self._tool.text()}")
+        parts.append(f"BASE {self._base.text()}")
+
+        return " ".join(parts) + ";"
+
+    # ------------------------------------------------------------------
+
+    def _on_param_changed(self) -> None:
+        ok = self._validate()
+        self._btn_insert.setEnabled(ok)
+        if ok:
+            self._preview.setText(self.build_command())
+        else:
+            self._preview.setText("⚠  Заповніть усі поля коректно (червоні поля — поза діапазоном)")
 
 
 # ===========================================================================
@@ -143,6 +552,7 @@ class GCodeEditorWidget(QPlainTextEdit):
         self._is_locked: bool   = False
         self._search_bar_ref    = None
         self._pending_next_line = None
+        self._cnc               = None   # встановлюється з GCodeEditorManager
 
         # Підсвітка синтаксису
         self._highlighter = GCodeHighlighter(self.document())
@@ -212,6 +622,10 @@ class GCodeEditorWidget(QPlainTextEdit):
 
     def is_locked(self) -> bool:
         return self._is_locked
+
+    def set_cnc(self, cnc) -> None:
+        """Передати посилання на MachineController для Get Current POS."""
+        self._cnc = cnc
 
     def set_search_bar(self, bar) -> None:
         self._search_bar_ref = bar
@@ -302,8 +716,8 @@ class GCodeEditorWidget(QPlainTextEdit):
     def contextMenuEvent(self, event):
         menu = QMenu(self)
         menu.setStyleSheet(
-            "QMenu{background:#313244;color:#cdd6f4;border:1px solid #45475a;}"
-            "QMenu::item:selected{background:#45475a;}")
+            "QMenu{background:#2D2D2D;color:#F1F1F1;border:1px solid #333333;}"
+            "QMenu::item:selected{background:#333333;}")
 
         has_sel = self.textCursor().hasSelection()
         a = menu.addAction("Вирізати");  a.setEnabled(has_sel and not self._is_locked); a.triggered.connect(self.cut)
@@ -311,22 +725,24 @@ class GCodeEditorWidget(QPlainTextEdit):
         a = menu.addAction("Вставити");  a.setEnabled(not self._is_locked);              a.triggered.connect(self.paste)
         menu.addSeparator()
 
-        a = menu.addAction("▶  Виконати з цього рядка (Set Next Line)")
+        a = menu.addAction("▶  Виконати з цього рядка")
         a.triggered.connect(self._on_set_next_line)
         menu.addSeparator()
 
-        a = menu.addAction("//  Закоментувати"); a.setEnabled(not self._is_locked); a.triggered.connect(lambda: self._toggle_comment(True))
-        a = menu.addAction("    Розкоментувати"); a.setEnabled(not self._is_locked); a.triggered.connect(lambda: self._toggle_comment(False))
+        a = menu.addAction("Закоментувати"); a.setEnabled(not self._is_locked); a.triggered.connect(lambda: self._toggle_comment(True))
+        a = menu.addAction("Розкоментувати"); a.setEnabled(not self._is_locked); a.triggered.connect(lambda: self._toggle_comment(False))
         menu.addSeparator()
 
-        menu.addAction("🔍  Пошук та заміна  (Ctrl+H)").triggered.connect(self._show_search)
+        menu.addAction("Пошук та заміна  (Ctrl+H)").triggered.connect(self._show_search)
         menu.addSeparator()
 
-        tm = menu.addMenu("📋  Вставити шаблон")
-        for name, code in _TEMPLATES.items():
-            a = tm.addAction(name)
+        fold_menu = menu.addMenu("Вставити команду руху")
+        for motion_type in ("PTP", "LIN", "CIRC"):
+            a = fold_menu.addAction(motion_type)
             a.setEnabled(not self._is_locked)
-            a.triggered.connect(lambda checked, c=code: self._insert_template(c))
+            a.triggered.connect(
+                lambda checked, mt=motion_type: self._open_motion_dialog(mt)
+            )
 
         menu.exec_(event.globalPos())
 
@@ -359,6 +775,18 @@ class GCodeEditorWidget(QPlainTextEdit):
         cur.insertText("\n" + code)
         cur.endEditBlock()
 
+    def _open_motion_dialog(self, motion_type: str) -> None:
+        """Відкрити діалог вставки команди руху і вставити результат."""
+        dlg = MotionCommandDialog(motion_type, cnc=self._cnc, parent=self)
+        if dlg.exec_() == QDialog.Accepted:
+            cmd = dlg.build_command()
+            cur = self.textCursor()
+            cur.beginEditBlock()
+            # Вставляємо на новому рядку після поточного
+            cur.movePosition(QTextCursor.EndOfLine)
+            cur.insertText("\n" + cmd)
+            cur.endEditBlock()
+
     def _show_search(self):
         if self._search_bar_ref is not None:
             self._search_bar_ref.show()
@@ -375,18 +803,18 @@ class _SearchReplaceBar(QWidget):
         self._editor = editor
         self.setAutoFillBackground(True)
         pal = self.palette()
-        pal.setColor(pal.Window, QColor("#313244"))
+        pal.setColor(pal.Window, QColor("#2D2D2D"))
         self.setPalette(pal)
 
         self._sf = QLineEdit(placeholderText="Пошук…")
         self._rf = QLineEdit(placeholderText="Замінити на…")
-        self._li = QLabel("", styleSheet="color:#6c7086")
+        self._li = QLabel("", styleSheet="color:#F1F1F1")
 
-        _b = ("QPushButton{background:#45475a;color:#cdd6f4;border:none;"
+        _b = ("QPushButton{background:#333333;color:#F1F1F1;border:none;"
               "border-radius:3px;padding:0 8px;min-height:24px;}"
-              "QPushButton:hover{background:#585b70;}")
-        _f = ("QLineEdit{background:#1e1e2e;color:#cdd6f4;"
-              "border:1px solid #45475a;border-radius:3px;padding:2px 6px;}")
+              "QPushButton:hover{background:#333333;}")
+        _f = ("QLineEdit{background:#121212;color:#F1F1F1;"
+              "border:1px solid #333333;border-radius:3px;padding:2px 6px;}")
 
         bp = QPushButton("↑"); bn = QPushButton("↓")
         br = QPushButton("Замінити"); ba = QPushButton("Замінити всі")
@@ -396,7 +824,7 @@ class _SearchReplaceBar(QWidget):
 
         row = QHBoxLayout(self)
         row.setContentsMargins(6, 4, 6, 4); row.setSpacing(6)
-        row.addWidget(QLabel("🔍", styleSheet="color:#89b4fa"))
+        row.addWidget(QLabel("🔍", styleSheet="color:#F1F1F1"))
         row.addWidget(self._sf); row.addWidget(self._rf)
         row.addWidget(bp); row.addWidget(bn)
         row.addWidget(br); row.addWidget(ba)
@@ -573,6 +1001,8 @@ class GCodeEditorManager:
             logger.warning("list_gcode_edit не знайдено — редактор без layout")
             self._container = _EditorContainer()
             self._editor = self._container.editor
+        self._editor: GCodeEditorWidget = self._container.editor if self._container else self._editor
+        self._editor.set_cnc(machine_controller)
         self._editor.contentChanged.connect(self._on_content_changed)
 
         # Таймер перевірки Set Next Line
