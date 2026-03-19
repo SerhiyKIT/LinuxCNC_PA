@@ -37,14 +37,14 @@ def gcode_mgr(mock_cnc, mock_widgets):
     # rowCount() має повертати int, інакше `> 0` кидає TypeError
     mock_widgets.list_gcode_view.model.return_value.rowCount.return_value = 0
 
-    with patch("managers.ui.gcode_display.StyleManager") as MockStyle, \
-         patch("managers.ui.gcode_display.FileManager"),               \
-         patch("managers.ui.gcode_display.CYCLE_BUTTONS", _CYCLE_BUTTONS), \
-         patch("managers.ui.gcode_display.FILE_BUTTONS",  _FILE_BUTTONS):
+    with patch("logic.managers.ui.gcode_display.StyleManager") as MockStyle, \
+         patch("logic.managers.ui.gcode_display.FileManager"),               \
+         patch("logic.managers.ui.gcode_display.CYCLE_BUTTONS", _CYCLE_BUTTONS), \
+         patch("logic.managers.ui.gcode_display.FILE_BUTTONS",  _FILE_BUTTONS):
         MockStyle.return_value.STYLE_GCODE_ACTIVE   = "active"
         MockStyle.return_value.STYLE_GCODE_INACTIVE = "inactive"
         MockStyle.return_value.STYLE_GCODE_WARN     = "warn"
-        from managers.ui.gcode_display import GCodeDisplayManager
+        from logic.managers.ui.gcode_display import GCodeDisplayManager
         mgr = GCodeDisplayManager(mock_cnc, mock_widgets)
         # CYCLE_BUTTONS читається у __init__ до патчу — перезаписуємо на instance
         mgr.cycle_buttons = _CYCLE_BUTTONS
