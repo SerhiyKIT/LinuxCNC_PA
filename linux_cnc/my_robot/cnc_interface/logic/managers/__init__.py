@@ -15,6 +15,7 @@ from .overrides_manager import OverridesManager, OverridesUIBinder
 from .style_manager import StyleManager
 from .ui_manager import UIManager  
 from .axis_manager import AxisManager, AxisUIBinder
+from .project_manager import ProjectManager
 
 __all__ = [
     'ControlManager',
@@ -31,5 +32,6 @@ __all__ = [
     'StyleManager',
     'UIManager',
     'AxisManager',
-    'AxisUIBinder'
+    'AxisUIBinder',
+    'ProjectManager'
 ]

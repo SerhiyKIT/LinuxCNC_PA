@@ -12,7 +12,8 @@ from .managers import (
     OverridesManager,
     ControlManager,
     StyleManager,
-    UIManager
+    UIManager,
+    ProjectManager
 )
 
 __all__ = [
@@ -27,5 +28,6 @@ __all__ = [
     'OverridesManager',
     'ControlManager',
     'StyleManager',
-    'UIManager'
+    'UIManager',
+    'ProjectManager'
 ]

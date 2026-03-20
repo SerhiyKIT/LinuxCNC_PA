@@ -720,9 +720,9 @@ class GCodeEditorWidget(QPlainTextEdit):
             "QMenu::item:selected{background:#333333;}")
 
         has_sel = self.textCursor().hasSelection()
-        a = menu.addAction("Вирізати");  a.setEnabled(has_sel and not self._is_locked); a.triggered.connect(self.cut)
-        a = menu.addAction("Копіювати"); a.setEnabled(has_sel);                          a.triggered.connect(self.copy)
-        a = menu.addAction("Вставити");  a.setEnabled(not self._is_locked);              a.triggered.connect(self.paste)
+        a = menu.addAction("Вирізати (Ctrl+X)");  a.setEnabled(has_sel and not self._is_locked); a.triggered.connect(self.cut)
+        a = menu.addAction("Копіювати (Ctrl+C)"); a.setEnabled(has_sel);                          a.triggered.connect(self.copy)
+        a = menu.addAction("Вставити (Ctrl+V)");  a.setEnabled(not self._is_locked);              a.triggered.connect(self.paste)
         menu.addSeparator()
 
         a = menu.addAction("▶  Виконати з цього рядка")

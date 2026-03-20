@@ -28,6 +28,7 @@ from managers import (
     KeyboardManager,
 )
 from managers.ui.gcode_editor import GCodeEditorManager
+from managers.project_manager import ProjectManager
 from config import STYLES, MACHINE_PARAMS, MGR_CONTROL, MGR_CYCLE, MGR_FILE, MGR_TOOL
 from managers.ui.ui_mapping import UI_TEXT_MAPPING, UI_TOOLTIP_MAPPING
 
@@ -73,12 +74,19 @@ class HandlerClass:
         self.tool_ui_binder      = None
         self.keyboard_manager    = None
         self.context_menu_manager = None
+        self.project_manager      = None
 
     # ------------------------------------------------------------------
     # initialized__ – викликається ПІСЛЯ loadUi, всі widgets існують
     # ------------------------------------------------------------------
 
     def initialized__(self):
+        # ── ProjectManager ────────────────────────────────────────────────
+        self.project_manager = ProjectManager(self.widgets)
+        self.project_manager.connect_buttons()
+        # Callback: відкрити файл проекту у GCodeEditor
+        self.project_manager.set_open_file_callback(self._on_project_open_file)
+
         # ── GCodeEditorManager (потребує list_gcode_edit) ────────────────
         self.editor_manager = GCodeEditorManager(
             self.cnc,
@@ -216,6 +224,18 @@ class HandlerClass:
             print(f"DEBUG: підключено {btn_name}")
 
     # ------------------------------------------------------------------
+
+    def _on_project_open_file(self, filepath: str, read_only: bool) -> None:
+        """Відкрити файл проекту у GCodeEditor."""
+        if self.editor_manager is None:
+            return
+        try:
+            self.cnc.open_program(filepath)
+            self.file_manager.load_file_into_editor(filepath)
+            if read_only:
+                self.editor_manager._editor.set_locked(True)
+        except Exception as exc:
+            print(f"DEBUG: Помилка відкриття файлу проекту: {exc}")
 
     def _update_ui(self):
         try:
