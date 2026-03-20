@@ -11,12 +11,16 @@ UI_TEXT_MAPPING = {
     'btn_cycle_step': "STEP",
     'btn_cycle_stop': "STOP",
     
+    'btn_open_project': "OPEN",
+    'btn_create_new_project': "CREATE",
+
     'btn_file_open': "Open",
     'btn_file_reload': "Reload",
     'btn_file_save_as': "Save as",
     'btn_file_edit': "Edit",
     
-    'lbl_gcode_control': "G-Code Control",
+    'lbl_project_manager': "Project Manager",
+    'lbl_gcode_control': "Code Control",
     'lbl_controls': "Controls",
     'lbl_file': "File",
     'lbl_spindle_status': "SPINDLE STATUS",

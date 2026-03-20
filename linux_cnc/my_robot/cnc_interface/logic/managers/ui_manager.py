@@ -6,7 +6,8 @@ from managers.ui.logger_display import LoggerDisplayManager
 from managers.ui.tool_display import ToolDisplayManager
 
 class UIManager:
-    def __init__(self, machine_controller, widgets):
+    def __init__(self, machine_controller, widgets, cycle_manager=None):
+        self._cycle_manager = cycle_manager 
         self.cnc = machine_controller
         self.widgets = widgets
         
@@ -17,7 +18,9 @@ class UIManager:
         self.panel_manager = PanelManager(machine_controller, widgets)
         
         # Initialize the G-code display manager to manage the G-code list view and related controls based on loaded file and machine state
-        self.gcode_display_manager = GCodeDisplayManager(machine_controller, widgets)
+        self.gcode_display_manager = GCodeDisplayManager(
+            machine_controller, widgets, cycle_manager
+        )
         
         # Initialize the logger display manager to handle logging messages to the output panel with appropriate styles based on log level
         self.logger_display_manager = LoggerDisplayManager(machine_controller, widgets)

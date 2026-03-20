@@ -221,6 +221,21 @@ CYCLE</source>
         <translation>ЗАХВАТ</translation>
     </message>
     <message>
+        <location filename="../../main_window.ui" line="4251"/>
+        <source>Project Manager</source>
+        <translation>Менеджер проєктів</translation>
+    </message>
+     <message>
+        <location filename="../../main_window.ui" line="4330"/>
+        <source>CREATE</source>
+        <translation>СТВОРИТИ</translation>
+    </message>
+    <message>
+        <location filename="../../main_window.ui" line="4373"/>
+        <source>OPEN</source>
+        <translation>ВІДКРИТИ</translation>
+    </message>
+    <message>
         <source>RELEASE</source>
         <translation>ВІДПУСТИТИ</translation>
     </message>
@@ -265,8 +280,8 @@ CYCLE</source>
     </message>
     <message>
         <location filename="../../main_window.ui" line="1399"/>
-        <source>G-Code Control</source>
-        <translation>Керування G-кодом</translation>
+        <source>Code Control</source>
+        <translation>Керування кодом</translation>
     </message>
     <message>
         <location filename="../../main_window.ui" line="2892"/>
