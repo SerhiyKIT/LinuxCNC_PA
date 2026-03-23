@@ -3809,7 +3809,7 @@ color: #FE5C0D</string>
      </property>
      <property name="styleSheet">
       <string notr="true">border: none;
-color: #FE5C0D</string>
+color: #9E9E9E</string>
      </property>
      <property name="text">
       <string>Project Manager</string>
@@ -3832,7 +3832,7 @@ color: #FE5C0D</string>
      </property>
      <property name="styleSheet">
       <string notr="true">border-radius: 10px;
-border: 3px solid #FE5C0D;
+border: 3px solid #333333;
 background: #161616;</string>
      </property>
      <property name="frameShape">
@@ -4000,9 +4000,9 @@ QPushButton:hover{
        <property name="geometry">
         <rect>
          <x>20</x>
-         <y>20</y>
-         <width>71</width>
-         <height>20</height>
+         <y>15</y>
+         <width>241</width>
+         <height>30</height>
         </rect>
        </property>
        <property name="font">
@@ -4132,6 +4132,29 @@ color: #fff;
 font-size: 18px;</string>
        </property>
       </widget>
+     </widget>
+     <widget class="QFrame" name="project_manager_overlay">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>345</width>
+        <height>840</height>
+       </rect>
+      </property>
+      <property name="acceptDrops">
+       <bool>false</bool>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">background-color: rgba(30, 30, 30, 150);
+</string>
+      </property>
+      <property name="frameShape">
+       <enum>QFrame::StyledPanel</enum>
+      </property>
+      <property name="frameShadow">
+       <enum>QFrame::Raised</enum>
+      </property>
      </widget>
     </widget>
    </widget>

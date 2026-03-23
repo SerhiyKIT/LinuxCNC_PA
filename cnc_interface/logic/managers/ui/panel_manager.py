@@ -97,6 +97,17 @@ class PanelManager:
         # 2. Optionally show an overlay to block interaction when not ready
         if hasattr(self.widgets, 'gcode_control_overlay'):
             self.widgets.gcode_control_overlay.setVisible(not is_ready)
+
+    def update_project_manager(self, states):
+        """Update G-code control panel based on machine state (Power, E-Stop)"""
+        is_ready = states['is_ready'] #and states['all_homed']
+        
+        # 1. Style the entire G-code control panel
+        self._apply_panel_style('project_manager', is_ready)
+        
+        # 2. Optionally show an overlay to block interaction when not ready
+        if hasattr(self.widgets, 'project_manager_overlay'):
+            self.widgets.project_manager_overlay.setVisible(not is_ready)
             
     def _apply_panel_style(self, prefix, is_active):
         """

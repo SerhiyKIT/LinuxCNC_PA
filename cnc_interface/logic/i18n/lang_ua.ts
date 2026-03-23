@@ -166,6 +166,11 @@ CYCLE</source>
         <translation>СТВОРИТИ</translation>
     </message>
     <message>
+        <location filename="../../main_window.ui" line="4373"/>
+        <source>OPEN</source>
+        <translation>ВІДКРИТИ</translation>
+    </message>
+    <message>
         <source>RELEASE</source>
         <translation>ВІДПУСТИТИ</translation>
     </message>
