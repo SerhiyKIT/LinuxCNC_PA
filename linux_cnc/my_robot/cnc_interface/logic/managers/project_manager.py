@@ -721,17 +721,21 @@ class ProjectManager:
     def _on_new_file(self, context_path: Optional[Path]) -> None:
         parent_dir = (
             context_path.parent if context_path and context_path.is_file()
-            else self._current_project
+            else (context_path if context_path and context_path.is_dir()
+                  else self._current_project)
         )
         from PyQt5.QtWidgets import QInputDialog
         name, ok = QInputDialog.getText(
             self._w("tree_view_project"), "Новий файл", "Назва файлу:"
         )
-        if ok and name.strip():
-            try:
-                (parent_dir / name.strip()).touch()
-            except Exception as exc:
-                self._show_error(f"Помилка створення файлу: {exc}")
+        if not ok or not name.strip():
+            return
+        # Copy Numbering — якщо файл з такою назвою вже існує
+        dest = self._unique_path(parent_dir / name.strip())
+        try:
+            dest.touch()
+        except Exception as exc:
+            self._show_error(f"Помилка створення файлу: {exc}")
 
     def _on_open_file(self, path: Path, read_only: bool) -> None:
         """
@@ -774,6 +778,48 @@ class ProjectManager:
             except Exception as exc:
                 self._show_error(f"Помилка видалення: {exc}")
 
+    # ------------------------------------------------------------------
+    # Copy Numbering — розумне перейменування при конфлікті
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _unique_path(dest: Path) -> Path:
+        """
+        Повернути унікальний шлях використовуючи стратегію Copy Numbering.
+
+        Якщо *dest* не існує — повертає його без змін.
+        Інакше додає числовий суфікс за патерном Windows/macOS:
+
+          file.txt        → file (2).txt → file (3).txt → …
+          report          → report (2)   → report (3)   → …
+          archive.tar.gz  → archive (2).tar.gz → …
+
+        Лічильник починається з 2 (як у Finder і Explorer) і
+        збільшується поки не знайде вільне ім'я.
+        """
+        if not dest.exists():
+            return dest
+
+        # Розбиваємо ім'я: stem + суфікс (враховуємо .tar.gz тощо)
+        name   = dest.name
+        parent = dest.parent
+
+        # Знаходимо перше розширення (або порожній рядок для папок)
+        if dest.is_dir() or '.' not in name:
+            stem, ext = name, ""
+        else:
+            # Path.stem/suffix не обробляє .tar.gz, тому шукаємо вручну
+            dot_idx = name.index('.')
+            stem    = name[:dot_idx]
+            ext     = name[dot_idx:]   # ".tar.gz", ".txt", тощо
+
+        counter = 2
+        while True:
+            candidate = parent / f"{stem} ({counter}){ext}"
+            if not candidate.exists():
+                return candidate
+            counter += 1
+
     def _clipboard_op(self, path: Path, cut: bool) -> None:
         """
         Запам'ятати файл/папку для подальшої вставки.
@@ -789,11 +835,13 @@ class ProjectManager:
         """
         Вставити файл/папку зі збереженого буфера.
 
-        Правило визначення папки-призначення:
-          - якщо клік був на папку → вставляємо всередину неї
-          - якщо клік був на файл → вставляємо в ту саму папку що й файл
-          - якщо клік був у порожнє місце (context_path=None) →
-            вставляємо в корінь відкритого проекту
+        Визначення папки-призначення:
+          - клік на папку  → вставляємо всередину неї
+          - клік на файл   → вставляємо в ту саму папку що й файл
+          - порожнє місце  → корінь відкритого проекту
+
+        При конфлікті імен використовується Copy Numbering:
+          file.txt → file (2).txt → file (3).txt → …
         """
         src = getattr(self, "_clipboard_path", None)
         if src is None or not src.exists():
@@ -809,33 +857,23 @@ class ProjectManager:
         else:
             dest_dir = context_path.parent
 
-        dest = dest_dir / src.name
-
-        # Перевірка: не копіюємо в себе
-        if dest == src:
-            self._show_error("Джерело і призначення збігаються.")
-            return
-
-        # Якщо файл з такою назвою вже існує — запитуємо підтвердження
-        if dest.exists():
-            from PyQt5.QtWidgets import QMessageBox
-            reply = QMessageBox.question(
-                self._project_tree,
-                "Файл вже існує",
-                f'"{dest.name}" вже існує у папці призначення.\nПерезаписати?',
-                QMessageBox.Yes | QMessageBox.No,
-            )
-            if reply != QMessageBox.Yes:
+        # Перевірка збігу джерела і призначення:
+        # — для Cut (переміщення) в ту саму папку — блокуємо, це no-op
+        # — для Copy в ту саму папку — дозволяємо, Copy Numbering додасть суфікс
+        base_dest = dest_dir / src.name
+        if base_dest == src:
+            if self._clipboard_cut:
+                self._show_error("Джерело і призначення збігаються.")
                 return
-            # Видаляємо існуючий перед копіюванням
-            try:
-                if dest.is_dir():
-                    shutil.rmtree(dest)
-                else:
-                    dest.unlink()
-            except Exception as exc:
-                self._show_error(f"Не вдалося перезаписати: {exc}")
-                return
+            # Copy в ту саму папку — одразу переходимо до нумерації
+
+        # Copy Numbering — знаходимо унікальне ім'я автоматично.
+        # Для Cut ім'я не змінюємо — якщо в dest_dir вже є файл
+        # з таким іменем (і це не src), це реальна помилка файлової системи.
+        if self._clipboard_cut:
+            dest = base_dest
+        else:
+            dest = self._unique_path(base_dest)
 
         # Копіюємо або переміщуємо
         try:
@@ -858,7 +896,6 @@ class ProjectManager:
                 self._show_error(
                     f"Файл скопійовано, але не вдалося видалити оригінал: {exc}"
                 )
-            # Після Cut буфер очищуємо — повторна вставка неможлива
             self._clipboard_path = None
             self._clipboard_cut  = False
 

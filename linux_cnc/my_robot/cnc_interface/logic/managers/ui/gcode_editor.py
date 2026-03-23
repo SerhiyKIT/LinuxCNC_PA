@@ -1016,9 +1016,38 @@ class GCodeEditorManager:
     # ------------------------------------------------------------------
 
     def load_file(self, filepath: str) -> None:
-        """Завантажити файл через FileManager і зберегти поточний шлях."""
-        self.file_manager.load_file_into_editor(filepath)
+        """
+        Зчитати файл з диска, відобразити у редакторі та зберегти шлях.
+        Не тригерить auto-save (load_text зупиняє debounce-таймер).
+        Оновлює мітку lbl_filename.
+        """
+        if not os.path.isfile(filepath):
+            logger.error("load_file: файл не знайдено: %s", filepath)
+            return
+        try:
+            with open(filepath, encoding="utf-8") as fh:
+                text = fh.read()
+        except OSError as exc:
+            logger.error("load_file: помилка читання: %s", exc)
+            return
+
+        self._editor.load_text(text)
         self._current_file = filepath
+
+        # Оновлюємо мітку імені файлу
+        lbl = getattr(self.widgets, "lbl_filename", None)
+        if lbl:
+            lbl.setText(os.path.basename(filepath))
+
+        logger.debug("load_file: завантажено %s", os.path.basename(filepath))
+
+    def set_current_file(self, filepath: str) -> None:
+        """
+        Встановити поточний файл БЕЗ перечитування з диска.
+        Використовується коли текст вже завантажений у редактор ззовні.
+        """
+        self._current_file = filepath
+        logger.debug("set_current_file → %s", filepath)
 
     def update_exec_line(self, line_no: int) -> None:
         if line_no != self._last_exec_line:
@@ -1040,13 +1069,18 @@ class GCodeEditorManager:
         is_idle      = states.get("is_idle", True)
         motion_line  = states.get("motion_line", 0)
 
-        # Новий файл відкрито у LinuxCNC
+        # Новий G-код файл відкрито у LinuxCNC
         if current_file and current_file != self._current_file:
             self.load_file(current_file)
 
-        # LinuxCNC закрив файл (не чіпаємо тимчасові файли)
+        # LinuxCNC не має файлу — очищуємо лише якщо це був G-код або
+        # тимчасовий файл. Файли проекту (.txt, .ini тощо) LinuxCNC не
+        # реєструє у status.file — не чіпаємо редактор у такому разі.
         if not current_file and self._current_file is not None:
-            if not self._current_file.startswith(tempfile.gettempdir()):
+            is_temp    = self._current_file.startswith(tempfile.gettempdir())
+            ext        = os.path.splitext(self._current_file)[1].lower()
+            is_gcode   = ext in (".ngc", ".gcode") or is_temp
+            if is_gcode:
                 self._current_file = None
                 self._editor.load_text("")
                 lbl = getattr(self.widgets, "lbl_filename", None)
@@ -1061,22 +1095,45 @@ class GCodeEditorManager:
     # ------------------------------------------------------------------
 
     def _on_content_changed(self) -> None:
+        """
+        Спрацьовує після debounce (800 мс) при будь-якій зміні тексту.
+
+        Завжди зберігає вміст на диск — для файлів проекту (.txt, .ini)
+        і для G-код файлів (.ngc).
+        cnc.open_program() викликається лише для G-код файлів щоб
+        оновити Backplot, але не для файлів проекту.
+        """
         if self._editor.is_locked():
             return
         content = self._editor.toPlainText()
         if not content.strip():
             return
+
+        # Якщо файл не встановлений — створюємо тимчасовий .ngc
         if not self._current_file:
             self._current_file = _make_temp_file()
             logger.debug("Auto-save: тимчасовий файл %s", self._current_file)
+
+        # Завжди записуємо на диск
         try:
             with open(self._current_file, "w", encoding="utf-8") as fh:
                 fh.write(content)
-            self.cnc.open_program(self._current_file)
-            self.cnc.reload_needed = False
             logger.debug("Auto-saved → %s", os.path.basename(self._current_file))
         except Exception as exc:
-            logger.error("Auto-save: %s", exc)
+            logger.error("Auto-save запис: %s", exc)
+            return
+
+        # Оновлюємо LinuxCNC лише для G-код файлів
+        ext = os.path.splitext(self._current_file)[1].lower()
+        is_gcode = ext in (".ngc", ".gcode") or self._current_file.startswith(
+            tempfile.gettempdir()
+        )
+        if is_gcode:
+            try:
+                self.cnc.open_program(self._current_file)
+                self.cnc.reload_needed = False
+            except Exception as exc:
+                logger.debug("Auto-save cnc.open_program: %s", exc)
 
     # ------------------------------------------------------------------
     # Set Next Line

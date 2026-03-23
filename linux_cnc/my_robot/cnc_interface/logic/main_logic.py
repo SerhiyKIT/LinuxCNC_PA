@@ -14,7 +14,10 @@ GCodeDisplayManager і GCodeEditorManager отримують їх ззовні �
 """
 from PyQt5 import QtCore
 from PyQt5.QtCore import QTranslator, QCoreApplication
+import logging
 import os
+
+logger = logging.getLogger(__name__)
 
 from core import MachineController, LoggerController
 from managers import (
@@ -226,16 +229,29 @@ class HandlerClass:
     # ------------------------------------------------------------------
 
     def _on_project_open_file(self, filepath: str, read_only: bool) -> None:
-        """Відкрити файл проекту у GCodeEditor."""
+        """
+        Відкрити файл проекту у GCodeEditor.
+
+        Використовує editor_manager.load_file() напряму — без FileManager.
+        cnc.open_program() викликається лише для G-код файлів (.ngc/.gcode),
+        щоб не ламати інтерпретатор при відкритті .txt/.ini файлів проекту.
+        """
         if self.editor_manager is None:
             return
-        try:
-            self.cnc.open_program(filepath)
-            self.file_manager.load_file_into_editor(filepath)
-            if read_only:
-                self.editor_manager._editor.set_locked(True)
-        except Exception as exc:
-            print(f"DEBUG: Помилка відкриття файлу проекту: {exc}")
+
+        # Завантажуємо текст і встановлюємо _current_file
+        self.editor_manager.load_file(filepath)
+
+        # G-код файли передаємо у LinuxCNC для Backplot
+        ext = os.path.splitext(filepath)[1].lower()
+        if ext in (".ngc", ".gcode"):
+            try:
+                self.cnc.open_program(filepath)
+            except Exception as exc:
+                logger.warning("open_program: %s", exc)
+
+        if read_only:
+            self.editor_manager._editor.set_locked(True)
 
     def _update_ui(self):
         try:
