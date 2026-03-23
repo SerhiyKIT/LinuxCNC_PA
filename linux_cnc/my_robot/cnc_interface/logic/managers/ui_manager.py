@@ -38,7 +38,6 @@ class UIManager:
             self.panel_manager.update_manual_controls(states)
             self.panel_manager.update_gcode_controls(states)
             self.gcode_display_manager.update_cycle_buttons(states)
-            self.gcode_display_manager.update_file_buttons(states)
             self.gcode_display_manager.update_active_gcodes(states)
             self.gcode_display_manager.update_gcode_display(states)
             self.tool_display_manager.update_tool_ui_state(states)

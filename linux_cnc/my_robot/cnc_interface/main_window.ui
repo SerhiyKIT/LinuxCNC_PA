@@ -587,186 +587,6 @@ color: #fff;
        </property>
       </widget>
      </widget>
-     <widget class="QFrame" name="frame_8">
-      <property name="geometry">
-       <rect>
-        <x>315</x>
-        <y>505</y>
-        <width>275</width>
-        <height>110</height>
-       </rect>
-      </property>
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="styleSheet">
-       <string notr="true">border-radius: 10px;
-border: 3px solid #333333;
-background-color: #161616;</string>
-      </property>
-      <property name="frameShape">
-       <enum>QFrame::NoFrame</enum>
-      </property>
-      <widget class="QPushButton" name="btn_file_open">
-       <property name="geometry">
-        <rect>
-         <x>15</x>
-         <y>15</y>
-         <width>117</width>
-         <height>30</height>
-        </rect>
-       </property>
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="font">
-        <font>
-         <family>JetBrains Mono</family>
-         <pointsize>10</pointsize>
-         <weight>50</weight>
-         <bold>false</bold>
-        </font>
-       </property>
-       <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ffffff;&quot;&gt;Open G-Code file [O]&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">QPushButton {
-	background-color: #333333;
-	color: #FFFFFF;
-	padding: 5px;
-	border-radius: 10px;
-	border: none;
-}</string>
-       </property>
-       <property name="text">
-        <string>Open</string>
-       </property>
-      </widget>
-      <widget class="QPushButton" name="btn_file_reload">
-       <property name="geometry">
-        <rect>
-         <x>142</x>
-         <y>15</y>
-         <width>117</width>
-         <height>30</height>
-        </rect>
-       </property>
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="font">
-        <font>
-         <family>JetBrains Mono</family>
-         <pointsize>10</pointsize>
-         <weight>50</weight>
-         <bold>false</bold>
-        </font>
-       </property>
-       <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ffffff;&quot;&gt;Reopen current file [Ctrl+R]&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">QPushButton {
-	background-color: #333333;
-	color: #FFFFFF;
-	padding: 5px;
-	border-radius: 10px;
-	border: none;
-}</string>
-       </property>
-       <property name="text">
-        <string>Reload</string>
-       </property>
-      </widget>
-      <widget class="QPushButton" name="btn_file_save_as">
-       <property name="geometry">
-        <rect>
-         <x>142</x>
-         <y>55</y>
-         <width>117</width>
-         <height>30</height>
-        </rect>
-       </property>
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="font">
-        <font>
-         <family>JetBrains Mono</family>
-         <pointsize>10</pointsize>
-         <weight>50</weight>
-         <bold>false</bold>
-        </font>
-       </property>
-       <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ffffff;&quot;&gt;Save G-code as [Ctrl+S]&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">QPushButton {
-	background-color: #333333;
-	color: #FFFFFF;
-	padding: 5px;
-	border-radius: 10px;
-	border: none;
-}</string>
-       </property>
-       <property name="text">
-        <string>Save as</string>
-       </property>
-      </widget>
-      <widget class="QPushButton" name="btn_file_edit">
-       <property name="geometry">
-        <rect>
-         <x>15</x>
-         <y>55</y>
-         <width>117</width>
-         <height>30</height>
-        </rect>
-       </property>
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="font">
-        <font>
-         <family>JetBrains Mono</family>
-         <pointsize>10</pointsize>
-         <weight>50</weight>
-         <bold>false</bold>
-        </font>
-       </property>
-       <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ffffff;&quot;&gt;Edit current file [E]&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">QPushButton {
-	background-color: #333333;
-	color: #FFFFFF;
-	padding: 5px;
-	border-radius: 10px;
-	border: none;
-}</string>
-       </property>
-       <property name="text">
-        <string>Edit</string>
-       </property>
-      </widget>
-     </widget>
      <widget class="QFrame" name="frame_10">
       <property name="geometry">
        <rect>
@@ -850,31 +670,6 @@ color: #9E9E9E</string>
        <string>Controls</string>
       </property>
      </widget>
-     <widget class="QLabel" name="lbl_file">
-      <property name="geometry">
-       <rect>
-        <x>325</x>
-        <y>480</y>
-        <width>100</width>
-        <height>20</height>
-       </rect>
-      </property>
-      <property name="font">
-       <font>
-        <family>JetBrains Mono</family>
-        <pointsize>10</pointsize>
-        <weight>50</weight>
-        <bold>false</bold>
-       </font>
-      </property>
-      <property name="styleSheet">
-       <string notr="true">border: none;
-color: #9E9E9E</string>
-      </property>
-      <property name="text">
-       <string>File</string>
-      </property>
-     </widget>
      <widget class="QLabel" name="lbl_filename">
       <property name="geometry">
        <rect>
@@ -905,348 +700,11 @@ color: #9E9E9E;
        <set>Qt::AlignCenter</set>
       </property>
      </widget>
-     <widget class="QFrame" name="frm_spindle_control">
-      <property name="geometry">
-       <rect>
-        <x>315</x>
-        <y>655</y>
-        <width>275</width>
-        <height>170</height>
-       </rect>
-      </property>
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="styleSheet">
-       <string notr="true">border-radius: 10px;
-border: 3px solid #333333;
-background-color: #161616;</string>
-      </property>
-      <property name="frameShape">
-       <enum>QFrame::NoFrame</enum>
-      </property>
-      <widget class="QPushButton" name="btn_spindle_cw">
-       <property name="geometry">
-        <rect>
-         <x>15</x>
-         <y>15</y>
-         <width>70</width>
-         <height>30</height>
-        </rect>
-       </property>
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="font">
-        <font>
-         <family>JetBrains Mono</family>
-         <pointsize>10</pointsize>
-         <weight>50</weight>
-         <bold>false</bold>
-        </font>
-       </property>
-       <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ffffff;&quot;&gt;Resume execution [S]&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">QPushButton {
-	background-color: #333333;
-	color: #FFFFFF;
-	padding: 5px;
-	border-radius: 10px;
-	border: none;
-}</string>
-       </property>
-       <property name="text">
-        <string>CW</string>
-       </property>
-      </widget>
-      <widget class="QPushButton" name="btn_spindle_stop">
-       <property name="geometry">
-        <rect>
-         <x>103</x>
-         <y>15</y>
-         <width>70</width>
-         <height>30</height>
-        </rect>
-       </property>
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="font">
-        <font>
-         <family>JetBrains Mono</family>
-         <pointsize>10</pointsize>
-         <weight>50</weight>
-         <bold>false</bold>
-        </font>
-       </property>
-       <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ffffff;&quot;&gt;Resume execution [S]&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">QPushButton {
-	background-color: #333333;
-	color: #FFFFFF;
-	padding: 5px;
-	border-radius: 10px;
-	border: none;
-}</string>
-       </property>
-       <property name="text">
-        <string>STOP</string>
-       </property>
-      </widget>
-      <widget class="QPushButton" name="btn_spindle_ccw">
-       <property name="geometry">
-        <rect>
-         <x>190</x>
-         <y>15</y>
-         <width>70</width>
-         <height>30</height>
-        </rect>
-       </property>
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="font">
-        <font>
-         <family>JetBrains Mono</family>
-         <pointsize>10</pointsize>
-         <weight>50</weight>
-         <bold>false</bold>
-        </font>
-       </property>
-       <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ffffff;&quot;&gt;Resume execution [S]&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">QPushButton {
-	background-color: #333333;
-	color: #FFFFFF;
-	padding: 5px;
-	border-radius: 10px;
-	border: none;
-}</string>
-       </property>
-       <property name="text">
-        <string>CCW</string>
-       </property>
-      </widget>
-      <widget class="QFrame" name="spindle_control_overlay">
-       <property name="geometry">
-        <rect>
-         <x>0</x>
-         <y>0</y>
-         <width>275</width>
-         <height>170</height>
-        </rect>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">background-color: rgba(30, 30, 30, 150);
-border-radius: 10px;
-border: 3px solid #333333;</string>
-       </property>
-       <property name="frameShape">
-        <enum>QFrame::StyledPanel</enum>
-       </property>
-       <property name="frameShadow">
-        <enum>QFrame::Raised</enum>
-       </property>
-      </widget>
-      <widget class="QLabel" name="lbl_spindle_status">
-       <property name="geometry">
-        <rect>
-         <x>15</x>
-         <y>125</y>
-         <width>245</width>
-         <height>30</height>
-        </rect>
-       </property>
-       <property name="font">
-        <font>
-         <family>JetBrains Mono</family>
-         <pointsize>10</pointsize>
-         <weight>50</weight>
-         <bold>false</bold>
-        </font>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">border-radius: 10px;
-color: #fff;
-</string>
-       </property>
-       <property name="text">
-        <string>SPINDLE STATUS</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignCenter</set>
-       </property>
-      </widget>
-      <widget class="QLabel" name="val_spindle_override">
-       <property name="geometry">
-        <rect>
-         <x>-1</x>
-         <y>90</y>
-         <width>51</width>
-         <height>23</height>
-        </rect>
-       </property>
-       <property name="font">
-        <font>
-         <family>JetBrains Mono</family>
-         <pointsize>10</pointsize>
-         <weight>50</weight>
-         <bold>false</bold>
-        </font>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">border: none;
-color: #fff;
-</string>
-       </property>
-       <property name="text">
-        <string>100 %</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-       </property>
-      </widget>
-      <widget class="QLabel" name="lbl_spindle_override">
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
-       <property name="geometry">
-        <rect>
-         <x>60</x>
-         <y>60</y>
-         <width>200</width>
-         <height>23</height>
-        </rect>
-       </property>
-       <property name="font">
-        <font>
-         <family>JetBrains Mono</family>
-         <pointsize>10</pointsize>
-         <weight>50</weight>
-         <bold>false</bold>
-        </font>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">border: none;
-color: #fff;
-background: none;</string>
-       </property>
-       <property name="text">
-        <string>Spindle Override:</string>
-       </property>
-      </widget>
-      <widget class="QSlider" name="sld_spindle_override">
-       <property name="geometry">
-        <rect>
-         <x>60</x>
-         <y>90</y>
-         <width>201</width>
-         <height>23</height>
-        </rect>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">QSlider::groove:horizontal {
-    background: #FE5C0D;
-	border-radius: 10px;
-	border: 3px solid #333333;
-}
-
-QSlider::handle:horizontal {
-    background: #FE5C0D;
-    width: 18px;
-    height: 18px;
-    margin: -6px 0; 
-    border-radius: 9px; 
-}
-
-QSlider::handle:horizontal:hover {
-	background-color: rgb(254, 81, 13);
-    border: 2px solid rgb(254, 174, 13);
-}
-
-QSlider::sub-page:horizontal {
-    background: #161616;
-    height: 8px;
-    border-radius: 9px;
-}
-
-QSlider::add-page:horizontal {
-    background: #161616;
-    border: 1px solid #333333;
-    height: 8px;
-    border-radius: 9px;
-}</string>
-       </property>
-       <property name="maximum">
-        <number>200</number>
-       </property>
-       <property name="value">
-        <number>100</number>
-       </property>
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-      </widget>
-      <zorder>btn_spindle_cw</zorder>
-      <zorder>btn_spindle_stop</zorder>
-      <zorder>btn_spindle_ccw</zorder>
-      <zorder>lbl_spindle_status</zorder>
-      <zorder>val_spindle_override</zorder>
-      <zorder>lbl_spindle_override</zorder>
-      <zorder>sld_spindle_override</zorder>
-      <zorder>spindle_control_overlay</zorder>
-     </widget>
-     <widget class="QLabel" name="lbl_spindle_control">
-      <property name="geometry">
-       <rect>
-        <x>320</x>
-        <y>630</y>
-        <width>151</width>
-        <height>20</height>
-       </rect>
-      </property>
-      <property name="font">
-       <font>
-        <family>JetBrains Mono</family>
-        <pointsize>10</pointsize>
-        <weight>50</weight>
-        <bold>false</bold>
-       </font>
-      </property>
-      <property name="styleSheet">
-       <string notr="true">border: none;
-color: #9E9E9E</string>
-      </property>
-      <property name="text">
-       <string>Spindle Control</string>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-      </property>
-     </widget>
      <widget class="QFrame" name="frm_tool_control">
       <property name="geometry">
        <rect>
-        <x>20</x>
-        <y>685</y>
+        <x>315</x>
+        <y>505</y>
         <width>275</width>
         <height>140</height>
        </rect>
@@ -1460,8 +918,8 @@ color: #fff;
      <widget class="QLabel" name="lbl_tool_title">
       <property name="geometry">
        <rect>
-        <x>30</x>
-        <y>660</y>
+        <x>325</x>
+        <y>480</y>
         <width>151</width>
         <height>20</height>
        </rect>
@@ -1487,12 +945,8 @@ color: #9E9E9E</string>
      </widget>
      <zorder>frame_10</zorder>
      <zorder>frame_6</zorder>
-     <zorder>frame_8</zorder>
      <zorder>lbl_controls</zorder>
-     <zorder>lbl_file</zorder>
      <zorder>lbl_filename</zorder>
-     <zorder>frm_spindle_control</zorder>
-     <zorder>lbl_spindle_control</zorder>
      <zorder>frm_tool_control</zorder>
      <zorder>lbl_tool_title</zorder>
      <zorder>gcode_control_overlay</zorder>
@@ -3530,9 +2984,9 @@ border: 3px solid #FE5C0D;</string>
       <property name="geometry">
        <rect>
         <x>15</x>
-        <y>202</y>
+        <y>232</y>
         <width>480</width>
-        <height>111</height>
+        <height>81</height>
        </rect>
       </property>
       <property name="font">
@@ -3668,7 +3122,7 @@ color: #fff;
       <property name="geometry">
        <rect>
         <x>15</x>
-        <y>74</y>
+        <y>106</y>
         <width>200</width>
         <height>23</height>
        </rect>
@@ -3694,7 +3148,7 @@ color: #fff;
       <property name="geometry">
        <rect>
         <x>15</x>
-        <y>106</y>
+        <y>138</y>
         <width>231</width>
         <height>23</height>
        </rect>
@@ -3720,7 +3174,7 @@ color: #fff;
       <property name="geometry">
        <rect>
         <x>15</x>
-        <y>138</y>
+        <y>170</y>
         <width>231</width>
         <height>23</height>
        </rect>
@@ -3746,7 +3200,7 @@ color: #fff;
       <property name="geometry">
        <rect>
         <x>15</x>
-        <y>170</y>
+        <y>202</y>
         <width>200</width>
         <height>23</height>
        </rect>
@@ -3824,7 +3278,7 @@ QSlider::add-page:horizontal {
       <property name="geometry">
        <rect>
         <x>345</x>
-        <y>74</y>
+        <y>106</y>
         <width>150</width>
         <height>23</height>
        </rect>
@@ -3876,7 +3330,7 @@ QSlider::add-page:horizontal {
       <property name="geometry">
        <rect>
         <x>345</x>
-        <y>106</y>
+        <y>138</y>
         <width>150</width>
         <height>23</height>
        </rect>
@@ -3928,7 +3382,7 @@ QSlider::add-page:horizontal {
       <property name="geometry">
        <rect>
         <x>345</x>
-        <y>138</y>
+        <y>170</y>
         <width>150</width>
         <height>23</height>
        </rect>
@@ -4038,7 +3492,7 @@ color: #fff;
       <property name="geometry">
        <rect>
         <x>210</x>
-        <y>74</y>
+        <y>106</y>
         <width>125</width>
         <height>23</height>
        </rect>
@@ -4067,7 +3521,7 @@ color: #fff;
       <property name="geometry">
        <rect>
         <x>184</x>
-        <y>106</y>
+        <y>138</y>
         <width>151</width>
         <height>23</height>
        </rect>
@@ -4096,7 +3550,7 @@ color: #fff;
       <property name="geometry">
        <rect>
         <x>210</x>
-        <y>138</y>
+        <y>170</y>
         <width>125</width>
         <height>23</height>
        </rect>
@@ -4116,6 +3570,116 @@ color: #fff;
       </property>
       <property name="text">
        <string>%1 in/min</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+      </property>
+     </widget>
+     <widget class="QLabel" name="lbl_spindle_override">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="geometry">
+       <rect>
+        <x>15</x>
+        <y>74</y>
+        <width>200</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <family>JetBrains Mono</family>
+        <pointsize>12</pointsize>
+        <weight>75</weight>
+        <bold>true</bold>
+       </font>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">border: none;
+color: #fff;
+</string>
+      </property>
+      <property name="text">
+       <string>Spindle Override:</string>
+      </property>
+     </widget>
+     <widget class="QSlider" name="sld_spindle_override">
+      <property name="geometry">
+       <rect>
+        <x>345</x>
+        <y>74</y>
+        <width>150</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">QSlider::groove:horizontal {
+    background: #FE5C0D;
+	border-radius: 10px;
+	border: 3px solid #333333;
+}
+
+QSlider::handle:horizontal {
+    background: #FE5C0D;
+    width: 18px;
+    height: 18px;
+    margin: -6px 0; 
+    border-radius: 9px; 
+}
+
+QSlider::handle:horizontal:hover {
+	background-color: rgb(254, 81, 13);
+    border: 2px solid rgb(254, 174, 13);
+}
+
+QSlider::sub-page:horizontal {
+    background: #161616;
+    height: 8px;
+    border-radius: 9px;
+}
+
+QSlider::add-page:horizontal {
+    background: #161616;
+    border: 1px solid #333333;
+    height: 8px;
+    border-radius: 9px;
+}</string>
+      </property>
+      <property name="maximum">
+       <number>200</number>
+      </property>
+      <property name="value">
+       <number>100</number>
+      </property>
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+     </widget>
+     <widget class="QLabel" name="val_spindle_override">
+      <property name="geometry">
+       <rect>
+        <x>210</x>
+        <y>74</y>
+        <width>125</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <family>JetBrains Mono</family>
+        <pointsize>12</pointsize>
+        <weight>75</weight>
+        <bold>true</bold>
+       </font>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">border: none;
+color: #fff;
+</string>
+      </property>
+      <property name="text">
+       <string>100 %</string>
       </property>
       <property name="alignment">
        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>

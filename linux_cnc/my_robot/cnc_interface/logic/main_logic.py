@@ -25,14 +25,13 @@ from managers import (
     JointManager, JointUIBinder,
     AxisManager, AxisUIBinder,
     OverridesManager, OverridesUIBinder,
-    FileManager,
     CycleManager, CycleUIBinder,
     ToolManager, ToolUIBinder,
     KeyboardManager,
 )
 from managers.ui.gcode_editor import GCodeEditorManager
 from managers.project_manager import ProjectManager
-from config import STYLES, MACHINE_PARAMS, MGR_CONTROL, MGR_CYCLE, MGR_FILE, MGR_TOOL
+from config import STYLES, MACHINE_PARAMS, MGR_CONTROL, MGR_CYCLE, MGR_TOOL
 from managers.ui.ui_mapping import UI_TEXT_MAPPING, UI_TOOLTIP_MAPPING
 
 
@@ -51,17 +50,12 @@ class HandlerClass:
         self.cnc         = MachineController()
         self.logger_ctrl = LoggerController(self.cnc)
 
-        # FileManager – власник файлового I/O, оголошений тут
-        self.file_manager = FileManager(self.cnc, self.widgets)
-
         self.cycle_manager     = CycleManager(self.cnc)
         self.joint_manager     = JointManager(self.cnc)
         self.axis_manager      = AxisManager(self.cnc)
         self.overrides_manager = OverridesManager(self.cnc)
         self.tool_manager      = ToolManager(self.cnc)
 
-        # UIManager і ControlManager зберігають посилання на widgets,
-        # але не звертаються до конкретних дочірніх елементів у __init__
         self.control    = ControlManager(self.cnc, self.widgets)
         self.ui_manager = UIManager(self.cnc, self.widgets, self.cycle_manager)
 
@@ -93,16 +87,9 @@ class HandlerClass:
         # ── GCodeEditorManager (потребує list_gcode_edit) ────────────────
         self.editor_manager = GCodeEditorManager(
             self.cnc,
-            self.file_manager,
             self.widgets,
             self.cycle_manager,
         )
-
-        # КРИТИЧНО: повідомити FileManager який саме екземпляр GCodeEditorWidget
-        # відображається на екрані. Це вирішує проблему коли GCodeEditorManager
-        # монтує контейнер у layout і екземпляр на екрані відрізняється від
-        # widgets.list_gcode_edit що зберігається у widgets.
-        self.file_manager.set_editor_widget(self.editor_manager._editor)
 
         # Передати editor_manager у gcode_display_manager
         self.ui_manager.gcode_display_manager.editor_manager = self.editor_manager
@@ -118,7 +105,6 @@ class HandlerClass:
             MGR_CONTROL: self.control,
             MGR_CYCLE:   self.cycle_manager,
             MGR_TOOL:    self.tool_manager,
-            MGR_FILE:    self.file_manager,
         }
         self.keyboard_manager = KeyboardManager(self.widgets, self.managers_map)
 
@@ -173,9 +159,6 @@ class HandlerClass:
                 combo.clear()
                 combo.addItems(self.params.get("JOG_MODES", []))
 
-        # ── Файлові кнопки (FileManager оголошений у HandlerClass) ───────
-        self._connect_file_buttons()
-
         # Cycle
         self.cycle_ui_binder.connect_buttons()
 
@@ -198,33 +181,6 @@ class HandlerClass:
             self.widgets.combo_language.addItem("EN", "en")
             self.widgets.combo_language.addItem("UA", "ua")
             self.widgets.combo_language.currentIndexChanged.connect(self.change_language)
-
-    def _connect_file_buttons(self) -> None:
-        """
-        Підключити всі файлові кнопки до FileManager і GCodeEditorManager.
-        Виклик з _setup_connections() гарантує що widgets вже існують.
-        """
-        mapping = {
-            # відкрити файл через діалог → FileManager
-            'btn_file_open':    self.file_manager.on_btn_file_open_clicked,
-            # зберегти як → FileManager
-            'btn_file_save_as': self.file_manager.on_btn_file_save_as_clicked,
-            # перезавантажити з диска → FileManager
-            'btn_file_reload':  self.file_manager.on_btn_file_reload_clicked,
-            # відкрити у зовнішньому редакторі → FileManager
-            'btn_file_edit':    self.file_manager.on_btn_file_edit_clicked,
-        }
-        for btn_name, handler in mapping.items():
-            btn = getattr(self.widgets, btn_name, None)
-            if btn is None:
-                print(f"DEBUG: кнопка {btn_name} не знайдена у widgets")
-                continue
-            try:
-                btn.clicked.disconnect()
-            except TypeError:
-                pass
-            btn.clicked.connect(handler)
-            print(f"DEBUG: підключено {btn_name}")
 
     # ------------------------------------------------------------------
 

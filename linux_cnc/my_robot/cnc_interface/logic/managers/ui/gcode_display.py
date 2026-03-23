@@ -3,15 +3,9 @@
 GCodeDisplayManager – оновлення UI панелей G-коду.
 
 Відповідальність:
-  • update_cycle_buttons()   – активація кнопок циклу (Start/Pause/Stop…)
-  • update_file_buttons()    – активація кнопок файлових операцій
-  • update_active_gcodes()   – рядок активних G/M-кодів
-  • update_gcode_display()   – делегує у GCodeEditorManager
-
-НЕ відповідає за:
-  • створення FileManager (це HandlerClass)
-  • створення GCodeEditorManager (це HandlerClass.initialized__)
-  • підключення кнопок (це HandlerClass._connect_file_buttons)
+  • update_cycle_buttons()  – активація кнопок циклу (Start/Pause/Stop…)
+  • update_active_gcodes()  – рядок активних G/M-кодів
+  • update_gcode_display()  – делегує у GCodeEditorManager
 
 editor_manager встановлюється ззовні через:
     gcode_display_manager.editor_manager = editor_manager
@@ -22,7 +16,7 @@ from __future__ import annotations
 from PyQt5.QtCore import QCoreApplication
 
 from managers.style_manager import StyleManager
-from config import CYCLE_BUTTONS, FILE_BUTTONS
+from config import CYCLE_BUTTONS
 
 
 class GCodeDisplayManager:
@@ -31,13 +25,11 @@ class GCodeDisplayManager:
         self.widgets = widgets
 
         self.cycle_buttons = CYCLE_BUTTONS
-        self.file_buttons  = FILE_BUTTONS
 
         self.style_manager = StyleManager()
         self.style_manager._set_gcode_button_styles()
 
         # Встановлюється з HandlerClass.initialized__()
-        # після того як loadUi завершено і list_gcode_edit існує
         self.editor_manager = None
 
     # ------------------------------------------------------------------
@@ -76,47 +68,6 @@ class GCodeDisplayManager:
 
         for btn_name in self.cycle_buttons:
             self._set_btn_state(btn_name, conditions.get(btn_name, False))
-
-    # ------------------------------------------------------------------
-    # File buttons
-    # ------------------------------------------------------------------
-
-    def update_file_buttons(self, states: dict) -> None:
-        """Активація кнопок файлових операцій."""
-        is_idle  = states.get('is_idle', True)
-        is_ready = states.get('is_ready', False)
-
-        has_file    = bool(self.cnc.get_last_file()) or self._editor_has_content()
-        has_content = self._editor_has_content()
-
-        conditions = {
-            # btn_file_open: доступна коли станок не рухається
-            # (не прив'язуємо до is_ready — файл можна відкрити без homing)
-            'btn_file_open':    is_idle,
-            'btn_file_edit':    is_idle and has_file and is_ready,
-            'btn_file_reload':  is_idle and has_file and is_ready,
-            'btn_file_save_as': is_idle and has_content,
-        }
-
-        for btn_name in ('btn_file_open', 'btn_file_edit',
-                         'btn_file_reload', 'btn_file_save_as'):
-            btn = getattr(self.widgets, btn_name, None)
-            if not btn:
-                continue
-
-            is_enabled = conditions.get(btn_name, False)
-            if btn.isEnabled() != is_enabled:
-                btn.setEnabled(is_enabled)
-
-            if not is_enabled:
-                target = self.style_manager.STYLE_GCODE_INACTIVE
-            elif btn_name == 'btn_file_reload' and getattr(self.cnc, 'reload_needed', False):
-                target = self.style_manager.STYLE_GCODE_WARN
-            else:
-                target = self.style_manager.STYLE_GCODE_ACTIVE
-
-            if btn.styleSheet() != target:
-                btn.setStyleSheet(target)
 
     # ------------------------------------------------------------------
     # Active G-code status bar

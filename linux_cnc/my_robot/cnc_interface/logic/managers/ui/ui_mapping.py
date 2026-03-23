@@ -13,16 +13,10 @@ UI_TEXT_MAPPING = {
     
     'btn_open_project': "OPEN",
     'btn_create_new_project': "CREATE",
-
-    'btn_file_open': "Open",
-    'btn_file_reload': "Reload",
-    'btn_file_save_as': "Save as",
-    'btn_file_edit': "Edit",
     
     'lbl_project_manager': "Project Manager",
     'lbl_gcode_control': "Code Control",
     'lbl_controls': "Controls",
-    'lbl_file': "File",
     'lbl_spindle_status': "SPINDLE STATUS",
     'lbl_progress_percent': "PROGRESS %1%",
     'lbl_tool_status': "TOOL STATUS",
@@ -30,15 +24,10 @@ UI_TEXT_MAPPING = {
     'lbl_axis_control': "Axis Control",
     'lbl_cnc_control': "CNC Control & Overrides",
     'lbl_output': "Output",
-    'lbl_spindle_control': "Spindle Control",
     'lbl_tool_title': "Tool Control",
     
     'btn_tool_action': "GRIP",
     'btn_tool_arm': "ARM TOOL",
-    
-    'btn_spindle_ccw': "CCW",
-    'btn_spindle_cw': "CW",
-    'btn_spindle_stop': "STOP",
     
     'val_linear_jog_speed': "%1 in/min ",
     'val_angular_jog_speed': "%1 deg/min ",
@@ -62,8 +51,4 @@ UI_TOOLTIP_MAPPING = {
     'btn_cycle_continue': '<html><head/><body><p><span style=" color:#ffffff;">Resume execution [S]</span></p></body></html>',
     'btn_cycle_step': '<html><head/><body><p><span style=" color:#ffffff;">Execute next line [T]</span></p></body></html>',
     'btn_cycle_stop': '<html><head/><body><p><span style=" color:#ffffff;">Stop program execution [ESC]</span></p></body></html>',
-    'btn_file_open': '<html><head/><body><p><span style=" color:#ffffff;">Open G-Code file [O]</span></p></body></html>',
-    'btn_file_reload': '<html><head/><body><p><span style=" color:#ffffff;">Reopen current file [Ctrl+R]</span></p></body></html>',
-    'btn_file_save_as': '<html><head/><body><p><span style=" color:#ffffff;">Save G-code as [Ctrl+S]</span></p></body></html>',
-    'btn_file_edit': '<html><head/><body><p><span style=" color:#ffffff;">Edit current file [E]</span></p></body></html>',
 }
