@@ -907,25 +907,24 @@ class GCodeEditorManager:
     """
     Відповідає за:
       • монтування GCodeEditorWidget у layout
+      • читання файлів з диска та відображення у редакторі
       • відстеження _current_file
-      • делегування читання файлу у FileManager.load_file_into_editor()
-      • auto-save + cnc.open_program() після debounce
+      • auto-save при кожній зміні тексту
       • Safety Lock
       • підсвітку виконуваного рядка
       • Set Next Line → cycle_manager.start_cycle()
 
-    НЕ підключає кнопки і НЕ відкриває діалоги — це HandlerClass.
+    НЕ залежить від FileManager.
+    Підключення кнопок — HandlerClass._connect_file_buttons().
     """
 
     def __init__(
         self,
         machine_controller: "MachineController",
-        file_manager,       # FileManager — для load_file_into_editor()
         widgets: object,
         cycle_manager=None,
     ) -> None:
         self.cnc           = machine_controller
-        self.file_manager  = file_manager
         self.widgets       = widgets
         self.cycle_manager = cycle_manager
 

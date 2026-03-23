@@ -136,79 +136,14 @@ CYCLE</source>
         <translation>ПРОГРЕС %1%</translation>
     </message>
     <message>
-        <location filename="../../main_window.ui" line="647"/>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ffffff;&quot;&gt;Open G-Code file [O]&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ffffff;&quot;&gt;Відкрити файл G-коду [O]&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
-    </message>
-    <message>
-        <location filename="../../main_window.ui" line="659"/>
-        <source>Open</source>
-        <translation>Відкрити</translation>
-    </message>
-    <message>
-        <location filename="../../main_window.ui" line="686"/>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ffffff;&quot;&gt;Reopen current file [Ctrl+R]&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ffffff;&quot;&gt;Оновити поточний файл [Ctrl+R]&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
-    </message>
-    <message>
-        <location filename="../../main_window.ui" line="698"/>
-        <source>Reload</source>
-        <translation>Оновити</translation>
-    </message>
-    <message>
-        <location filename="../../main_window.ui" line="725"/>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ffffff;&quot;&gt;Save G-code as [Ctrl+S]&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ffffff;&quot;&gt;Зберегти G-код як [Ctrl+S]&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
-    </message>
-    <message>
-        <location filename="../../main_window.ui" line="737"/>
-        <source>Save as</source>
-        <translation>Зберегти як</translation>
-    </message>
-    <message>
-        <location filename="../../main_window.ui" line="764"/>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ffffff;&quot;&gt;Edit current file [E]&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ffffff;&quot;&gt;Редагувати поточний файл [E]&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
-    </message>
-    <message>
-        <location filename="../../main_window.ui" line="776"/>
-        <source>Edit</source>
-        <translation>Редагувати</translation>
-    </message>
-    <message>
         <location filename="../../main_window.ui" line="839"/>
         <source>Controls</source>
         <translation>Управління</translation>
     </message>
     <message>
-        <location filename="../../main_window.ui" line="864"/>
-        <source>File</source>
-        <translation>Файл</translation>
-    </message>
-    <message>
         <location filename="../../main_window.ui" line="891"/>
         <source>file_name.txt</source>
         <translation>file_name.txt</translation>
-    </message>
-    <message>
-        <location filename="../../main_window.ui" line="956"/>
-        <source>CW</source>
-        <translation>CW</translation>
-    </message>
-    <message>
-        <location filename="../../main_window.ui" line="1034"/>
-        <source>CCW</source>
-        <translation>CCW</translation>
-    </message>
-    <message>
-        <location filename="../../main_window.ui" line="1081"/>
-        <source>SPINDLE STATUS</source>
-        <translation>СТАН ШПИНДЕЛЯ</translation>
-    </message>
-    <message>
-        <location filename="../../main_window.ui" line="1115"/>
-        <source>Spindle Control</source>
-        <translation>Шпиндель</translation>
     </message>
     <message>
         <location filename="../../main_window.ui" line="1180"/>
@@ -229,11 +164,6 @@ CYCLE</source>
         <location filename="../../main_window.ui" line="4330"/>
         <source>CREATE</source>
         <translation>СТВОРИТИ</translation>
-    </message>
-    <message>
-        <location filename="../../main_window.ui" line="4373"/>
-        <source>OPEN</source>
-        <translation>ВІДКРИТИ</translation>
     </message>
     <message>
         <source>RELEASE</source>
