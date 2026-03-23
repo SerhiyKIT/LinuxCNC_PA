@@ -1,0 +1,16 @@
+#!/home/oleksii/linuxcnc/configs/sim.axis.vismach.puma/venv/bin/python
+# Restore axis limits to INI settings
+import sys
+
+print("=" * 40)
+print("Поточний шлях до інтерпретатора Python:")
+# sys.executable покаже точний шлях до python, який зараз виконує скрипт
+print(sys.executable) 
+print("=" * 40)
+
+try:
+    import cowsay
+    cowsay.cow("Ура! Я працюю зсередини venv!")
+except ImportError:
+    print("❌ ПОМИЛКА: Бібліотеку 'cowsay' не знайдено.")
+    print("⚠️ Схоже, ти використовуєш глобальний системний Python, а не venv!")
