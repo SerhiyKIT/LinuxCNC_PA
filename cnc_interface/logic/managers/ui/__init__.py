@@ -2,7 +2,7 @@
 try:
     from .motion_display import MotionDisplayManager
     from .panel_manager import PanelManager
-    from .gcode_display import GCodeDisplayManager
+    from .gcode_display import CodeDisplayManager
     from .logger_display import LoggerDisplayManager
     from .tool_display import ToolDisplayManager
     from .gcode_editor import GCodeEditorManager
@@ -12,7 +12,7 @@ except ImportError as e:
 __all__ = [
     'MotionDisplayManager',
     'PanelManager',
-    'GCodeDisplayManager',
+    'CodeDisplayManager',
     'LoggerDisplayManager',
     'GCodeEditorManager',
     'ToolDisplayManager'
