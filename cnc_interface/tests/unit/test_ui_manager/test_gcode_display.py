@@ -44,7 +44,7 @@ def gcode_mgr(mock_cnc, mock_widgets):
         MockStyle.return_value.STYLE_GCODE_ACTIVE   = "active"
         MockStyle.return_value.STYLE_GCODE_INACTIVE = "inactive"
         MockStyle.return_value.STYLE_GCODE_WARN     = "warn"
-        from logic.managers.ui.gcode_display import GCodeDisplayManager
+        from cnc_interface.logic.managers.ui.gcode_display import GCodeDisplayManager
         mgr = GCodeDisplayManager(mock_cnc, mock_widgets)
         # CYCLE_BUTTONS читається у __init__ до патчу — перезаписуємо на instance
         mgr.cycle_buttons = _CYCLE_BUTTONS

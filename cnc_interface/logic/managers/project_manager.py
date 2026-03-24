@@ -42,8 +42,19 @@ logger = logging.getLogger(__name__)
 # Константи
 # ---------------------------------------------------------------------------
 
-_PROJECTS_ROOT   = Path.home() / "ProjectLinuxCNC"
-_DEFAULT_FILES   = ("program.txt", "config.ini")
+_PROJECTS_ROOT = Path.home() / "ProjectLinuxCNC"
+
+# Структура нового проекту — папки та їх файли за замовчуванням
+_PROJECT_STRUCTURE: dict[str, list[str]] = {
+    "src":  ["program.txt"],    # сирці (редагує користувач)
+    "bin":  ["main.parl"],      # виконавчі файли (генерує система)
+    "data": ["points.xml"],     # точки та параметри
+    "logs": ["execution.log"],  # звіти про виконання
+}
+_PROJECT_ROOT_FILES = ["config.ini"]          # файли в корені проекту
+_DEFAULT_OPEN_FILE  = Path("src") / "program.txt"  # відкривається при відкритті проекту
+_EDITABLE_EXTS      = (".txt", ".ini", ".xml", ".log", ".parl")  # типи що можна редагувати
+_HIDDEN_FOLDERS     = {"bin", "logs"}         # папки що існують але не відображаються
 
 _STYLE_DIALOG = """
 QDialog          { background:#121212; color:#FFFFFF; }
@@ -358,6 +369,30 @@ class _DeleteProjectDialog(QDialog):
 # 4. ProjectManager – фасад
 # ===========================================================================
 
+# ===========================================================================
+# Проксі-модель: приховування системних папок від користувача
+# ===========================================================================
+
+class _HiddenFoldersProxy(QSortFilterProxyModel):
+    """
+    Фільтрує QFileSystemModel: приховує вказані папки у дереві проекту.
+    Папки існують на диску, але не відображаються користувачу.
+    """
+
+    def __init__(self, hidden: set[str], parent=None):
+        super().__init__(parent)
+        self._hidden = {name.lower() for name in hidden}
+
+    def filterAcceptsRow(self, source_row: int, source_parent) -> bool:
+        model = self.sourceModel()
+        index = model.index(source_row, 0, source_parent)
+        name  = model.fileName(index).lower()
+        # Ховаємо лише папки зі списку — файли показуємо завжди
+        if model.isDir(index) and name in self._hidden:
+            return False
+        return True
+
+
 class ProjectManager:
     """
     Управляє станом панелі Project Manager.
@@ -458,13 +493,62 @@ class ProjectManager:
         # Файлова модель для _project_tree
         self._fs_model = QFileSystemModel()
         self._fs_model.setReadOnly(False)
+        # Фільтр: ховаємо папки bin/ і logs/ від користувача
+        self._fs_model.setNameFilterDisables(False)
         self._project_tree.setModel(self._fs_model)
         for col in (1, 2, 3):
             self._project_tree.setColumnHidden(col, True)
 
-    # ------------------------------------------------------------------
-    # Початковий стан
-    # ------------------------------------------------------------------
+        # Встановлюємо проксі-модель для приховування системних папок
+        self._tree_proxy = _HiddenFoldersProxy(
+            hidden=_HIDDEN_FOLDERS,
+            parent=self._project_tree,
+        )
+        self._tree_proxy.setSourceModel(self._fs_model)
+        self._project_tree.setModel(self._tree_proxy)
+
+    def _rebuild_fs_model(self, project_path: Path) -> None:
+        """
+        Повністю замінити QFileSystemModel і _HiddenFoldersProxy.
+
+        QFileSystemModel кешує структуру директорій і не скидає кеш
+        навіть при setRootPath(""). Єдиний надійний спосіб отримати
+        свіжу структуру — знищити стару модель і створити нову.
+        Викликається при кожному відкритті проекту.
+        """
+        # Від'єднуємо стару модель від дерева перед знищенням
+        self._project_tree.setModel(None)
+
+        # Знищуємо стару модель і проксі (Qt видалить дочірні об'єкти)
+        if hasattr(self, "_tree_proxy") and self._tree_proxy is not None:
+            self._tree_proxy.setSourceModel(None)
+            self._tree_proxy.deleteLater()
+        if hasattr(self, "_fs_model") and self._fs_model is not None:
+            self._fs_model.deleteLater()
+
+        # Створюємо нову файлову модель
+        self._fs_model = QFileSystemModel()
+        self._fs_model.setReadOnly(False)
+        self._fs_model.setNameFilterDisables(False)
+
+        # Встановлюємо кореневий шлях до встановлення моделі на дерево
+        self._fs_model.setRootPath(str(project_path))
+
+        # Новий проксі для приховування системних папок
+        self._tree_proxy = _HiddenFoldersProxy(
+            hidden=_HIDDEN_FOLDERS,
+            parent=self._project_tree,
+        )
+        self._tree_proxy.setSourceModel(self._fs_model)
+
+        # Підключаємо нову модель до дерева
+        self._project_tree.setModel(self._tree_proxy)
+        for col in (1, 2, 3):
+            self._project_tree.setColumnHidden(col, True)
+
+        # Встановлюємо кореневий індекс через проксі
+        src_root = self._fs_model.index(str(project_path))
+        self._project_tree.setRootIndex(self._tree_proxy.mapFromSource(src_root))
 
     def _set_initial_state(self) -> None:
         """Показати елементи пошуку/кнопок і список проектів."""
@@ -477,11 +561,15 @@ class ProjectManager:
             if w:
                 w.setVisible(True)
 
-        # Показати tree_view_project (список), сховати _project_tree (файли)
         tree = self._w("tree_view_project")
         if tree is not None:
             tree.setVisible(True)
         self._project_tree.hide()
+
+        # Очистити редактор — без активного проекту жодні дії неможливі
+        em = getattr(self, "_editor_manager", None)
+        if em is not None:
+            em.clear_editor()
 
         self._populate_project_list()
 
@@ -510,7 +598,6 @@ class ProjectManager:
 
         self._current_project = project_path
 
-        # Приховати елементи початкового стану
         for name in ("btn_open_project", "btn_create_new_project",
                      "btn_clone_repository", "text_edit_search_project",
                      "line", "line_3"):
@@ -518,23 +605,28 @@ class ProjectManager:
             if w:
                 w.setVisible(False)
 
-        # Сховати tree_view_project (список проектів)
         tree = self._w("tree_view_project")
         if tree is not None:
             tree.setVisible(False)
 
-        # Оновити мітку назви проекту
         lbl = self._w("lbl_project_name")
         if lbl is not None:
             lbl.setText(project_path.name)
 
-        # Показати _project_tree з файлами проекту
-        self._fs_model.setRootPath(str(project_path))
-        self._project_tree.setRootIndex(
-            self._fs_model.index(str(project_path))
-        )
+        # Перебудовуємо модель з нуля — гарантовано свіжа структура
+        self._rebuild_fs_model(project_path)
         self._project_tree.show()
         self._project_tree.raise_()
+
+        # Повідомити editor_manager що проект активний
+        em = getattr(self, "_editor_manager", None)
+        if em is not None:
+            em.set_project_active(True)
+
+        # Відкрити src/program.txt у режимі читання за замовчуванням
+        default_file = project_path / _DEFAULT_OPEN_FILE
+        if default_file.is_file():
+            self._on_open_file(default_file, read_only=True)
 
         logger.info("Відкрито проєкт: %s", project_path.name)
 
@@ -556,7 +648,16 @@ class ProjectManager:
         path = _PROJECTS_ROOT / name
         try:
             path.mkdir(parents=True, exist_ok=False)
-            for fname in _DEFAULT_FILES:
+
+            # Створюємо підпапки та порожні файли у них
+            for folder, files in _PROJECT_STRUCTURE.items():
+                folder_path = path / folder
+                folder_path.mkdir()
+                for fname in files:
+                    (folder_path / fname).touch()
+
+            # Файли в корені проекту
+            for fname in _PROJECT_ROOT_FILES:
                 (path / fname).touch()
 
             if dlg.init_repo:
@@ -607,12 +708,17 @@ class ProjectManager:
             self._show_error(f"Помилка видалення: {exc}")
             return
 
-        # Скинути мітку назви проекту до дефолтного тексту
+        # Очистити редактор і заблокувати — до скидання стану UI
+        em = getattr(self, "_editor_manager", None)
+        if em is not None:
+            em.clear_editor()
+
+        # Скинути мітку назви проекту
         lbl = self._w("lbl_project_name")
         if lbl is not None:
             lbl.setText("Project")
 
-        # Повернути до початкового стану із клікабельним текстом
+        # Повернути до початкового стану
         self._set_initial_state()
         self._show_open_or_create_link()
 
@@ -651,27 +757,28 @@ class ProjectManager:
             self._open_project(path)
 
     def _on_project_tree_double_click(self, index: QModelIndex) -> None:
-        """Подвійний клік у _project_tree (файли відкритого проекту)."""
+        """Подвійний клік у _project_tree — відкрити файл у режимі читання."""
         if not index.isValid():
             return
-        file_path_str = self._fs_model.filePath(index)
+        src_index     = self._tree_proxy.mapToSource(index)
+        file_path_str = self._fs_model.filePath(src_index)
         if not file_path_str:
             return
         path = Path(file_path_str)
-        # Папки Qt розгортає сам — обробляємо лише файли
         if path.is_file():
-            self._on_open_file(path, read_only=False)
+            self._on_open_file(path, read_only=True)
 
     def _on_project_tree_context_menu(self, pos) -> None:
         """Контекстне меню для _project_tree (режим відкритого проекту)."""
         if self._current_project is None:
             return
 
-        index = self._project_tree.indexAt(pos)
-        # path може бути файлом, папкою або None (клік у порожнє місце)
+        proxy_index = self._project_tree.indexAt(pos)
         path: Optional[Path] = None
-        if index.isValid():
-            fp = self._fs_model.filePath(index)
+        index = proxy_index   # для rename (потрібен proxy index для edit())
+        if proxy_index.isValid():
+            src_index = self._tree_proxy.mapToSource(proxy_index)
+            fp = self._fs_model.filePath(src_index)
             if fp:
                 path = Path(fp)
 
@@ -739,24 +846,30 @@ class ProjectManager:
 
     def _on_open_file(self, path: Path, read_only: bool) -> None:
         """
-        Відкрити файл у GCodeEditorWidget.
-        Сигнал через pyqtSignal не доступний у non-QObject класі,
-        тому зберігаємо callback що встановлюється ззовні.
+        Відкрити файл проекту у редакторі коду.
+        Використовує editor_manager напряму якщо зареєстровано,
+        інакше — callback (зворотна сумісність).
         """
+        em = getattr(self, "_editor_manager", None)
+        if em is not None:
+            em.load_file(str(path), read_only=read_only)
+            return
+
         if hasattr(self, "_open_file_callback") and self._open_file_callback:
             self._open_file_callback(str(path), read_only)
         else:
-            logger.warning(
-                "open_file_callback не встановлено. "
-                "Викличте pm.set_open_file_callback(fn) з HandlerClass."
-            )
+            logger.warning("_on_open_file: немає editor_manager і callback")
 
     def set_open_file_callback(self, callback) -> None:
-        """
-        Встановити callback для відкриття файлу у редакторі.
-        callback(filepath: str, read_only: bool) -> None
-        """
+        """Fallback callback якщо editor_manager не зареєстровано."""
         self._open_file_callback = callback
+
+    def set_editor_manager(self, editor_manager) -> None:
+        """
+        Зареєструвати GCodeEditorManager.
+        Викликати з HandlerClass.initialized__() після його створення.
+        """
+        self._editor_manager = editor_manager
 
     def _on_rename(self, path: Path, index: QModelIndex) -> None:
         self._project_tree.edit(index)
@@ -769,14 +882,21 @@ class ProjectManager:
             f'Видалити "{path.name}"?',
             QMessageBox.Yes | QMessageBox.No,
         )
-        if reply == QMessageBox.Yes:
-            try:
-                if path.is_dir():
-                    shutil.rmtree(path)
-                else:
-                    path.unlink()
-            except Exception as exc:
-                self._show_error(f"Помилка видалення: {exc}")
+        if reply != QMessageBox.Yes:
+            return
+        try:
+            if path.is_dir():
+                shutil.rmtree(path)
+            else:
+                path.unlink()
+
+            # Якщо видалений файл зараз відкритий у редакторі — очищаємо
+            em = getattr(self, "_editor_manager", None)
+            if em is not None and em._current_file == str(path):
+                em.clear_editor()
+
+        except Exception as exc:
+            self._show_error(f"Помилка видалення: {exc}")
 
     # ------------------------------------------------------------------
     # Copy Numbering — розумне перейменування при конфлікті

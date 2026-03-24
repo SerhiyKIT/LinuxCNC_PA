@@ -9,7 +9,6 @@ from .control_manager import ControlManager
 from .cycle_manager import CycleManager, CycleUIBinder
 from .tool_manager import ToolManager, ToolUIBinder
 from .joint_manager import JointManager, JointUIBinder
-from .file_manager import FileManager
 from .keyboard_manager import KeyboardManager
 from .overrides_manager import OverridesManager, OverridesUIBinder
 from .style_manager import StyleManager

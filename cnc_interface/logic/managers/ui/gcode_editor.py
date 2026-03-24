@@ -18,7 +18,6 @@ from __future__ import annotations
 import logging
 import os
 import re
-import tempfile
 from typing import TYPE_CHECKING
 
 from PyQt5.QtCore    import QRect, QSize, Qt, QTimer, pyqtSignal
@@ -43,8 +42,6 @@ logger = logging.getLogger(__name__)
 # Константи
 # ---------------------------------------------------------------------------
 
-_GCODE_EXTENSIONS  = (".ngc", ".txt", ".gcode")
-_FALLBACK_EXT      = ".ngc"
 _AUTOSAVE_DELAY_MS = 800
 
 # Палітра
@@ -601,6 +598,30 @@ class GCodeEditorWidget(QPlainTextEdit):
         self.setPlainText(text)
         self.document().contentsChanged.connect(self._save_timer.start)
 
+    def reset(self) -> None:
+        """
+        Повністю скинути стан редактора:
+        зупинити таймер, відключити сигнал, очистити текст,
+        заблокувати редагування.
+
+        Використовується при очищенні після видалення проекту/файлу.
+        Гарантує що жоден відкладений auto-save не спрацює після скидання.
+        """
+        self._save_timer.stop()
+        self._save_timer.timeout.disconnect(self.contentChanged)
+        try:
+            self.document().contentsChanged.disconnect(self._save_timer.start)
+        except TypeError:
+            pass
+        self.setPlainText("")
+        # Знову підключаємо — але таймер буде стартувати на чисті зміни
+        self.document().contentsChanged.connect(self._save_timer.start)
+        self._save_timer.timeout.connect(self.contentChanged)
+        self._is_locked = True
+        self.setReadOnly(True)
+        self._exec_line = -1
+        self._pending_next_line = None
+
     def set_exec_line(self, line_no: int) -> None:
         if self._exec_line == line_no:
             return
@@ -1004,6 +1025,9 @@ class GCodeEditorManager:
         self._editor.set_cnc(machine_controller)
         self._editor.contentChanged.connect(self._on_content_changed)
 
+        # При старті редактор заблоковано — до відкриття першого проекту
+        self._editor.set_locked(True)
+
         # Таймер перевірки Set Next Line
         self._snl_timer = QTimer()
         self._snl_timer.setInterval(100)
@@ -1014,12 +1038,21 @@ class GCodeEditorManager:
     # Публічний API
     # ------------------------------------------------------------------
 
-    def load_file(self, filepath: str) -> None:
+    # Розширення файлів проекту що редагуються
+    _EDITABLE_EXTS = (".txt", ".ini", ".xml", ".log", ".parl")
+
+    def load_file(self, filepath: str, read_only: bool = False) -> None:
         """
-        Зчитати файл з диска, відобразити у редакторі та зберегти шлях.
-        Не тригерить auto-save (load_text зупиняє debounce-таймер).
-        Оновлює мітку lbl_filename.
+        Зчитати файл з диска і відобразити у редакторі.
+
+        Підтримувані типи: _EDITABLE_EXTS (.txt .ini .xml .log .parl).
+        .ngc / .gcode — повністю ігноруються.
+        read_only=True → редактор заблоковано після завантаження.
         """
+        ext = os.path.splitext(filepath)[1].lower()
+        if ext not in self._EDITABLE_EXTS:
+            logger.debug("load_file: тип %s не підтримується редактором", ext)
+            return
         if not os.path.isfile(filepath):
             logger.error("load_file: файл не знайдено: %s", filepath)
             return
@@ -1027,26 +1060,51 @@ class GCodeEditorManager:
             with open(filepath, encoding="utf-8") as fh:
                 text = fh.read()
         except OSError as exc:
-            logger.error("load_file: помилка читання: %s", exc)
+            logger.error("load_file: %s", exc)
             return
 
         self._editor.load_text(text)
         self._current_file = filepath
+        self._editor.set_locked(read_only)
 
-        # Оновлюємо мітку імені файлу
         lbl = getattr(self.widgets, "lbl_filename", None)
         if lbl:
             lbl.setText(os.path.basename(filepath))
 
-        logger.debug("load_file: завантажено %s", os.path.basename(filepath))
+        logger.debug("load_file: %s (read_only=%s)", os.path.basename(filepath), read_only)
+
+    def clear_editor(self) -> None:
+        """
+        Повністю скинути редактор після видалення проекту або файлу.
+
+        Порядок важливий:
+        1. Скидаємо _current_file — щоб _on_content_changed не записав нічого
+        2. Викликаємо _editor.reset() — зупиняє таймер, очищає текст,
+           блокує редагування. Гарантує що відкладений debounce не спрацює.
+        3. Очищаємо мітку імені файлу.
+        """
+        self._current_file = None          # першим — щоб auto-save не зміг зберегти
+        self._last_exec_line = -1
+        self._editor.reset()               # зупиняє таймер, очищає, блокує
+
+        lbl = getattr(self.widgets, "lbl_filename", None)
+        if lbl:
+            lbl.setText("")
+
+        logger.debug("clear_editor: виконано")
+
+    def set_project_active(self, active: bool) -> None:
+        """
+        Повідомити редактор про наявність активного проекту.
+        active=False → clear_editor() → редактор заблоковано.
+        active=True  → блокування знімається у load_file().
+        """
+        if not active:
+            self.clear_editor()
 
     def set_current_file(self, filepath: str) -> None:
-        """
-        Встановити поточний файл БЕЗ перечитування з диска.
-        Використовується коли текст вже завантажений у редактор ззовні.
-        """
+        """Встановити поточний файл БЕЗ перечитування з диска."""
         self._current_file = filepath
-        logger.debug("set_current_file → %s", filepath)
 
     def update_exec_line(self, line_no: int) -> None:
         if line_no != self._last_exec_line:
@@ -1054,6 +1112,9 @@ class GCodeEditorManager:
             self._editor.set_exec_line(line_no)
 
     def set_edit_lock(self, locked: bool) -> None:
+        # Не знімаємо блок якщо немає активного файлу
+        if not self._current_file and not locked:
+            return
         self._editor.set_locked(locked)
 
     def set_cycle_manager(self, cm) -> None:
@@ -1064,30 +1125,17 @@ class GCodeEditorManager:
     # ------------------------------------------------------------------
 
     def update(self, states: dict) -> None:
-        current_file = states.get("current_file")
-        is_idle      = states.get("is_idle", True)
-        motion_line  = states.get("motion_line", 0)
-
-        # Новий G-код файл відкрито у LinuxCNC
-        if current_file and current_file != self._current_file:
-            self.load_file(current_file)
-
-        # LinuxCNC не має файлу — очищуємо лише якщо це був G-код або
-        # тимчасовий файл. Файли проекту (.txt, .ini тощо) LinuxCNC не
-        # реєструє у status.file — не чіпаємо редактор у такому разі.
-        if not current_file and self._current_file is not None:
-            is_temp    = self._current_file.startswith(tempfile.gettempdir())
-            ext        = os.path.splitext(self._current_file)[1].lower()
-            is_gcode   = ext in (".ngc", ".gcode") or is_temp
-            if is_gcode:
-                self._current_file = None
-                self._editor.load_text("")
-                lbl = getattr(self.widgets, "lbl_filename", None)
-                if lbl:
-                    lbl.setText("Файл не завантажено")
-
-        self.set_edit_lock(not is_idle)
-        self.update_exec_line(motion_line if not is_idle else -1)
+        """
+        Оновлення з polling loop (~100 мс).
+        Файли проекту LinuxCNC не знає — ігноруємо states["current_file"]
+        для них і не чіпаємо редактор.
+        """
+        # Якщо активний файл проекту — нічого не робимо з вмістом
+        if self._current_file:
+            self.update_exec_line(-1)
+            return
+        # Без файлу редактор вже заблокований і порожній
+        self.update_exec_line(-1)
 
     # ------------------------------------------------------------------
     # Auto-save
@@ -1095,44 +1143,34 @@ class GCodeEditorManager:
 
     def _on_content_changed(self) -> None:
         """
-        Спрацьовує після debounce (800 мс) при будь-якій зміні тексту.
-
-        Завжди зберігає вміст на диск — для файлів проекту (.txt, .ini)
-        і для G-код файлів (.ngc).
-        cnc.open_program() викликається лише для G-код файлів щоб
-        оновити Backplot, але не для файлів проекту.
+        Спрацьовує після debounce (800 мс).
+        Зберігає лише файли проекту з _EDITABLE_EXTS.
+        Потрійна перевірка захищає від race condition при видаленні:
+        таймер міг бути запущений до clear_editor(), але _current_file
+        вже скинуто — тому запис не відбудеться.
         """
+        # 1. Редактор заблокований — нічого не робимо
         if self._editor.is_locked():
             return
-        content = self._editor.toPlainText()
-        if not content.strip():
+        # 2. Немає поточного файлу (clear_editor вже скинув його)
+        if not self._current_file:
+            return
+        # 3. Файл більше не існує на диску (видалений)
+        if not os.path.isfile(self._current_file):
+            self._current_file = None
             return
 
-        # Якщо файл не встановлений — створюємо тимчасовий .ngc
-        if not self._current_file:
-            self._current_file = _make_temp_file()
-            logger.debug("Auto-save: тимчасовий файл %s", self._current_file)
+        ext = os.path.splitext(self._current_file)[1].lower()
+        if ext not in self._EDITABLE_EXTS:
+            return
 
-        # Завжди записуємо на диск
+        content = self._editor.toPlainText()
         try:
             with open(self._current_file, "w", encoding="utf-8") as fh:
                 fh.write(content)
             logger.debug("Auto-saved → %s", os.path.basename(self._current_file))
-        except Exception as exc:
-            logger.error("Auto-save запис: %s", exc)
-            return
-
-        # Оновлюємо LinuxCNC лише для G-код файлів
-        ext = os.path.splitext(self._current_file)[1].lower()
-        is_gcode = ext in (".ngc", ".gcode") or self._current_file.startswith(
-            tempfile.gettempdir()
-        )
-        if is_gcode:
-            try:
-                self.cnc.open_program(self._current_file)
-                self.cnc.reload_needed = False
-            except Exception as exc:
-                logger.debug("Auto-save cnc.open_program: %s", exc)
+        except OSError as exc:
+            logger.error("Auto-save: %s", exc)
 
     # ------------------------------------------------------------------
     # Set Next Line
@@ -1167,13 +1205,3 @@ class GCodeEditorManager:
     def __repr__(self) -> str:
         return (f"{self.__class__.__name__}"
                 f"(file={self._current_file!r}, locked={self._editor.is_locked()})")
-
-
-# ---------------------------------------------------------------------------
-# Утиліти
-# ---------------------------------------------------------------------------
-
-def _make_temp_file() -> str:
-    fd, path = tempfile.mkstemp(suffix=_FALLBACK_EXT, prefix="gcode_tmp_")
-    os.close(fd)
-    return path
