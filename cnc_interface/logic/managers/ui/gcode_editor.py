@@ -738,32 +738,53 @@ class GCodeEditorWidget(QPlainTextEdit):
         menu = QMenu(self)
         menu.setStyleSheet(
             "QMenu{background:#2D2D2D;color:#F1F1F1;border:1px solid #333333;}"
-            "QMenu::item:selected{background:#333333;}")
+            "QMenu::item{padding:4px 20px 4px 12px;}"
+            "QMenu::item:selected{background:#FE5C0D;color:#FFFFFF;}"
+            "QMenu::item:disabled{color:#5B5B5B;}"
+            "QMenu::separator{height:1px;background:#333333;margin:3px 0;}"
+        )
 
         has_sel = self.textCursor().hasSelection()
-        a = menu.addAction("Вирізати (Ctrl+X)");  a.setEnabled(has_sel and not self._is_locked); a.triggered.connect(self.cut)
-        a = menu.addAction("Копіювати (Ctrl+C)"); a.setEnabled(has_sel);                          a.triggered.connect(self.copy)
-        a = menu.addAction("Вставити (Ctrl+V)");  a.setEnabled(not self._is_locked);              a.triggered.connect(self.paste)
-        menu.addSeparator()
 
-        a = menu.addAction("▶  Виконати з цього рядка")
-        a.triggered.connect(self._on_set_next_line)
-        menu.addSeparator()
+        if self._is_locked:
+            # Заблокований або read-only — лише копіювання тексту
+            a = menu.addAction("Копіювати (Ctrl+C)")
+            a.setEnabled(has_sel)
+            a.triggered.connect(self.copy)
+        else:
+            # Повне меню — редактор доступний для редагування
+            a = menu.addAction("Вирізати (Ctrl+X)")
+            a.setEnabled(has_sel)
+            a.triggered.connect(self.cut)
 
-        a = menu.addAction("Закоментувати"); a.setEnabled(not self._is_locked); a.triggered.connect(lambda: self._toggle_comment(True))
-        a = menu.addAction("Розкоментувати"); a.setEnabled(not self._is_locked); a.triggered.connect(lambda: self._toggle_comment(False))
-        menu.addSeparator()
+            a = menu.addAction("Копіювати (Ctrl+C)")
+            a.setEnabled(has_sel)
+            a.triggered.connect(self.copy)
 
-        menu.addAction("Пошук та заміна  (Ctrl+H)").triggered.connect(self._show_search)
-        menu.addSeparator()
+            a = menu.addAction("Вставити (Ctrl+V)")
+            a.triggered.connect(self.paste)
+            menu.addSeparator()
 
-        fold_menu = menu.addMenu("Вставити команду руху")
-        for motion_type in ("PTP", "LIN", "CIRC"):
-            a = fold_menu.addAction(motion_type)
-            a.setEnabled(not self._is_locked)
-            a.triggered.connect(
-                lambda checked, mt=motion_type: self._open_motion_dialog(mt)
-            )
+            a = menu.addAction("▶  Виконати з цього рядка")
+            a.triggered.connect(self._on_set_next_line)
+            menu.addSeparator()
+
+            menu.addAction("Закоментувати").triggered.connect(
+                lambda: self._toggle_comment(True))
+            menu.addAction("Розкоментувати").triggered.connect(
+                lambda: self._toggle_comment(False))
+            menu.addSeparator()
+
+            menu.addAction("Пошук та заміна  (Ctrl+H)").triggered.connect(
+                self._show_search)
+            menu.addSeparator()
+
+            fold_menu = menu.addMenu("Вставити команду руху")
+            for motion_type in ("PTP", "LIN", "CIRC"):
+                a = fold_menu.addAction(motion_type)
+                a.triggered.connect(
+                    lambda checked, mt=motion_type: self._open_motion_dialog(mt)
+                )
 
         menu.exec_(event.globalPos())
 
