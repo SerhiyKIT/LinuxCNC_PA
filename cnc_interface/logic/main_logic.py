@@ -31,6 +31,7 @@ from managers import (
 )
 from managers.ui.gcode_editor import GCodeEditorManager
 from managers.project_manager import ProjectManager
+from managers.project_logger import ProjectLogger
 from config import STYLES, MACHINE_PARAMS, MGR_CONTROL, MGR_CYCLE, MGR_TOOL
 from managers.ui.ui_mapping import UI_TEXT_MAPPING, UI_TOOLTIP_MAPPING
 
@@ -72,6 +73,7 @@ class HandlerClass:
         self.keyboard_manager    = None
         self.context_menu_manager = None
         self.project_manager      = None
+        self.project_logger       = None
 
     # ------------------------------------------------------------------
     # initialized__ – викликається ПІСЛЯ loadUi, всі widgets існують
@@ -94,8 +96,10 @@ class HandlerClass:
         # Передати editor_manager у gcode_display_manager
         self.ui_manager.gcode_display_manager.editor_manager = self.editor_manager
 
-        # Передати editor_manager у project_manager —
-        # потрібен для clear_editor() при видаленні проекту/файлу
+        # ── ProjectLogger ─────────────────────────────────────────────────
+        # Логує лише системні повідомлення LinuxCNC (з check_system_messages)
+        self.project_logger = ProjectLogger()
+        self.project_manager.set_project_logger(self.project_logger)
         self.project_manager.set_editor_manager(self.editor_manager)
 
         # ── Binders ──────────────────────────────────────────────────────
@@ -191,12 +195,27 @@ class HandlerClass:
     def _on_project_open_file(self, filepath: str, read_only: bool) -> None:
         """
         Відкрити файл проекту у GCodeEditor.
-        Використовує editor_manager.load_file() напряму.
-        .ngc/.gcode файли ігноруються — editor_manager їх відкине.
+
+        Використовує editor_manager.load_file() напряму — без FileManager.
+        cnc.open_program() викликається лише для G-код файлів (.ngc/.gcode),
+        щоб не ламати інтерпретатор при відкритті .txt/.ini файлів проекту.
         """
         if self.editor_manager is None:
             return
-        self.editor_manager.load_file(filepath, read_only=read_only)
+
+        # Завантажуємо текст і встановлюємо _current_file
+        self.editor_manager.load_file(filepath)
+
+        # G-код файли передаємо у LinuxCNC для Backplot
+        ext = os.path.splitext(filepath)[1].lower()
+        if ext in (".ngc", ".gcode"):
+            try:
+                self.cnc.open_program(filepath)
+            except Exception as exc:
+                logger.warning("open_program: %s", exc)
+
+        if read_only:
+            self.editor_manager._editor.set_locked(True)
 
     def _update_ui(self):
         try:
@@ -211,6 +230,9 @@ class HandlerClass:
         if res:
             text, level = res
             self.ui_manager.logger_display_manager.log_message(text, level)
+            # Лише системні повідомлення LinuxCNC зберігаються у лог проекту
+            if self.project_logger is not None:
+                self.project_logger.log_system_message(text, level)
 
     def log_internal_message(self, message, level="info"):
         self.ui_manager.logger_display_manager.log_message(message, level)
