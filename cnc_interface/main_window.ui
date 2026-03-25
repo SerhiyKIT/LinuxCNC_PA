@@ -2940,7 +2940,7 @@ border: 3px solid #333333;</string>
       <rect>
        <x>321</x>
        <y>380</y>
-       <width>161</width>
+       <width>241</width>
        <height>20</height>
       </rect>
      </property>
@@ -3493,7 +3493,7 @@ color: #fff;
        <rect>
         <x>210</x>
         <y>106</y>
-        <width>125</width>
+        <width>135</width>
         <height>23</height>
        </rect>
       </property>
@@ -3522,7 +3522,7 @@ color: #fff;
        <rect>
         <x>184</x>
         <y>138</y>
-        <width>151</width>
+        <width>160</width>
         <height>23</height>
        </rect>
       </property>
@@ -3689,8 +3689,8 @@ color: #fff;
     <widget class="QLabel" name="lbl_output">
      <property name="geometry">
       <rect>
-       <x>10</x>
-       <y>740</y>
+       <x>650</x>
+       <y>745</y>
        <width>160</width>
        <height>20</height>
       </rect>
@@ -3708,50 +3708,84 @@ color: #FE5C0D</string>
      <property name="text">
       <string>Output</string>
      </property>
+     <property name="alignment">
+      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+     </property>
     </widget>
-    <widget class="QFrame" name="frm_output">
+    <widget class="QTabWidget" name="tabWidget_logs">
      <property name="geometry">
       <rect>
        <x>5</x>
-       <y>765</y>
-       <width>825</width>
-       <height>100</height>
+       <y>745</y>
+       <width>820</width>
+       <height>120</height>
       </rect>
      </property>
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
+     <property name="font">
+      <font>
+       <family>JetBrains Mono</family>
+       <pointsize>10</pointsize>
+      </font>
      </property>
      <property name="styleSheet">
-      <string notr="true">#frm_output {
-	background: #161616;
-	border-radius: 10px;
-	border: 3px solid #FE5C0D
+      <string notr="true">QTabWidget::pane {
+    border: 3px solid #FE5C0D;
+    background: #161616;
+    border-radius: 10px;
+    top: -3px; 
+}
+
+QTabBar::tab {
+    background: #252525; 
+    color: white;
+    border: 2px solid #FE5C0D;
+    border-bottom: none; 
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    padding: 3px 20px;
+}
+
+QTabBar::tab:selected {
+    background: #161616; 
+    border-bottom: 2px solid #161616; 
+	color: #FE5C0D;
+    font-weight: bold;
+}
+
+QTabBar::tab:hover {
+    background: #333333;
 }</string>
      </property>
-     <property name="frameShape">
-      <enum>QFrame::NoFrame</enum>
+     <property name="currentIndex">
+      <number>0</number>
      </property>
-     <widget class="QListWidget" name="list_output_view">
-      <property name="geometry">
-       <rect>
-        <x>5</x>
-        <y>5</y>
-        <width>815</width>
-        <height>90</height>
-       </rect>
-      </property>
-      <property name="font">
-       <font>
-        <pointsize>8</pointsize>
-       </font>
-      </property>
-      <property name="styleSheet">
-       <string notr="true">#list_output_view {
+     <property name="elideMode">
+      <enum>Qt::ElideNone</enum>
+     </property>
+     <widget class="QWidget" name="tab_live_stream">
+      <attribute name="title">
+       <string>Live Stream</string>
+      </attribute>
+      <widget class="QListWidget" name="list_output_view">
+       <property name="geometry">
+        <rect>
+         <x>0</x>
+         <y>0</y>
+         <width>820</width>
+         <height>90</height>
+        </rect>
+       </property>
+       <property name="font">
+        <font>
+         <family>JetBrains Mono</family>
+         <pointsize>8</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">#list_output_view {
     background-color: #121212;
     outline: none; 
+	border-radius: 10px;
 }
 
 #list_output_view::item {
@@ -3771,12 +3805,120 @@ color: #FE5C0D</string>
     outline: none;
     color: transparent;
 }</string>
-      </property>
-      <property name="autoScrollMargin">
-       <number>5</number>
-      </property>
+       </property>
+       <property name="autoScrollMargin">
+        <number>5</number>
+       </property>
+      </widget>
+     </widget>
+     <widget class="QWidget" name="tab_project_status">
+      <attribute name="title">
+       <string>Project Status</string>
+      </attribute>
+      <widget class="QListWidget" name="list_output_view_2">
+       <property name="geometry">
+        <rect>
+         <x>0</x>
+         <y>0</y>
+         <width>820</width>
+         <height>90</height>
+        </rect>
+       </property>
+       <property name="font">
+        <font>
+         <family>JetBrains Mono</family>
+         <pointsize>8</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">#list_output_view {
+    background-color: #121212;
+    outline: none; 
+	border-radius: 10px;
+}
+
+#list_output_view::item {
+    background-color: transparent;
+    border: none;
+    padding: 0px;
+    margin: 0px;
+    color: transparent; 
+}
+
+#list_output_view::item:hover, 
+#list_output_view::item:selected,
+#list_output_view::item:selected:active,
+#list_output_view::item:selected:!active {
+    background-color: transparent;
+    border: none;
+    outline: none;
+    color: transparent;
+}</string>
+       </property>
+       <property name="autoScrollMargin">
+        <number>5</number>
+       </property>
+      </widget>
+     </widget>
+     <widget class="QWidget" name="tab_log_history">
+      <attribute name="title">
+       <string>Log History</string>
+      </attribute>
+      <widget class="QListWidget" name="list_output_view_3">
+       <property name="geometry">
+        <rect>
+         <x>0</x>
+         <y>0</y>
+         <width>820</width>
+         <height>90</height>
+        </rect>
+       </property>
+       <property name="font">
+        <font>
+         <family>JetBrains Mono</family>
+         <pointsize>8</pointsize>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">#list_output_view {
+    background-color: #121212;
+    outline: none; 
+	border-radius: 10px;
+}
+
+#list_output_view::item {
+    background-color: transparent;
+    border: none;
+    padding: 0px;
+    margin: 0px;
+    color: transparent; 
+}
+
+#list_output_view::item:hover, 
+#list_output_view::item:selected,
+#list_output_view::item:selected:active,
+#list_output_view::item:selected:!active {
+    background-color: transparent;
+    border: none;
+    outline: none;
+    color: transparent;
+}</string>
+       </property>
+       <property name="autoScrollMargin">
+        <number>5</number>
+       </property>
+      </widget>
      </widget>
     </widget>
+    <zorder>tabWidget_logs</zorder>
+    <zorder>frm_joint_control</zorder>
+    <zorder>frm_axis_control</zorder>
+    <zorder>lbl_joint_control</zorder>
+    <zorder>lbl_axis_control</zorder>
+    <zorder>robot_view</zorder>
+    <zorder>lbl_cnc_control</zorder>
+    <zorder>frm_cnc_control</zorder>
+    <zorder>lbl_output</zorder>
    </widget>
    <widget class="QFrame" name="frame_4">
     <property name="geometry">
