@@ -571,6 +571,11 @@ class ProjectManager:
         if em is not None:
             em.clear_editor()
 
+        # Заблокувати project_status і log_history вкладки
+        ldm = getattr(self, "_logger_display_manager", None)
+        if ldm is not None:
+            ldm.set_project(None)
+
         self._populate_project_list()
 
     def _populate_project_list(self) -> None:
@@ -623,10 +628,15 @@ class ProjectManager:
         if em is not None:
             em.set_project_active(True)
 
-        # Повідомити ProjectLogger про новий активний проект
+        # Повідомити ProjectLogger про новий активний проект (ротація сесії)
         pl = getattr(self, "_project_logger", None)
         if pl is not None:
             pl.set_project(project_path)
+
+        # Повідомити LoggerDisplayManager — активує вкладки, очищає старі логи
+        ldm = getattr(self, "_logger_display_manager", None)
+        if ldm is not None:
+            ldm.set_project(project_path)
 
         # Відкрити src/program.txt у режимі читання за замовчуванням
         default_file = project_path / _DEFAULT_OPEN_FILE
@@ -707,8 +717,7 @@ class ProjectManager:
             return
 
         try:
-            # Від'єднуємо logger ДО видалення — чекаємо flush черги,
-            # потім обнуляємо шлях. Запобігає запису у вже видалену папку.
+            # Від'єднуємо logger ДО видалення — flush черги, обнуляємо шлях
             pl = getattr(self, "_project_logger", None)
             if pl is not None:
                 pl.detach_project(name)
@@ -888,6 +897,13 @@ class ProjectManager:
         Викликати з HandlerClass.initialized__() після його створення.
         """
         self._project_logger = project_logger
+
+    def set_logger_display_manager(self, logger_display_manager) -> None:
+        """
+        Зареєструвати LoggerDisplayManager для керування вкладками логів.
+        Викликати з HandlerClass.initialized__() після його створення.
+        """
+        self._logger_display_manager = logger_display_manager
 
     def _on_rename(self, path: Path, index: QModelIndex) -> None:
         self._project_tree.edit(index)

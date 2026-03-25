@@ -97,10 +97,17 @@ class HandlerClass:
         self.ui_manager.gcode_display_manager.editor_manager = self.editor_manager
 
         # ── ProjectLogger ─────────────────────────────────────────────────
-        # Логує лише системні повідомлення LinuxCNC (з check_system_messages)
         self.project_logger = ProjectLogger()
+        # Реєструємо у project_manager
         self.project_manager.set_project_logger(self.project_logger)
         self.project_manager.set_editor_manager(self.editor_manager)
+        self.project_manager.set_logger_display_manager(
+            self.ui_manager.logger_display_manager
+        )
+        # Реєструємо у logger_display — підписує на on_new_entry callback
+        self.ui_manager.logger_display_manager.set_project_logger(
+            self.project_logger
+        )
 
         # ── Binders ──────────────────────────────────────────────────────
         self.cycle_ui_binder      = CycleUIBinder(self.cycle_manager, self.widgets)
@@ -229,8 +236,15 @@ class HandlerClass:
         res = self.cnc.poll_errors()
         if res:
             text, level = res
-            self.ui_manager.logger_display_manager.log_message(text, level)
-            # Лише системні повідомлення LinuxCNC зберігаються у лог проекту
+            # Визначаємо module: назва проекту або "system"
+            module = "system"
+            if self.project_manager is not None:
+                proj = getattr(self.project_manager, "_current_project", None)
+                if proj is not None:
+                    module = proj.name
+            self.ui_manager.logger_display_manager.log_message(
+                text, level, module=module
+            )
             if self.project_logger is not None:
                 self.project_logger.log_system_message(text, level)
 
