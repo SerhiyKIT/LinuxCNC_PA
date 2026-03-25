@@ -49,11 +49,11 @@ _PROJECT_STRUCTURE: dict[str, list[str]] = {
     "src":  ["program.txt"],    # сирці (редагує користувач)
     "bin":  ["main.parl"],      # виконавчі файли (генерує система)
     "data": ["points.xml"],     # точки та параметри
-    "logs": ["execution.log"],  # звіти про виконання
+    "logs": ["execution.json"],  # звіти про виконання
 }
 _PROJECT_ROOT_FILES = ["config.ini"]          # файли в корені проекту
 _DEFAULT_OPEN_FILE  = Path("src") / "program.txt"  # відкривається при відкритті проекту
-_EDITABLE_EXTS      = (".txt", ".ini", ".xml", ".log", ".parl")  # типи що можна редагувати
+_EDITABLE_EXTS      = (".txt", ".ini", ".xml", ".json", ".parl")  # типи що можна редагувати
 _HIDDEN_FOLDERS     = {"bin", "logs"}         # папки що існують але не відображаються
 
 _STYLE_DIALOG = """
@@ -623,6 +623,11 @@ class ProjectManager:
         if em is not None:
             em.set_project_active(True)
 
+        # Повідомити ProjectLogger про новий активний проект
+        pl = getattr(self, "_project_logger", None)
+        if pl is not None:
+            pl.set_project(project_path)
+
         # Відкрити src/program.txt у режимі читання за замовчуванням
         default_file = project_path / _DEFAULT_OPEN_FILE
         if default_file.is_file():
@@ -702,6 +707,12 @@ class ProjectManager:
             return
 
         try:
+            # Від'єднуємо logger ДО видалення — чекаємо flush черги,
+            # потім обнуляємо шлях. Запобігає запису у вже видалену папку.
+            pl = getattr(self, "_project_logger", None)
+            if pl is not None:
+                pl.detach_project(name)
+
             shutil.rmtree(self._current_project)
             logger.info("Видалено проєкт: %s", name)
         except Exception as exc:
@@ -870,6 +881,13 @@ class ProjectManager:
         Викликати з HandlerClass.initialized__() після його створення.
         """
         self._editor_manager = editor_manager
+
+    def set_project_logger(self, project_logger) -> None:
+        """
+        Зареєструвати ProjectLogger для запису подій у JSON файл.
+        Викликати з HandlerClass.initialized__() після його створення.
+        """
+        self._project_logger = project_logger
 
     def _on_rename(self, path: Path, index: QModelIndex) -> None:
         self._project_tree.edit(index)
