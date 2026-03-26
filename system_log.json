@@ -880,5 +880,77 @@
     "level": "ERROR",
     "module": "kkk",
     "message": "Unknown m code used: M102"
+  },
+  {
+    "timestamp": "2026-03-25T17:21:30.712+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-25T17:21:48.495+03:00",
+    "level": "ERROR",
+    "module": "kkk",
+    "message": "Unknown word where unary operation could be"
+  },
+  {
+    "timestamp": "2026-03-25T17:21:58.368+03:00",
+    "level": "ERROR",
+    "module": "kkk",
+    "message": "Unknown m code used: M102"
+  },
+  {
+    "timestamp": "2026-03-25T17:21:59.929+03:00",
+    "level": "ERROR",
+    "module": "kkk",
+    "message": "Unknown m code used: M102"
+  },
+  {
+    "timestamp": "2026-03-25T17:26:11.578+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-25T17:26:24.206+03:00",
+    "level": "ERROR",
+    "module": "kkk",
+    "message": "Unknown word where unary operation could be"
+  },
+  {
+    "timestamp": "2026-03-25T17:26:50.290+03:00",
+    "level": "ERROR",
+    "module": "project",
+    "message": "Unknown m code used: M102"
+  },
+  {
+    "timestamp": "2026-03-25T17:27:45.596+03:00",
+    "level": "ERROR",
+    "module": "project",
+    "message": "Unknown word where unary operation could be"
+  },
+  {
+    "timestamp": "2026-03-25T17:27:47.673+03:00",
+    "level": "ERROR",
+    "module": "project",
+    "message": "Unknown m code used: M102"
+  },
+  {
+    "timestamp": "2026-03-25T17:27:49.178+03:00",
+    "level": "ERROR",
+    "module": "project",
+    "message": "Unknown m code used: M102"
+  },
+  {
+    "timestamp": "2026-03-25T17:28:23.285+03:00",
+    "level": "ERROR",
+    "module": "project2",
+    "message": "Unknown m code used: M102"
+  },
+  {
+    "timestamp": "2026-03-25T17:30:45.606+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
   }
 ]
