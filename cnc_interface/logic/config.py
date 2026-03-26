@@ -69,14 +69,6 @@ MACHINE_PARAMS = {
 # --- DYNAMIC LIMITS OBJECT ---
 JOINT_LIMITS = get_joint_limits(MACHINE_PARAMS["JOINTS_COUNT"])
 
-# --- FILE CONTROL BUTTONS ---
-FILE_BUTTONS = [
-    'btn_file_open',
-    'btn_file_save_as',
-    'btn_file_reload',
-    'btn_file_edit'
-]
-
 # --- CYCLE CONTROL BUTTONS ---
 CYCLE_BUTTONS = [
     'btn_cycle_start',
@@ -85,6 +77,12 @@ CYCLE_BUTTONS = [
     'btn_cycle_stop',
     'btn_cycle_step'
 ]
+
+# --- EDITOR ---
+EDITOR = {
+    "AUTOSAVE_DELAY_MS": 800,
+    "EDITABLE_EXTS":     (".txt", ".ini", ".xml", ".log", ".parl"),
+}
 
 # --- SLIDER CONFIGS ---
 SLIDER_CONFIGS = {
