@@ -30,7 +30,7 @@ from managers import (
     KeyboardManager,
 )
 from managers.ui.editor.editor_manager import GCodeEditorManager
-from managers.project_manager import ProjectManager
+from managers.project.project_manager import ProjectManager
 from managers.project_logger import ProjectLogger
 from config import STYLES, MACHINE_PARAMS, MGR_CONTROL, MGR_CYCLE, MGR_TOOL
 from managers.ui.ui_mapping import (
