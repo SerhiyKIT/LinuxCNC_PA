@@ -5,7 +5,7 @@ try:
     from .gcode_display import GCodeDisplayManager
     from .logger_display import LoggerDisplayManager
     from .tool_display import ToolDisplayManager
-    from .gcode_editor import GCodeEditorManager
+    from .editor.editor_manager import GCodeEditorManager
 except ImportError as e:
     print(f"DEBUG: Error in managers/ui/__init__.py: {e}")
 

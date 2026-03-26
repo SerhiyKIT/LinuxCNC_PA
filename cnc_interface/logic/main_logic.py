@@ -29,7 +29,7 @@ from managers import (
     ToolManager, ToolUIBinder,
     KeyboardManager,
 )
-from managers.ui.gcode_editor import GCodeEditorManager
+from managers.ui.editor.editor_manager import GCodeEditorManager
 from managers.project_manager import ProjectManager
 from managers.project_logger import ProjectLogger
 from config import STYLES, MACHINE_PARAMS, MGR_CONTROL, MGR_CYCLE, MGR_TOOL
