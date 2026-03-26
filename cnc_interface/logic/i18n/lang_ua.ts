@@ -160,7 +160,7 @@ CYCLE</source>
         <source>Project Manager</source>
         <translation>Менеджер проєктів</translation>
     </message>
-     <message>
+    <message>
         <location filename="../../main_window.ui" line="4330"/>
         <source>CREATE</source>
         <translation>СТВОРИТИ</translation>
@@ -392,6 +392,56 @@ CYCLE</source>
         <location filename="../../main_window.ui" line="4129"/>
         <source>Output</source>
         <translation>Повідомлення</translation>
+    </message>
+    <message>
+        <location filename="../../main_window.ui" line="4243"/>
+        <source>🔍 Search Project...  </source>
+        <translation>🔍 Пошук проекту...  </translation>
+    </message>
+    <message>
+        <location filename="../../main_window.ui" line="4318"/>
+        <source>Name</source>
+        <translation>Ім&apos;я</translation>
+    </message>
+    <message>
+        <location filename="../../main_window.ui" line="4344"/>
+        <source>Author</source>
+        <translation>Автор</translation>
+    </message>
+    <message>
+        <location filename="../../main_window.ui" line="4370"/>
+        <source>Created</source>
+        <translation>Створено</translation>
+    </message>
+    <message>
+        <location filename="../../main_window.ui" line="4396"/>
+        <source>Last Modified</source>
+        <translation>Останнє редагування</translation>
+    </message>
+    <message>
+        <location filename="../../main_window.ui" line="4546"/>
+        <source>Project Info</source>
+        <translation>Відомості про проєкт</translation>
+    </message>
+    <message>
+        <location filename="../../main_window.ui" line="4125"/>
+        <source>CLONE REPOSITORY</source>
+        <translation>КЛОНУВАТИ РЕПОЗИТОРІЙ</translation>
+    </message>
+    <message>
+        <location filename="../../main_window.ui" line="3767"/>
+        <source>Live Stream</source>
+        <translation>Живий потік</translation>
+    </message>
+    <message>
+        <location filename="../../main_window.ui" line="3816"/>
+        <source>Project Status</source>
+        <translation>Статус проєкту</translation>
+    </message>
+    <message>
+        <location filename="../../main_window.ui" line="3865"/>
+        <source>Log History</source>
+        <translation>Журнал подій</translation>
     </message>
 </context>
 </TS>

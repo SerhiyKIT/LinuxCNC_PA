@@ -19,14 +19,17 @@ ProjectManager – менеджер проектів LinuxCNC.
 """
 from __future__ import annotations
 
+import configparser
 import logging
 import os
 import shutil
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 from PyQt5.QtCore import (
-    QDir, QModelIndex, Qt, QSortFilterProxyModel, pyqtSignal,
+    QDir, QModelIndex, Qt, QSortFilterProxyModel, QTimer,
+    QFileSystemWatcher, pyqtSignal,
 )
 from PyQt5.QtGui  import QColor, QFont, QStandardItem, QStandardItemModel
 from PyQt5.QtWidgets import (
@@ -55,6 +58,18 @@ _PROJECT_ROOT_FILES = ["config.ini"]          # файли в корені пр�
 _DEFAULT_OPEN_FILE  = Path("src") / "program.txt"  # відкривається при відкритті проекту
 _EDITABLE_EXTS      = (".txt", ".ini", ".xml", ".json", ".parl")  # типи що можна редагувати
 _HIDDEN_FOLDERS     = {"bin", "logs"}         # папки що існують але не відображаються
+
+# Секція і ключі у config.ini проекту
+_CFG_SECTION    = "project"
+_CFG_NAME       = "name"
+_CFG_AUTHOR     = "author"
+_CFG_CREATED    = "created"
+_CFG_MODIFIED   = "last_modified"
+_CFG_DATE_FMT   = "%Y-%m-%d %H:%M"
+_DEFAULT_AUTHOR = "Admin_User"
+
+# Папки зміни у яких НЕ оновлюють last_modified (системні події)
+_WATCHER_IGNORE_DIRS = {"logs"}
 
 _STYLE_DIALOG = """
 QDialog          { background:#121212; color:#FFFFFF; }
@@ -86,7 +101,7 @@ QTreeView::item:hover    { background:#2D2D2D; }
 
 _STYLE_TREE = """
 QTreeView        { background:#161616; color:#F1F1F1; border:none;
-                   outline:none; font-size:16px; padding: 10px;}
+                   outline:none; font-size:16px; padding: 5px;}
 QTreeView::item  { padding:3px 4px; }
 QTreeView::item:selected { background:#FE5C0D; color:#FFFFFF; }
 QTreeView::item:hover    { background:#2D2D2D; color:#FFFFFF; }
@@ -406,13 +421,20 @@ class ProjectManager:
         self.widgets = widgets
         self._current_project: Optional[Path] = None
 
-        # Ім'я атрибута у widgets → Qt-об'єкт
         self._w = lambda name: getattr(self.widgets, name, None)
 
-        # Налаштування tree_view_project
-        self._setup_tree()
+        # FileWatcher — стежить за папкою проекту
+        self._watcher = QFileSystemWatcher()
+        self._watcher.directoryChanged.connect(self._on_project_dir_changed)
+        self._watcher.fileChanged.connect(self._on_project_file_changed)
 
-        # Початковий стан — режим "вибору проекту"
+        # Debounce-таймер: оновлюємо last_modified не частіше ніж раз на 2 сек
+        self._modified_timer = QTimer()
+        self._modified_timer.setSingleShot(True)
+        self._modified_timer.setInterval(2000)
+        self._modified_timer.timeout.connect(self._flush_modified_update)
+
+        self._setup_tree()
         self._set_initial_state()
 
     # ------------------------------------------------------------------
@@ -478,7 +500,7 @@ class ProjectManager:
         # Створюємо програмно і прикріплюємо до батька tree_view_project
         parent_widget = tree.parent() if tree is not None else None
         self._project_tree = QTreeView(parent_widget)
-        self._project_tree.setGeometry(20, 70, 260, 520)
+        self._project_tree.setGeometry(5, 70, 275, 420)
         self._project_tree.setStyleSheet(_STYLE_TREE)
         self._project_tree.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self._project_tree.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -566,6 +588,9 @@ class ProjectManager:
             tree.setVisible(True)
         self._project_tree.hide()
 
+        # Зупинити FileWatcher і debounce-таймер
+        self._stop_watcher()
+
         # Очистити редактор — без активного проекту жодні дії неможливі
         em = getattr(self, "_editor_manager", None)
         if em is not None:
@@ -575,6 +600,9 @@ class ProjectManager:
         ldm = getattr(self, "_logger_display_manager", None)
         if ldm is not None:
             ldm.set_project(None)
+
+        # Очистити поля інформації про проект
+        self._clear_project_info()
 
         self._populate_project_list()
 
@@ -643,6 +671,12 @@ class ProjectManager:
         if default_file.is_file():
             self._on_open_file(default_file, read_only=True)
 
+        # Заповнити поля інформації про проект з config.ini
+        self._load_project_info(project_path)
+
+        # Запустити FileWatcher для відстеження змін у папці проекту
+        self._start_watcher(project_path)
+
         logger.info("Відкрито проєкт: %s", project_path.name)
 
     # ------------------------------------------------------------------
@@ -674,6 +708,9 @@ class ProjectManager:
             # Файли в корені проекту
             for fname in _PROJECT_ROOT_FILES:
                 (path / fname).touch()
+
+            # Записуємо метадані у config.ini при створенні
+            self._write_config(path, created=True)
 
             if dlg.init_repo:
                 self._init_git_repo(path)
@@ -879,6 +916,225 @@ class ProjectManager:
             self._open_file_callback(str(path), read_only)
         else:
             logger.warning("_on_open_file: немає editor_manager і callback")
+
+    # ------------------------------------------------------------------
+    # FileWatcher — відстеження змін у папці проекту
+    # ------------------------------------------------------------------
+
+    def _start_watcher(self, project_path: Path) -> None:
+        """
+        Запустити QFileSystemWatcher для проекту.
+
+        Два рівні спостереження:
+          • Папки — detectує зміну структури (додано/видалено/перейменовано)
+          • Файли — detectує зміну вмісту (auto-save, ручне збереження)
+
+        Папки і файли з _WATCHER_IGNORE_DIRS та config.ini виключаються.
+        """
+        self._stop_watcher()
+
+        dirs_to_watch:  list[str] = []
+        files_to_watch: list[str] = []
+
+        # Рекурсивно обходимо всю структуру проекту
+        for item in project_path.rglob("*"):
+            # Відносний шлях для визначення чи належить до ignored
+            try:
+                relative = item.relative_to(project_path)
+            except ValueError:
+                continue
+
+            top_dir = relative.parts[0] if relative.parts else ""
+
+            # Пропускаємо системні папки і їх вміст
+            if top_dir in _WATCHER_IGNORE_DIRS:
+                continue
+
+            if item.is_dir():
+                dirs_to_watch.append(str(item))
+            elif item.is_file() and item.name != "config.ini":
+                files_to_watch.append(str(item))
+
+        # Додаємо кореневу папку окремо
+        dirs_to_watch.append(str(project_path))
+
+        if dirs_to_watch:
+            self._watcher.addPaths(dirs_to_watch)
+        if files_to_watch:
+            self._watcher.addPaths(files_to_watch)
+
+        logger.debug(
+            "FileWatcher: %d папок, %d файлів",
+            len(dirs_to_watch), len(files_to_watch),
+        )
+
+    def _stop_watcher(self) -> None:
+        """Зняти всі шляхи з QFileSystemWatcher і зупинити debounce-таймер."""
+        watched = self._watcher.directories() + self._watcher.files()
+        if watched:
+            self._watcher.removePaths(watched)
+        self._modified_timer.stop()
+
+    def _on_project_dir_changed(self, path: str) -> None:
+        """
+        Директорія проекту змінилася (додано/видалено/перейменовано файл).
+        Ігноруємо:
+          • системні папки (_WATCHER_IGNORE_DIRS)
+          • зміни спричинені самим _write_config (запис config.ini)
+        """
+        if self._current_project is None:
+            return
+
+        changed = Path(path)
+        try:
+            relative = changed.relative_to(self._current_project)
+            top_dir  = relative.parts[0] if relative.parts else ""
+            if top_dir in _WATCHER_IGNORE_DIRS:
+                return
+        except ValueError:
+            pass
+
+        # Якщо таймер вже активний — debounce ще не спрацював,
+        # тобто ця подія спричинена нашим же _write_config → ігноруємо
+        if self._modified_timer.isActive():
+            return
+
+        self._modified_timer.start()
+
+    def _on_project_file_changed(self, path: str) -> None:
+        """
+        Файл у проекті змінився (auto-save, ручне збереження).
+
+        ВАЖЛИВО: QFileSystemWatcher знімає файл зі спостереження після
+        атомарного збереження (tmp → replace). Тому після кожного
+        спрацювання перевіряємо чи файл ще в списку і якщо ні — додаємо знову.
+        """
+        if self._current_project is None:
+            return
+
+        changed = Path(path)
+        try:
+            relative = changed.relative_to(self._current_project)
+            top_dir  = relative.parts[0] if relative.parts else ""
+            if top_dir in _WATCHER_IGNORE_DIRS:
+                return
+        except ValueError:
+            return
+
+        if changed.suffix == ".tmp" or changed.name == "config.ini":
+            return
+
+        # Повторно додаємо файл якщо Qt зняв його після атомарного запису
+        if (changed.exists()
+                and str(changed) not in self._watcher.files()):
+            self._watcher.addPath(str(changed))
+
+        if self._modified_timer.isActive():
+            return
+
+        self._modified_timer.start()
+
+    def _flush_modified_update(self) -> None:
+        """
+        Debounce callback — виконується через 2 сек після останньої зміни.
+        Тимчасово відключає watcher під час запису config.ini щоб
+        уникнути нескінченного циклу: зміна файлу → watcher → запис → зміна...
+        """
+        if self._current_project is None:
+            return
+
+        # Відключаємо сигнали на час запису щоб не тригерити самих себе
+        self._watcher.directoryChanged.disconnect(self._on_project_dir_changed)
+        self._watcher.fileChanged.disconnect(self._on_project_file_changed)
+
+        try:
+            self._write_config(self._current_project, created=False)
+            now = datetime.now().strftime(_CFG_DATE_FMT)
+            w = self._w("txt_last_modified")
+            if w is not None:
+                if hasattr(w, "setText"):
+                    w.setText(now)
+                elif hasattr(w, "setPlainText"):
+                    w.setPlainText(now)
+            logger.debug("last_modified оновлено: %s", now)
+        finally:
+            # Завжди підключаємо назад — навіть при помилці
+            self._watcher.directoryChanged.connect(self._on_project_dir_changed)
+            self._watcher.fileChanged.connect(self._on_project_file_changed)
+
+    # ------------------------------------------------------------------
+    # Метадані проекту (config.ini)
+    # ------------------------------------------------------------------
+
+    def _write_config(self, project_path: Path, created: bool = False) -> None:
+        """
+        Записати метадані у config.ini.
+        created=True  → встановлює created і last_modified.
+        created=False → оновлює лише last_modified.
+        """
+        cfg_path = project_path / "config.ini"
+        cfg = configparser.ConfigParser()
+
+        if cfg_path.exists():
+            cfg.read(cfg_path, encoding="utf-8")
+
+        if not cfg.has_section(_CFG_SECTION):
+            cfg.add_section(_CFG_SECTION)
+
+        now = datetime.now().strftime(_CFG_DATE_FMT)
+        cfg.set(_CFG_SECTION, _CFG_NAME,     project_path.name)
+        cfg.set(_CFG_SECTION, _CFG_AUTHOR,   _DEFAULT_AUTHOR)
+        cfg.set(_CFG_SECTION, _CFG_MODIFIED, now)
+
+        if created or not cfg.get(_CFG_SECTION, _CFG_CREATED, fallback=""):
+            cfg.set(_CFG_SECTION, _CFG_CREATED, now)
+
+        try:
+            with open(cfg_path, "w", encoding="utf-8") as fh:
+                cfg.write(fh)
+        except OSError as exc:
+            logger.error("config.ini запис: %s", exc)
+
+    def _load_project_info(self, project_path: Path) -> None:
+        """
+        Зчитати метадані з config.ini і заповнити UI-поля.
+        Якщо config.ini порожній (старий проект) — генерує дані автоматично.
+        """
+        cfg_path = project_path / "config.ini"
+        cfg = configparser.ConfigParser()
+
+        if cfg_path.exists():
+            cfg.read(cfg_path, encoding="utf-8")
+
+        if not cfg.has_section(_CFG_SECTION):
+            self._write_config(project_path, created=True)
+            cfg.read(cfg_path, encoding="utf-8")
+
+        get = lambda key: cfg.get(_CFG_SECTION, key, fallback="")
+
+        for widget_name, value in (
+            ("txt_project_name",  get(_CFG_NAME)),
+            ("txt_author",        get(_CFG_AUTHOR)),
+            ("txt_created",       get(_CFG_CREATED)),
+            ("txt_last_modified", get(_CFG_MODIFIED)),
+        ):
+            w = self._w(widget_name)
+            if w is not None:
+                if hasattr(w, "setText"):
+                    w.setText(value)
+                elif hasattr(w, "setPlainText"):
+                    w.setPlainText(value)
+
+    def _clear_project_info(self) -> None:
+        """Очистити поля інформації — викликається при скиданні до початкового стану."""
+        for widget_name in ("txt_project_name", "txt_author",
+                            "txt_created", "txt_last_modified"):
+            w = self._w(widget_name)
+            if w is not None:
+                if hasattr(w, "setText"):
+                    w.setText("")
+                elif hasattr(w, "setPlainText"):
+                    w.setPlainText("")
 
     def set_open_file_callback(self, callback) -> None:
         """Fallback callback якщо editor_manager не зареєстровано."""

@@ -39,7 +39,36 @@ UI_TEXT_MAPPING = {
     'lbl_linear_jog_speed': "Linear Jog Speed:",
     'lbl_angular_jog_speed': "Angular Jog Speed:",
     'lbl_max_velocity': "Max Velocity:",
-    'lbl_active_gcodes': "Active GCodes Viewer:"
+    'lbl_active_gcodes': "Active GCodes Viewer:",
+
+
+    # 'tab_live_stream': "Live Stream",
+    # 'tab_project_status': "Project Status",
+    # 'tab_log_history': "Log History",
+
+    'btn_clone_repository': "CLONE REPOSITORY",
+    'lbl_project_info': "Project Info",
+    'lbl_project_name_2': "Name",
+    'lbl_author': "Author",
+    'lbl_created': "Created",
+    'lbl_last_modified': "Last Modified"
+}
+
+# Плейсхолдери QLineEdit / QPlainTextEdit.
+# Використовується setPlaceholderText() — не setText().
+UI_PLACEHOLDER_MAPPING = {
+    'text_edit_search_project': "🔍 Search Project...  ",
+}
+
+# Вкладки QTabWidget.
+# Структура: { 'objectName_tabWidget': [ ('objectName_tab', 'Tab Title'), ... ] }
+# Використовується tabWidget.setTabText(index, translated).
+UI_TAB_MAPPING = {
+    'tabWidget_logs': [
+        ('tab_live_stream',    "Live Stream"),
+        ('tab_project_status', "Project Status"),
+        ('tab_log_history',    "Log History"),
+    ],
 }
 
 UI_TOOLTIP_MAPPING = {

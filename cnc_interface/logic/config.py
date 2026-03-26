@@ -81,7 +81,7 @@ CYCLE_BUTTONS = [
 # --- EDITOR ---
 EDITOR = {
     "AUTOSAVE_DELAY_MS": 800,
-    "EDITABLE_EXTS":     (".txt", ".ini", ".xml", ".log", ".parl"),
+    "EDITABLE_EXTS":     (".txt", ".ini", ".xml", ".json", ".parl"),
 }
 
 # --- SLIDER CONFIGS ---
