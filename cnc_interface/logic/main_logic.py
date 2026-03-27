@@ -29,11 +29,14 @@ from managers import (
     ToolManager, ToolUIBinder,
     KeyboardManager,
 )
-from managers.ui.gcode_editor import GCodeEditorManager
-from managers.project_manager import ProjectManager
+from managers.ui.editor.editor_manager import GCodeEditorManager
+from managers.project.project_manager import ProjectManager
 from managers.project_logger import ProjectLogger
 from config import STYLES, MACHINE_PARAMS, MGR_CONTROL, MGR_CYCLE, MGR_TOOL
-from managers.ui.ui_mapping import UI_TEXT_MAPPING, UI_TOOLTIP_MAPPING
+from managers.ui.ui_mapping import (
+    UI_TEXT_MAPPING, UI_TOOLTIP_MAPPING,
+    UI_PLACEHOLDER_MAPPING, UI_TAB_MAPPING,
+)
 
 
 class HandlerClass:
@@ -273,18 +276,46 @@ class HandlerClass:
 
     def refresh_interface_texts(self):
         ctx = "MainWindow"
+
+        # Звичайні текстові елементи — setText
         for obj_name, source_text in UI_TEXT_MAPPING.items():
             if hasattr(self.widgets, obj_name):
                 getattr(self.widgets, obj_name).setText(
                     QCoreApplication.translate(ctx, source_text))
+
+        # Tooltip-и
         for obj_name, source_text in UI_TOOLTIP_MAPPING.items():
             if hasattr(self.widgets, obj_name):
                 getattr(self.widgets, obj_name).setToolTip(
                     QCoreApplication.translate(ctx, source_text))
+
+        # Плейсхолдери QLineEdit / QPlainTextEdit — setPlaceholderText
+        for obj_name, source_text in UI_PLACEHOLDER_MAPPING.items():
+            w = getattr(self.widgets, obj_name, None)
+            if w is not None and hasattr(w, "setPlaceholderText"):
+                w.setPlaceholderText(
+                    QCoreApplication.translate(ctx, source_text))
+
+        # Вкладки QTabWidget — setTabText за objectName вкладки
+        for tab_widget_name, tabs in UI_TAB_MAPPING.items():
+            tab_widget = getattr(self.widgets, tab_widget_name, None)
+            if tab_widget is None:
+                continue
+            for i in range(tab_widget.count()):
+                tab_obj_name = tab_widget.widget(i).objectName()
+                for obj_name, source_text in tabs:
+                    if tab_obj_name == obj_name:
+                        tab_widget.setTabText(
+                            i, QCoreApplication.translate(ctx, source_text))
+                        break
+
+        # Jog ComboBox — перший елемент "Continuous"
         for combo_name in ('combo_joint_mode', 'combo_axis_mode'):
             combo = getattr(self.widgets, combo_name, None)
             if combo:
                 combo.setItemText(0, QCoreApplication.translate(ctx, "Continuous"))
+
+        # Combo мови
         if hasattr(self.widgets, 'combo_language'):
             combo  = self.widgets.combo_language
             idx_en = combo.findData("en")
@@ -293,6 +324,7 @@ class HandlerClass:
                 combo.setItemText(idx_en, QCoreApplication.translate(ctx, "EN"))
             if idx_ua >= 0:
                 combo.setItemText(idx_ua, QCoreApplication.translate(ctx, "UA"))
+
         self.overrides_ui_binder.refresh_all_labels()
 
     def set_default_language(self, lang_code):

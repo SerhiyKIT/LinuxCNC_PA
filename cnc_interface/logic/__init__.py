@@ -12,14 +12,14 @@ from .managers import (
     ControlManager,
     StyleManager,
     UIManager,
-    ProjectManager
 )
+# ProjectManager імпортується напряму у main_logic.py
+# from .managers.project.project_manager import ProjectManager
 
 __all__ = [
     'HandlerClass',
     'ui_mapping',
     'CycleManager',
-    'LoggerDisplayManager',
     'ToolManager',
     'JointManager',
     'KeyboardManager',
@@ -27,5 +27,4 @@ __all__ = [
     'ControlManager',
     'StyleManager',
     'UIManager',
-    'ProjectManager'
 ]

@@ -341,7 +341,7 @@ border: 3px solid #333333;</string>
       <property name="geometry">
        <rect>
         <x>20</x>
-        <y>505</y>
+        <y>680</y>
         <width>275</width>
         <height>140</height>
        </rect>
@@ -593,7 +593,7 @@ color: #fff;
         <x>20</x>
         <y>20</y>
         <width>570</width>
-        <height>451</height>
+        <height>620</height>
        </rect>
       </property>
       <property name="styleSheet">
@@ -603,23 +603,151 @@ border: 3px solid #333333;</string>
       <property name="frameShape">
        <enum>QFrame::NoFrame</enum>
       </property>
-      <widget class="GCodeEditorWidget" name="list_gcode_edit" native="true">
+      <widget class="QSplitter" name="splitter">
        <property name="geometry">
         <rect>
-         <x>10</x>
+         <x>5</x>
          <y>30</y>
-         <width>551</width>
-         <height>411</height>
+         <width>560</width>
+         <height>585</height>
         </rect>
        </property>
        <property name="styleSheet">
-        <string notr="true">background-color: #161616;
+        <string notr="true">border: none;</string>
+       </property>
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <widget class="QFrame" name="frame_5">
+        <property name="minimumSize">
+         <size>
+          <width>560</width>
+          <height>440</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>560</width>
+          <height>440</height>
+         </size>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">border-left-color: #333333;
+border-right-color: #333333;
+border-top-color: #161616;
+border-bottom-color: #161616;
+border-radius: 0px;</string>
+        </property>
+        <property name="frameShape">
+         <enum>QFrame::StyledPanel</enum>
+        </property>
+        <property name="frameShadow">
+         <enum>QFrame::Raised</enum>
+        </property>
+        <widget class="GCodeEditorWidget" name="list_gcode_edit" native="true">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>0</y>
+           <width>545</width>
+           <height>440</height>
+          </rect>
+         </property>
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">background-color: #161616;
 border: none;
 border-radius: 0px;
 padding: 0px;
 color: #fff;
 </string>
-       </property>
+         </property>
+        </widget>
+       </widget>
+       <widget class="QFrame" name="frm_problems">
+        <property name="minimumSize">
+         <size>
+          <width>570</width>
+          <height>140</height>
+         </size>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">border: 3px solid #333333;
+border-radius: 0px;
+background: rgb(5, 2, 2);
+border-bottom-left-radius: 10px;
+border-bottom-right-radius: 10px;
+border-bottom-color: none;
+border-right-color: none;
+border-left-color: none;</string>
+        </property>
+        <property name="frameShape">
+         <enum>QFrame::StyledPanel</enum>
+        </property>
+        <property name="frameShadow">
+         <enum>QFrame::Raised</enum>
+        </property>
+        <widget class="QLabel" name="lbl_problems">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>5</y>
+           <width>100</width>
+           <height>20</height>
+          </rect>
+         </property>
+         <property name="font">
+          <font>
+           <family>JetBrains Mono</family>
+           <pointsize>10</pointsize>
+           <weight>50</weight>
+           <bold>false</bold>
+          </font>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">border: none;
+color: #9E9E9E;
+background: none;</string>
+         </property>
+         <property name="text">
+          <string>Problems</string>
+         </property>
+        </widget>
+        <widget class="Line" name="line_4">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>25</y>
+           <width>70</width>
+           <height>2</height>
+          </rect>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">border: 3px solid #FE5C0D;</string>
+         </property>
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+        </widget>
+        <widget class="QListWidget" name="listWidget">
+         <property name="geometry">
+          <rect>
+           <x>5</x>
+           <y>35</y>
+           <width>550</width>
+           <height>100</height>
+          </rect>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">border-top-color: none;</string>
+         </property>
+        </widget>
+       </widget>
       </widget>
      </widget>
      <widget class="QFrame" name="gcode_control_overlay">
@@ -649,7 +777,7 @@ color: #fff;
       <property name="geometry">
        <rect>
         <x>30</x>
-        <y>480</y>
+        <y>655</y>
         <width>100</width>
         <height>20</height>
        </rect>
@@ -704,7 +832,7 @@ color: #9E9E9E;
       <property name="geometry">
        <rect>
         <x>315</x>
-        <y>505</y>
+        <y>680</y>
         <width>275</width>
         <height>140</height>
        </rect>
@@ -919,7 +1047,7 @@ color: #fff;
       <property name="geometry">
        <rect>
         <x>325</x>
-        <y>480</y>
+        <y>655</y>
         <width>151</width>
         <height>20</height>
        </rect>
@@ -3975,7 +4103,7 @@ color: #9E9E9E</string>
      <property name="styleSheet">
       <string notr="true">border-radius: 10px;
 border: 3px solid #333333;
-background: #161616;</string>
+background: #1e1e1e;</string>
      </property>
      <property name="frameShape">
       <enum>QFrame::NoFrame</enum>
@@ -4262,7 +4390,7 @@ p, li { white-space: pre-wrap; }
          <x>20</x>
          <y>260</y>
          <width>260</width>
-         <height>520</height>
+         <height>220</height>
         </rect>
        </property>
        <property name="contextMenuPolicy">
@@ -4272,6 +4400,278 @@ p, li { white-space: pre-wrap; }
         <string notr="true">border: none;
 color: #fff;
 font-size: 18px;</string>
+       </property>
+      </widget>
+      <widget class="QFrame" name="frm_projec_info">
+       <property name="geometry">
+        <rect>
+         <x>20</x>
+         <y>520</y>
+         <width>260</width>
+         <height>261</height>
+        </rect>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">background: #161616;</string>
+       </property>
+       <property name="frameShape">
+        <enum>QFrame::StyledPanel</enum>
+       </property>
+       <property name="frameShadow">
+        <enum>QFrame::Raised</enum>
+       </property>
+       <widget class="QLabel" name="lbl_project_name_2">
+        <property name="geometry">
+         <rect>
+          <x>20</x>
+          <y>10</y>
+          <width>220</width>
+          <height>20</height>
+         </rect>
+        </property>
+        <property name="font">
+         <font>
+          <family>JetBrains Mono</family>
+          <pointsize>10</pointsize>
+          <weight>50</weight>
+          <bold>false</bold>
+         </font>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">border: none;
+color: #9E9E9E;
+background: none;</string>
+        </property>
+        <property name="text">
+         <string>Name</string>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_author">
+        <property name="geometry">
+         <rect>
+          <x>20</x>
+          <y>70</y>
+          <width>220</width>
+          <height>20</height>
+         </rect>
+        </property>
+        <property name="font">
+         <font>
+          <family>JetBrains Mono</family>
+          <pointsize>10</pointsize>
+          <weight>50</weight>
+          <bold>false</bold>
+         </font>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">border: none;
+color: #9E9E9E;
+background: none;</string>
+        </property>
+        <property name="text">
+         <string>Author</string>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_created">
+        <property name="geometry">
+         <rect>
+          <x>20</x>
+          <y>130</y>
+          <width>220</width>
+          <height>20</height>
+         </rect>
+        </property>
+        <property name="font">
+         <font>
+          <family>JetBrains Mono</family>
+          <pointsize>10</pointsize>
+          <weight>50</weight>
+          <bold>false</bold>
+         </font>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">border: none;
+color: #9E9E9E;
+background: none;</string>
+        </property>
+        <property name="text">
+         <string>Created</string>
+        </property>
+       </widget>
+       <widget class="QLabel" name="lbl_last_modified">
+        <property name="geometry">
+         <rect>
+          <x>20</x>
+          <y>190</y>
+          <width>220</width>
+          <height>20</height>
+         </rect>
+        </property>
+        <property name="font">
+         <font>
+          <family>JetBrains Mono</family>
+          <pointsize>10</pointsize>
+          <weight>50</weight>
+          <bold>false</bold>
+         </font>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">border: none;
+color: #9E9E9E;
+background: none;</string>
+        </property>
+        <property name="text">
+         <string>Last Modified</string>
+        </property>
+       </widget>
+       <widget class="QLabel" name="txt_project_name">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>35</y>
+          <width>240</width>
+          <height>30</height>
+         </rect>
+        </property>
+        <property name="font">
+         <font>
+          <family>JetBrains Mono</family>
+          <pointsize>10</pointsize>
+          <weight>50</weight>
+          <bold>false</bold>
+         </font>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">	background-color: #333333;
+	color: #FFFFFF;
+	padding: 5px;
+	border-radius: 10px;
+	border: none;</string>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+        </property>
+       </widget>
+       <widget class="QLabel" name="txt_author">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>95</y>
+          <width>240</width>
+          <height>30</height>
+         </rect>
+        </property>
+        <property name="font">
+         <font>
+          <family>JetBrains Mono</family>
+          <pointsize>10</pointsize>
+          <weight>50</weight>
+          <bold>false</bold>
+         </font>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">	background-color: #333333;
+	color: #FFFFFF;
+	padding: 5px;
+	border-radius: 10px;
+	border: none;</string>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+        </property>
+       </widget>
+       <widget class="QLabel" name="txt_created">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>155</y>
+          <width>240</width>
+          <height>30</height>
+         </rect>
+        </property>
+        <property name="font">
+         <font>
+          <family>JetBrains Mono</family>
+          <pointsize>10</pointsize>
+          <weight>50</weight>
+          <bold>false</bold>
+         </font>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">	background-color: #333333;
+	color: #FFFFFF;
+	padding: 5px;
+	border-radius: 10px;
+	border: none;</string>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+        </property>
+       </widget>
+       <widget class="QLabel" name="txt_last_modified">
+        <property name="geometry">
+         <rect>
+          <x>10</x>
+          <y>215</y>
+          <width>240</width>
+          <height>30</height>
+         </rect>
+        </property>
+        <property name="font">
+         <font>
+          <family>JetBrains Mono</family>
+          <pointsize>10</pointsize>
+          <weight>50</weight>
+          <bold>false</bold>
+         </font>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">	background-color: #333333;
+	color: #FFFFFF;
+	padding: 5px;
+	border-radius: 10px;
+	border: none;</string>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+        </property>
+       </widget>
+      </widget>
+      <widget class="QLabel" name="lbl_project_info">
+       <property name="geometry">
+        <rect>
+         <x>30</x>
+         <y>495</y>
+         <width>241</width>
+         <height>20</height>
+        </rect>
+       </property>
+       <property name="font">
+        <font>
+         <family>JetBrains Mono</family>
+         <pointsize>10</pointsize>
+         <weight>50</weight>
+         <bold>false</bold>
+        </font>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">border: none;
+color: #9E9E9E</string>
+       </property>
+       <property name="text">
+        <string>Project Info</string>
        </property>
       </widget>
      </widget>
@@ -4312,7 +4712,7 @@ font-size: 18px;</string>
   <customwidget>
    <class>GCodeEditorWidget</class>
    <extends>QWidget</extends>
-   <header location="global">logic.managers.ui.gcode_editor</header>
+   <header location="global">logic.managers.ui.editor.editor_widget</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
