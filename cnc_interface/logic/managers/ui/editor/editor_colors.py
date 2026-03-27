@@ -13,13 +13,19 @@ CLR_LINE_NUM_FG = QColor("#9E9E9E")
 CLR_ACTIVE_LINE = QColor("#333333")
 CLR_EXEC_LINE   = QColor("#333333")
 
-# Підсвітка синтаксису
-CLR_G_CODE  = QColor("#89b4fa")
-CLR_M_CODE  = QColor("#a6e3a1")
-CLR_COORD   = QColor("#fab387")
-CLR_FEED    = QColor("#f38ba8")
-CLR_COMMENT = QColor("#5B5B5B")
-CLR_NUMBER  = QColor("#f9e2af")
+# Підсвітка синтаксису — команди руху
+CLR_MOTION_CMD = QColor("#89b4fa")   # PTP, LIN, CIRC
+CLR_M_CODE     = QColor("#a6e3a1")   # M-коди (залишаємо сумісність)
+CLR_COORD      = QColor("#fab387")   # координати X Y Z A B C
+CLR_FEED       = QColor("#f38ba8")   # F S T
+CLR_COMMENT    = QColor("#5B5B5B")   # коментарі
+CLR_NUMBER     = QColor("#f9e2af")   # числа
+
+# Нові конструкції мови
+CLR_KEYWORD    = QColor("#cba6f7")   # IF ELSE WHILE FOR REPEAT DEF CALL ENDIF...
+CLR_IO_CMD     = QColor("#94e2d5")   # SET_DO GET_DI WAIT_DI
+CLR_FLOW_CMD   = QColor("#f5c2e7")   # WAIT PAUSE STOP OFFSET
+CLR_STRING     = QColor("#a6e3a1")   # рядкові літерали "..."
 
 # Константи поведінки
 AUTOSAVE_DELAY_MS: int   = 800

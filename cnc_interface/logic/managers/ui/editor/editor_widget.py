@@ -225,38 +225,63 @@ class GCodeEditorWidget(QPlainTextEdit):
             a = menu.addAction(_tr("Копіювати (Ctrl+C)"))
             a.setEnabled(has_sel)
             a.triggered.connect(self.copy)
-        else:
-            a = menu.addAction(_tr("Вирізати (Ctrl+X)"))
-            a.setEnabled(has_sel)
-            a.triggered.connect(self.cut)
+            menu.exec_(event.globalPos())
+            return
 
-            a = menu.addAction(_tr("Копіювати (Ctrl+C)"))
-            a.setEnabled(has_sel)
-            a.triggered.connect(self.copy)
+        # ── Буфер обміну ────────────────────────────────────────────────
+        a = menu.addAction(_tr("Вирізати (Ctrl+X)"))
+        a.setEnabled(has_sel)
+        a.triggered.connect(self.cut)
 
-            menu.addAction(_tr("Вставити (Ctrl+V)")).triggered.connect(self.paste)
-            menu.addSeparator()
+        a = menu.addAction(_tr("Копіювати (Ctrl+C)"))
+        a.setEnabled(has_sel)
+        a.triggered.connect(self.copy)
 
-            menu.addAction(_tr("▶  Виконати з цього рядка")).triggered.connect(
-                self._on_set_next_line)
-            menu.addSeparator()
+        menu.addAction(_tr("Вставити (Ctrl+V)")).triggered.connect(self.paste)
+        menu.addSeparator()
 
-            menu.addAction(_tr("Закоментувати")).triggered.connect(
-                lambda: self._toggle_comment(True))
-            menu.addAction(_tr("Розкоментувати")).triggered.connect(
-                lambda: self._toggle_comment(False))
-            menu.addSeparator()
+        # ── Виконання ───────────────────────────────────────────────────
+        menu.addAction(_tr("▶  Виконати з цього рядка")).triggered.connect(
+            self._on_set_next_line)
+        menu.addSeparator()
 
-            menu.addAction(_tr("Пошук та заміна  (Ctrl+H)")).triggered.connect(
-                self._show_search)
-            menu.addSeparator()
+        # ── Редагування тексту ──────────────────────────────────────────
+        menu.addAction(_tr("Закоментувати")).triggered.connect(
+            lambda: self._toggle_comment(True))
+        menu.addAction(_tr("Розкоментувати")).triggered.connect(
+            lambda: self._toggle_comment(False))
+        menu.addSeparator()
 
-            fold = menu.addMenu(_tr("Вставити команду руху"))
-            for mt in ("PTP", "LIN", "CIRC"):
-                fold.addAction(mt).triggered.connect(
-                    lambda checked, m=mt: self._open_motion_dialog(m))
+        menu.addAction(_tr("Пошук та заміна  (Ctrl+H)")).triggered.connect(
+            self._show_search)
+        menu.addSeparator()
+
+        # ── Вставка команд (структуровано по категоріях) ────────────────
+        self._build_snippets_menu(menu)
 
         menu.exec_(event.globalPos())
+
+    def _build_snippets_menu(self, parent_menu: QMenu) -> None:
+        """
+        Побудувати ієрархічне підменю вставки команд.
+        Команди руху (PTP/LIN/CIRC) відкривають MotionCommandDialog,
+        всі інші вставляють текстовий шаблон напряму.
+        """
+        from .editor_snippets import get_snippets
+
+        snippets = get_snippets()
+        motion_category = _tr("Команди руху")
+
+        for category, commands in snippets.items():
+            cat_menu = parent_menu.addMenu(category)
+            for name, template in commands.items():
+                if category == motion_category:
+                    # PTP / LIN / CIRC → діалог з параметрами
+                    cat_menu.addAction(name).triggered.connect(
+                        lambda checked, mt=name: self._open_motion_dialog(mt))
+                else:
+                    cat_menu.addAction(name).triggered.connect(
+                        lambda checked, t=template: self._insert_snippet(t))
 
     def _on_set_next_line(self) -> None:
         self._pending_next_line = self.textCursor().blockNumber()
@@ -289,6 +314,24 @@ class GCodeEditorWidget(QPlainTextEdit):
             cur.movePosition(QTextCursor.EndOfLine)
             cur.insertText("\n" + dlg.build_command())
             cur.endEditBlock()
+
+    def _insert_snippet(self, template: str) -> None:
+        """
+        Вставити текстовий шаблон після поточного рядка.
+        Курсор переміщується на перший рядок вставленого блоку.
+        """
+        cur = self.textCursor()
+        cur.beginEditBlock()
+        cur.movePosition(QTextCursor.EndOfLine)
+        cur.insertText("\n" + template)
+        cur.endEditBlock()
+        # Переміщуємо курсор на початок вставленого блоку
+        lines = template.split("\n")
+        cur.movePosition(QTextCursor.Up,
+                         QTextCursor.MoveAnchor,
+                         len(lines) - 1)
+        cur.movePosition(QTextCursor.EndOfLine)
+        self.setTextCursor(cur)
 
     def _show_search(self) -> None:
         if self._search_bar_ref is not None:

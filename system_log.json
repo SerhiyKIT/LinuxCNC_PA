@@ -1306,5 +1306,191 @@
     "level": "ERROR",
     "module": "project2",
     "message": "Unknown m code used: M102"
+  },
+  {
+    "timestamp": "2026-03-26T15:41:34.551+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-26T15:59:30.589+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-26T16:35:34.522+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-26T16:41:57.918+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-26T16:44:36.705+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-26T16:45:56.288+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-26T16:46:45.429+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-26T16:47:36.699+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-26T16:48:14.117+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-26T16:48:41.063+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-26T16:49:02.457+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-26T16:49:15.865+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-26T16:49:43.686+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-26T17:06:28.840+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-26T17:06:57.453+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-26T17:08:51.424+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-27T09:45:23.436+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-27T09:58:22.668+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-27T10:32:14.122+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-27T10:33:00.191+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-27T10:40:12.692+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-27T10:40:38.650+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-27T10:42:44.308+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-27T11:02:51.217+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-27T11:19:34.514+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-27T11:21:06.323+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-27T11:22:33.545+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-27T11:25:42.157+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-27T11:50:05.898+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-27T11:52:12.710+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-27T11:55:03.426+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
   }
 ]

@@ -15,12 +15,12 @@ PROJECTS_ROOT = Path.home() / "ProjectLinuxCNC"
 PROJECT_STRUCTURE: dict[str, list[str]] = {
     "src":  ["program.txt"],
     "bin":  ["main.parl"],
-    "data": ["points.xml"],
+    "data": ["variables.json"],
     "logs": ["execution.json"],
 }
 PROJECT_ROOT_FILES = ["config.ini"]
 DEFAULT_OPEN_FILE  = Path("src") / "program.txt"
-EDITABLE_EXTS      = (".txt", ".ini", ".xml", ".json", ".parl")
+EDITABLE_EXTS      = (".txt", ".ini", ".json", ".parl")
 HIDDEN_FOLDERS     = {"bin", "logs"}
 WATCHER_IGNORE_DIRS = {"logs"}
 

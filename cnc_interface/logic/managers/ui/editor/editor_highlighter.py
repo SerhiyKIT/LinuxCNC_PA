@@ -1,23 +1,48 @@
 # logic/managers/ui/editor/editor_highlighter.py
 """
-GCodeHighlighter – підсвітка синтаксису G/M-кодів.
+GCodeHighlighter – підсвітка синтаксису мови керування роботом.
+
+Групи підсвітки (пріоритет зверху вниз):
+  1. Коментарі        ; ...  та  ( ... )
+  2. Команди руху     PTP  LIN  CIRC
+  3. I/O команди      SET_DO  GET_DI  WAIT_DI
+  4. Потокові команди WAIT  PAUSE  STOP  OFFSET
+  5. Ключові слова    IF ELSEIF ELSE ENDIF
+                      WHILE ENDWHILE  FOR TO ENDFOR  REPEAT ENDREPEAT
+                      DEF CALL RETURN  CONT
+                      TOOL BASE ORI_TYPE CIRC_TYPE ORI_VAR ORI_CONST
+                                        CIRC_PATH CIRC_BASE
+                      TRUE FALSE
+  6. Параметри VEL ACC
+  7. Координати X Y Z A B C + значення
+  8. Числові літерали
 """
 from __future__ import annotations
 import re
 from PyQt5.QtGui import QFont, QSyntaxHighlighter, QTextCharFormat
 from .editor_colors import (
-    CLR_COMMENT, CLR_COORD, CLR_FEED,
-    CLR_G_CODE, CLR_M_CODE, CLR_NUMBER,
+    CLR_COMMENT,
+    CLR_COORD,
+    CLR_FLOW_CMD,
+    CLR_IO_CMD,
+    CLR_KEYWORD,
+    CLR_MOTION_CMD,
+    CLR_NUMBER,
+    CLR_FEED,
 )
 
 
 class GCodeHighlighter(QSyntaxHighlighter):
+    """QSyntaxHighlighter для мови керування роботом."""
+
     def __init__(self, document):
         super().__init__(document)
         self._rules: list[tuple[re.Pattern, QTextCharFormat]] = []
         self._build_rules()
 
-    def _fmt(self, color, bold=False, italic=False) -> QTextCharFormat:
+    # ------------------------------------------------------------------
+
+    def _fmt(self, color, bold: bool = False, italic: bool = False) -> QTextCharFormat:
         f = QTextCharFormat()
         f.setForeground(color)
         if bold:   f.setFontWeight(QFont.Bold)
@@ -26,13 +51,54 @@ class GCodeHighlighter(QSyntaxHighlighter):
 
     def _build_rules(self) -> None:
         a = self._rules.append
-        a((re.compile(r'\(.*?\)'),                                 self._fmt(CLR_COMMENT, italic=True)))
-        a((re.compile(r';.*'),                                     self._fmt(CLR_COMMENT, italic=True)))
-        a((re.compile(r'\bG\d+\.?\d*\b',       re.IGNORECASE),    self._fmt(CLR_G_CODE,  bold=True)))
-        a((re.compile(r'\bM\d+\b',             re.IGNORECASE),    self._fmt(CLR_M_CODE,  bold=True)))
-        a((re.compile(r'\b[XYZABCIJK](?=[-\d.])', re.IGNORECASE), self._fmt(CLR_COORD,   bold=True)))
-        a((re.compile(r'\b[FST](?=[-\d.])',    re.IGNORECASE),    self._fmt(CLR_FEED)))
-        a((re.compile(r'[-+]?\d+\.?\d*'),                         self._fmt(CLR_NUMBER)))
+
+        # 1. Коментарі — перші, перекривають усе нижче
+        a((re.compile(r'\(.*?\)'),   self._fmt(CLR_COMMENT, italic=True)))
+        a((re.compile(r';.*'),        self._fmt(CLR_COMMENT, italic=True)))
+
+        # 2. Команди руху
+        a((re.compile(r'\b(PTP|LIN|CIRC)\b', re.IGNORECASE),
+           self._fmt(CLR_MOTION_CMD, bold=True)))
+
+        # 3. I/O команди
+        a((re.compile(r'\b(SET_DO|GET_DI|WAIT_DI)\b', re.IGNORECASE),
+           self._fmt(CLR_IO_CMD, bold=True)))
+
+        # 4. Потокові команди та функції
+        a((re.compile(r'\b(WAIT|PAUSE|STOP|OFFSET)\b', re.IGNORECASE),
+           self._fmt(CLR_FLOW_CMD, bold=True)))
+
+        # 5. Ключові слова керування потоком
+        keywords = (
+            r'IF|ELSEIF|ELSE|ENDIF|'
+            r'WHILE|ENDWHILE|'
+            r'FOR|TO|ENDFOR|'
+            r'REPEAT|ENDREPEAT|'
+            r'DEF|CALL|RETURN|'
+            r'CONT|TRUE|FALSE'
+        )
+        a((re.compile(rf'\b({keywords})\b', re.IGNORECASE),
+           self._fmt(CLR_KEYWORD, bold=True)))
+
+        # 6. Параметри команд руху (VEL ACC TOOL BASE ORI_TYPE CIRC_TYPE тощо)
+        motion_params = (
+            r'VEL|ACC|TOOL|BASE|'
+            r'ORI_TYPE|CIRC_TYPE|'
+            r'ORI_VAR|ORI_CONST|'
+            r'CIRC_PATH|CIRC_BASE'
+        )
+        a((re.compile(rf'\b({motion_params})\b', re.IGNORECASE),
+           self._fmt(CLR_FEED)))
+
+        # 7. Координатні осі X Y Z A B C + наступне число
+        a((re.compile(r'\b[XYZABC](?=\s*[-\d.])', re.IGNORECASE),
+           self._fmt(CLR_COORD, bold=True)))
+
+        # 8. Числові літерали (цілі, дробові, зі знаком)
+        a((re.compile(r'[-+]?\d+\.?\d*'),
+           self._fmt(CLR_NUMBER)))
+
+    # ------------------------------------------------------------------
 
     def highlightBlock(self, text: str) -> None:
         for pat, fmt in self._rules:
