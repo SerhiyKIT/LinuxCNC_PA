@@ -29,7 +29,7 @@ CLR_STRING     = QColor("#a6e3a1")   # рядкові літерали "..."
 
 # Константи поведінки
 AUTOSAVE_DELAY_MS: int   = 800
-EDITABLE_EXTS:     tuple = (".txt", ".ini", ".xml", ".log", ".parl")
+EDITABLE_EXTS:     tuple = (".txt", ".ini", ".xml", ".json", ".log", ".parl")
 POS_AXES:          tuple = ("X", "Y", "Z", "A", "B", "C")
 
 # Стиль контекстного меню

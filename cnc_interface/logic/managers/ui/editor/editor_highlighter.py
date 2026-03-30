@@ -52,23 +52,19 @@ class GCodeHighlighter(QSyntaxHighlighter):
     def _build_rules(self) -> None:
         a = self._rules.append
 
-        # 1. Коментарі — перші, перекривають усе нижче
-        a((re.compile(r'\(.*?\)'),   self._fmt(CLR_COMMENT, italic=True)))
-        a((re.compile(r';.*'),        self._fmt(CLR_COMMENT, italic=True)))
-
-        # 2. Команди руху
+        # 1. Команди руху
         a((re.compile(r'\b(PTP|LIN|CIRC)\b', re.IGNORECASE),
            self._fmt(CLR_MOTION_CMD, bold=True)))
 
-        # 3. I/O команди
+        # 2. I/O команди
         a((re.compile(r'\b(SET_DO|GET_DI|WAIT_DI)\b', re.IGNORECASE),
            self._fmt(CLR_IO_CMD, bold=True)))
 
-        # 4. Потокові команди та функції
+        # 3. Потокові команди та функції
         a((re.compile(r'\b(WAIT|PAUSE|STOP|OFFSET)\b', re.IGNORECASE),
            self._fmt(CLR_FLOW_CMD, bold=True)))
 
-        # 5. Ключові слова керування потоком
+        # 4. Ключові слова керування потоком
         keywords = (
             r'IF|ELSEIF|ELSE|ENDIF|'
             r'WHILE|ENDWHILE|'
@@ -80,7 +76,7 @@ class GCodeHighlighter(QSyntaxHighlighter):
         a((re.compile(rf'\b({keywords})\b', re.IGNORECASE),
            self._fmt(CLR_KEYWORD, bold=True)))
 
-        # 6. Параметри команд руху (VEL ACC TOOL BASE ORI_TYPE CIRC_TYPE тощо)
+        # 5. Параметри команд руху (VEL ACC TOOL BASE ORI_TYPE CIRC_TYPE тощо)
         motion_params = (
             r'VEL|ACC|TOOL|BASE|'
             r'ORI_TYPE|CIRC_TYPE|'
@@ -90,13 +86,16 @@ class GCodeHighlighter(QSyntaxHighlighter):
         a((re.compile(rf'\b({motion_params})\b', re.IGNORECASE),
            self._fmt(CLR_FEED)))
 
-        # 7. Координатні осі X Y Z A B C + наступне число
+        # 6. Координатні осі X Y Z A B C + наступне число
         a((re.compile(r'\b[XYZABC](?=\s*[-\d.])', re.IGNORECASE),
            self._fmt(CLR_COORD, bold=True)))
 
-        # 8. Числові літерали (цілі, дробові, зі знаком)
+        # 7. Числові літерали (цілі, дробові, зі знаком)
         a((re.compile(r'[-+]?\d+\.?\d*'),
            self._fmt(CLR_NUMBER)))
+        
+        # 8. Коментарі — останні, перекривають усе вище
+        a((re.compile(r'//.*'),       self._fmt(CLR_COMMENT, italic=True)))
 
     # ------------------------------------------------------------------
 

@@ -443,5 +443,355 @@ CYCLE</source>
         <source>Log History</source>
         <translation>Журнал подій</translation>
     </message>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         Editor context menu
+         ═══════════════════════════════════════════════════════════════ -->
+ 
+    <message>
+        <source>Copy (Ctrl+C)</source>
+        <translation>Копіювати (Ctrl+C)</translation>
+    </message>
+    <message>
+        <source>Cut (Ctrl+X)</source>
+        <translation>Вирізати (Ctrl+X)</translation>
+    </message>
+    <message>
+        <source>Paste (Ctrl+V)</source>
+        <translation>Вставити (Ctrl+V)</translation>
+    </message>
+    <message>
+        <source>▶  Run from this line</source>
+        <translation>▶  Виконати з цього рядка</translation>
+    </message>
+    <message>
+        <source>Comment out</source>
+        <translation>Закоментувати</translation>
+    </message>
+    <message>
+        <source>Uncomment</source>
+        <translation>Розкоментувати</translation>
+    </message>
+    <message>
+        <source>Find and replace  (Ctrl+H)</source>
+        <translation>Пошук та заміна  (Ctrl+H)</translation>
+    </message>
+ 
+    <!-- Snippet submenu categories -->
+    <message>
+        <source>Motion commands</source>
+        <translation>Команди руху</translation>
+    </message>
+    <message>
+        <source>Delays and stops</source>
+        <translation>Затримки та зупинки</translation>
+    </message>
+    <message>
+        <source>Coordinates and offsets</source>
+        <translation>Координати та зміщення</translation>
+    </message>
+    <message>
+        <source>Conditional jump</source>
+        <translation>Умовний перехід</translation>
+    </message>
+    <message>
+        <source>Loops</source>
+        <translation>Цикли</translation>
+    </message>
+    <message>
+        <source>I/O interfacing</source>
+        <translation>Взаємодія з I/O</translation>
+    </message>
+    <message>
+        <source>Subroutines</source>
+        <translation>Підпрограми</translation>
+    </message>
+ 
+    <!-- Snippet names -->
+    <message>
+        <source>IF ... ENDIF</source>
+        <translation>IF ... ENDIF</translation>
+    </message>
+    <message>
+        <source>IF ... ELSE ... ENDIF</source>
+        <translation>IF ... ELSE ... ENDIF</translation>
+    </message>
+    <message>
+        <source>IF ... ELSEIF ... ELSE ... ENDIF</source>
+        <translation>IF ... ELSEIF ... ELSE ... ENDIF</translation>
+    </message>
+    <message>
+        <source>WHILE ... ENDWHILE</source>
+        <translation>WHILE ... ENDWHILE</translation>
+    </message>
+    <message>
+        <source>FOR ... ENDFOR</source>
+        <translation>FOR ... ENDFOR</translation>
+    </message>
+    <message>
+        <source>REPEAT ... ENDREPEAT</source>
+        <translation>REPEAT ... ENDREPEAT</translation>
+    </message>
+    <message>
+        <source>DEF (declaration)</source>
+        <translation>DEF (оголошення)</translation>
+    </message>
+    <message>
+        <source>CALL (invoke)</source>
+        <translation>CALL (виклик)</translation>
+    </message>
+ 
+    <!-- Search/replace bar -->
+    <message>
+        <source>Search…</source>
+        <translation>Пошук…</translation>
+    </message>
+    <message>
+        <source>Replace with…</source>
+        <translation>Замінити на…</translation>
+    </message>
+    <message>
+        <source>Replace</source>
+        <translation>Замінити</translation>
+    </message>
+    <message>
+        <source>Replace all</source>
+        <translation>Замінити всі</translation>
+    </message>
+    <message>
+        <source>Not found</source>
+        <translation>Не знайдено</translation>
+    </message>
+    <message>
+        <source>Replaced: </source>
+        <translation>Замінено: </translation>
+    </message>
+ 
+    <!-- Motion command dialog -->
+    <message>
+        <source>Current coords.</source>
+        <translation>Поточні коорд.</translation>
+    </message>
+    <message>
+        <source>Read current coordinates from LinuxCNC</source>
+        <translation>Зчитати поточні координати з LinuxCNC</translation>
+    </message>
+    <message>
+        <source>Auxiliary point</source>
+        <translation>Проміжна точка</translation>
+    </message>
+    <message>
+        <source>Target point</source>
+        <translation>Цільова точка</translation>
+    </message>
+    <message>
+        <source>Motion parameters</source>
+        <translation>Параметри руху</translation>
+    </message>
+    <message>
+        <source>(do not stop at point)</source>
+        <translation>(не зупинятись у точці)</translation>
+    </message>
+    <message>
+        <source>Continuous motion:</source>
+        <translation>Безперервний рух:</translation>
+    </message>
+    <message>
+        <source>Orientation type:</source>
+        <translation>Тип орієнтації:</translation>
+    </message>
+    <message>
+        <source>Circular orientation type:</source>
+        <translation>Тип кругової орієнтації:</translation>
+    </message>
+    <message>
+        <source>Velocity:</source>
+        <translation>Швидкість:</translation>
+    </message>
+    <message>
+        <source>Acceleration:</source>
+        <translation>Прискорення:</translation>
+    </message>
+    <message>
+        <source>Tool:</source>
+        <translation>Інструмент:</translation>
+    </message>
+    <message>
+        <source>Coordinate system:</source>
+        <translation>Система координат:</translation>
+    </message>
+    <message>
+        <source>Result</source>
+        <translation>Результат</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>Скасувати</translation>
+    </message>
+    <message>
+        <source>Insert</source>
+        <translation>Вставити</translation>
+    </message>
+    <message>
+        <source>⚠  Fill in all fields correctly (red fields are out of range)</source>
+        <translation>⚠  Заповніть усі поля коректно (червоні поля — поза діапазоном)</translation>
+    </message>
+    <!-- ═══════════════════════════════════════════════════════════════
+        Project maanger context menu
+    ═══════════════════════════════════════════════════════════════ -->
+    <message>
+        <source>New project</source>
+        <translation>Новий проєкт</translation>
+    </message>
+    <message>
+        <source>Name project</source>
+        <translation>Назва проєкту</translation>
+    </message>
+    <message>
+        <source>Create</source>
+        <translation>Створити</translation>
+    </message>
+    <message>
+        <source>Name contains invalid characters</source>
+        <translation>Назва містить недопустимі символи</translation>
+    </message>
+    <message>
+        <source>Project</source>
+        <translation>Проєкт</translation>
+    </message>
+    <message>
+        <source>Open project</source>
+        <translation>Відкрити проєкт</translation>
+    </message>
+    <message>
+        <source>Path:</source>
+        <translation>Шлях:</translation>
+    </message>
+    <message>
+        <source>Projects:</source>
+        <translation>Проєкти:</translation>
+    </message>
+    <message>
+        <source>OK</source>
+        <translation>ОК</translation>
+    </message>
+    <message>
+        <source>Delete Project</source>
+        <translation>Видалення проєкту</translation>
+    </message>
+    <message>
+        <source>⚠  You are about to permanently delete the project </source>
+        <translation>⚠  Ви збираєтесь назавжди видалити проєкт </translation>
+    </message>
+    <message>
+        <source>and all its content from the disk. This action cannot be undone.</source>
+        <translation>та весь його вміст з диска. Цю дію неможливо скасувати.</translation>
+    </message>
+    <message>
+        <source>Enter project name to confirm:</source>
+        <translation>Введіть назву проєкту для підтвердження:</translation>
+    </message>
+    <message>
+        <source>I understand that deletion is irreversible</source>
+        <translation>Я розумію що видалення незворотнє</translation>
+    </message>
+    <message>
+        <source>Delete permanently</source>
+        <translation>Видалити назавжди</translation>
+    </message>
+
+    <message>
+        <source>New file</source>
+        <translation>Новий файл</translation>
+    </message>
+    <message>
+        <source>Open (read only)</source>
+        <translation>Відкрити (лише читання)</translation>
+    </message>
+    <message>
+        <source>Open (edit)</source>
+        <translation>Відкрити (редагування)</translation>
+    </message>
+    <message>
+        <source>Rename</source>
+        <translation>Перейменувати</translation>
+    </message>
+    <message>
+        <source>Delete</source>
+        <translation>Видалити</translation>
+    </message>
+    <message>
+        <source>Cut</source>
+        <translation>Вирізати</translation>
+    </message>
+    <message>
+        <source>Copy</source>
+        <translation>Копіювати</translation>
+    </message>
+    <message>
+        <source>(excised)</source>
+        <translation>(вирізано)</translation>
+    </message>
+    <message>
+        <source>Paste</source>
+        <translation>Вставити</translation>
+    </message>
+    <message>
+        <source>Name file:</source>
+        <translation>Назва файлу:</translation>
+    </message>
+
+    <message>
+        <source>Open or Create a New Project</source>
+        <translation>Відкрийте або Створіть Новий Проєкт</translation>
+    </message>
+    <message>
+        <source>Delete project...</source>
+        <translation>Видалити проєкт...</translation>
+    </message>
+    <message>
+        <source>Initialize Git Repository</source>
+        <translation>Ініціалізувати git-репозиторій</translation>
+    </message>
+    <message>
+        <source>Name project:</source>
+        <translation>Ім'я проєкту:</translation>
+    </message>
+     <message>
+        <source>(copy)</source>
+        <translation>(копія)</translation>
+    </message>
+    <message>
+        <source>Error creating file:</source>
+        <translation>Помилка створення файлу:</translation>
+    </message>
+    <message>
+        <source>Delete file</source>
+        <translation>Видалити файл</translation>
+    </message>
+    <message>
+        <source>Source and destination are the same.</source>
+        <translation>Джерело і призначення збігаються.</translation>
+    </message>
+    <message>
+        <source>Paste error: </source>
+        <translation>Помилка вставки: </translation>
+    </message>
+    <message>
+        <source>File copied, but failed to delete original:</source>
+        <translation>Файл скопійовано, але не вдалося видалити оригінал:</translation>
+    </message>
+    <message>
+        <source>Error</source>
+        <translation>Помилка</translation>
+    </message>
+    <message>
+        <source>Deletion error:</source>
+        <translation>Помилка видалення:</translation>
+    </message>
+    <message>
+        <source>Clipboard is empty or file no longer exists.</source>
+        <translation>Буфер порожній або файл більше не існує.</translation>
+    </message>
 </context>
 </TS>

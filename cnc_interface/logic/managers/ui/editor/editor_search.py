@@ -30,14 +30,14 @@ class _SearchReplaceBar(QWidget):
         pal.setColor(pal.Window, QColor("#2D2D2D"))
         self.setPalette(pal)
 
-        self._sf  = QLineEdit(placeholderText=_tr("Пошук…"))
-        self._rf  = QLineEdit(placeholderText=_tr("Замінити на…"))
+        self._sf  = QLineEdit(placeholderText=_tr("Search…"))
+        self._rf  = QLineEdit(placeholderText=_tr("Replace with…"))
         self._lbl = QLabel("", styleSheet="color:#9E9E9E;font-size:11px;")
 
         bp = QPushButton("↑")
         bn = QPushButton("↓")
-        br = QPushButton(_tr("Замінити"))
-        ba = QPushButton(_tr("Замінити всі"))
+        br = QPushButton(_tr("Replace"))
+        ba = QPushButton(_tr("Replace all"))
         bc = QPushButton("✕")
 
         for b in (bp, bn, br, ba, bc):
@@ -83,7 +83,7 @@ class _SearchReplaceBar(QWidget):
             cur.movePosition(QTextCursor.End if backward else QTextCursor.Start)
             self._editor.setTextCursor(cur)
             found = self._editor.find(needle, flags)
-        self._lbl.setText("" if found else _tr("Не знайдено"))
+        self._lbl.setText("" if found else _tr("Not found"))
         return found
 
     def _find_next(self) -> None: self._find(False)
@@ -103,6 +103,6 @@ class _SearchReplaceBar(QWidget):
         count   = content.count(needle)
         if count:
             self._editor.load_text(content.replace(needle, self._rf.text()))
-            self._lbl.setText(_tr(f"Замінено: {count}"))
+            self._lbl.setText(_tr(f"Replaced: {count}"))
         else:
-            self._lbl.setText(_tr("Не знайдено"))
+            self._lbl.setText(_tr("Not found"))

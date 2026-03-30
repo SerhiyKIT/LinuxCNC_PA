@@ -52,8 +52,8 @@ class _PosGroup(QGroupBox):
             grid.addLayout(col)
             self._fields[axis] = fld
 
-        btn = QPushButton(_tr("Поточні коорд."))
-        btn.setToolTip(_tr("Зчитати поточні координати з LinuxCNC"))
+        btn = QPushButton(_tr("Current coords."))
+        btn.setToolTip(_tr("Read current coordinates from LinuxCNC"))
         btn.setAutoDefault(False)
         btn.setDefault(False)
         btn.setEnabled(cnc is not None)
@@ -134,53 +134,53 @@ class MotionCommandDialog(QDialog):
         root.setContentsMargins(14, 14, 14, 14)
 
         if self._motion_type == "CIRC":
-            self._aux_pos    = _PosGroup(_tr("Проміжна точка"), cnc, limits, self)
-            self._target_pos = _PosGroup(_tr("Цільова точка"),  cnc, limits, self)
+            self._aux_pos    = _PosGroup(_tr("Auxiliary point"), cnc, limits, self)
+            self._target_pos = _PosGroup(_tr("Target point"),  cnc, limits, self)
             root.addWidget(self._aux_pos)
             root.addWidget(self._target_pos)
         else:
-            self._pos = _PosGroup(_tr("Цільова точка"), cnc, limits, self)
+            self._pos = _PosGroup(_tr("Target point"), cnc, limits, self)
             root.addWidget(self._pos)
 
-        params_box = QGroupBox(_tr("Параметри руху"))
+        params_box = QGroupBox(_tr("Motion parameters"))
         pf = QFormLayout(params_box)
         pf.setSpacing(8)
         pf.setLabelAlignment(Qt.AlignRight)
 
-        self._cont = QCheckBox(_tr("(не зупинятись у точці)"))
-        pf.addRow(_tr("Безперервний рух:"), self._cont)
+        self._cont = QCheckBox(_tr("(do not stop at point)"))
+        pf.addRow(_tr("Continuous motion:"), self._cont)
 
         self._ori_type = None
         if self._motion_type in ("LIN", "CIRC"):
             self._ori_type = QComboBox()
             self._ori_type.addItems(["ORI_VAR", "ORI_CONST"])
-            pf.addRow(_tr("Тип орієнтації:"), self._ori_type)
+            pf.addRow(_tr("Orientation type:"), self._ori_type)
 
         self._circ_type = None
         if self._motion_type == "CIRC":
             self._circ_type = QComboBox()
             self._circ_type.addItems(["CIRC_PATH", "CIRC_BASE"])
-            pf.addRow(_tr("Тип кругової орієнтації:"), self._circ_type)
+            pf.addRow(_tr("Circular orientation type:"), self._circ_type)
 
         self._vel = QLineEdit("100.0")
-        self._vel.setToolTip(_tr(f"Швидкість: {self._VEL_MIN}…{self._VEL_MAX}"))
-        pf.addRow(_tr("Швидкість:"), self._vel)
+        self._vel.setToolTip(_tr(f"Velocity: {self._VEL_MIN}…{self._VEL_MAX}"))
+        pf.addRow(_tr("Velocity:"), self._vel)
 
         self._acc = QLineEdit("100.0")
-        self._acc.setToolTip(_tr(f"Прискорення: {self._ACC_MIN}…{self._ACC_MAX}"))
-        pf.addRow(_tr("Прискорення:"), self._acc)
+        self._acc.setToolTip(_tr(f"Acceleration: {self._ACC_MIN}…{self._ACC_MAX}"))
+        pf.addRow(_tr("Acceleration:"), self._acc)
 
         self._tool = QLineEdit("1")
-        self._tool.setToolTip(_tr("Номер інструменту (ціле число ≥ 0)"))
-        pf.addRow(_tr("Інструмент:"), self._tool)
+        self._tool.setToolTip(_tr("Tool number (integer ≥ 0)"))
+        pf.addRow(_tr("Tool:"), self._tool)
 
         self._base = QLineEdit("0")
-        self._base.setToolTip(_tr("Система координат (ціле число ≥ 0)"))
-        pf.addRow(_tr("Система координат:"), self._base)
+        self._base.setToolTip(_tr("Coordinate system (integer ≥ 0)"))
+        pf.addRow(_tr("Coordinate system:"), self._base)
 
         root.addWidget(params_box)
 
-        prev_box = QGroupBox(_tr("Результат"))
+        prev_box = QGroupBox(_tr("Result"))
         pv = QVBoxLayout(prev_box)
         self._preview = QLabel("")
         self._preview.setStyleSheet(
@@ -193,12 +193,12 @@ class MotionCommandDialog(QDialog):
         btn_row = QHBoxLayout()
         btn_row.addStretch()
 
-        self._btn_cancel = QPushButton(_tr("Скасувати"))
+        self._btn_cancel = QPushButton(_tr("Cancel"))
         self._btn_cancel.setAutoDefault(False)
         self._btn_cancel.setDefault(False)
         self._btn_cancel.clicked.connect(self.reject)
 
-        self._btn_insert = QPushButton(_tr("Вставити"))
+        self._btn_insert = QPushButton(_tr("Insert"))
         self._btn_insert.setAutoDefault(False)
         self._btn_insert.setDefault(False)
         self._btn_insert.setEnabled(False)
@@ -291,5 +291,5 @@ class MotionCommandDialog(QDialog):
         self._btn_insert.setEnabled(ok)
         self._preview.setText(
             self.build_command() if ok
-            else _tr("⚠  Заповніть усі поля коректно (червоні поля — поза діапазоном)")
+            else _tr("⚠  Fill in all fields correctly (red fields are out of range)")
         )

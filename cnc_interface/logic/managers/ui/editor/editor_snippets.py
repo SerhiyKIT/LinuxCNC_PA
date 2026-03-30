@@ -27,7 +27,7 @@ def get_snippets() -> dict[str, dict[str, str]]:
     Викликається при побудові меню щоб рядки були перекладені.
     """
     return {
-        _tr("Команди руху"): {
+        _tr("Motion commands"): {
             "PTP": "PTP {X 0.0, Y 0.0, Z 0.0, A 0.0, B 0.0, C 0.0} VEL 100.0 ACC 100.0 TOOL 1 BASE 0;",
             "LIN": "LIN {X 0.0, Y 0.0, Z 0.0, A 0.0, B 0.0, C 0.0} VEL 100.0 ACC 100.0 TOOL 1 BASE 0;",
             "CIRC": (
@@ -37,17 +37,17 @@ def get_snippets() -> dict[str, dict[str, str]]:
             ),
         },
 
-        _tr("Затримки та зупинки"): {
+        _tr("Delays and stops"): {
             "WAIT":  "WAIT 1.0;",
             "PAUSE": "PAUSE;",
             "STOP":  "STOP;",
         },
 
-        _tr("Координати та зміщення"): {
+        _tr("Coordinates and offsets"): {
             "OFFSET": "OFFSET (X 0.0, Y 0.0, Z 0.0);",
         },
 
-        _tr("Умовний перехід"): {
+        _tr("Conditional jump"): {
             _tr("IF ... ENDIF"): (
                 "IF [condition]\n"
                 "    \n"
@@ -71,7 +71,7 @@ def get_snippets() -> dict[str, dict[str, str]]:
             ),
         },
 
-        _tr("Цикли"): {
+        _tr("Loops"): {
             _tr("WHILE ... ENDWHILE"): (
                 "WHILE [condition]\n"
                 "    \n"
@@ -89,13 +89,13 @@ def get_snippets() -> dict[str, dict[str, str]]:
             ),
         },
 
-        _tr("Взаємодія з I/O"): {
+        _tr("I/O interfacing"): {
             "SET_DO":  "SET_DO [Pin] [Value];",
             "GET_DI":  "GET_DI [Pin];",
             "WAIT_DI": "WAIT_DI [Pin] [Value];",
         },
 
-        _tr("Підпрограми"): {
+        _tr("Subroutines"): {
             _tr("DEF"): (
                 "DEF MyRoutine()\n"
                 "    \n"

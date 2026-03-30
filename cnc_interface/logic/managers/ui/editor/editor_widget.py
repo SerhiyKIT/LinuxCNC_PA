@@ -22,7 +22,6 @@ logger = logging.getLogger(__name__)
 def _tr(text: str) -> str:
     return QCoreApplication.translate("MainWindow", text)
 
-
 class _LineNumberArea(QWidget):
     def __init__(self, editor: "GCodeEditorWidget"):
         super().__init__(editor)
@@ -53,6 +52,7 @@ class GCodeEditorWidget(QPlainTextEdit):
         self._search_bar_ref    = None
         self._pending_next_line = None
         self._cnc               = None
+        self._completer         = None   # встановлюється через set_completer()
 
         self._highlighter = GCodeHighlighter(self.document())
         self._lna = _LineNumberArea(self)
@@ -67,6 +67,8 @@ class GCodeEditorWidget(QPlainTextEdit):
         self._save_timer.setInterval(AUTOSAVE_DELAY_MS)
         self._save_timer.timeout.connect(self.contentChanged)
         self.document().contentsChanged.connect(self._save_timer.start)
+        # Оновлення автодоповнення після кожної зміни тексту
+        self.document().contentsChanged.connect(self._on_text_changed_for_completer)
 
         QShortcut("Ctrl+H", self).activated.connect(self._show_search)
         QShortcut("Ctrl+F", self).activated.connect(self._show_search)
@@ -135,10 +137,26 @@ class GCodeEditorWidget(QPlainTextEdit):
     def set_search_bar(self, bar) -> None:
         self._search_bar_ref = bar
 
+    def set_completer(self, completer) -> None:
+        """Підключити EditorCompleter до цього віджета."""
+        self._completer = completer
+
     def take_pending_next_line(self):
         val = self._pending_next_line
         self._pending_next_line = None
         return val
+
+    def keyPressEvent(self, event) -> None:
+        """Перехоплює Tab і Enter для автодоповнення перед стандартною обробкою."""
+        if self._completer is not None and not self._is_locked:
+            if self._completer.handle_key_press(event):
+                return  # подія оброблена completer-ом
+        super().keyPressEvent(event)
+
+    def _on_text_changed_for_completer(self) -> None:
+        """Оновити підказки після кожної зміни тексту."""
+        if self._completer is not None and not self._is_locked:
+            self._completer.update_completions()
 
     # ------------------------------------------------------------------
     # Нумерація рядків
@@ -222,37 +240,37 @@ class GCodeEditorWidget(QPlainTextEdit):
         has_sel = self.textCursor().hasSelection()
 
         if self._is_locked:
-            a = menu.addAction(_tr("Копіювати (Ctrl+C)"))
+            a = menu.addAction(_tr("Copy (Ctrl+C)"))
             a.setEnabled(has_sel)
             a.triggered.connect(self.copy)
             menu.exec_(event.globalPos())
             return
 
         # ── Буфер обміну ────────────────────────────────────────────────
-        a = menu.addAction(_tr("Вирізати (Ctrl+X)"))
+        a = menu.addAction(_tr("Cut (Ctrl+X)"))
         a.setEnabled(has_sel)
         a.triggered.connect(self.cut)
 
-        a = menu.addAction(_tr("Копіювати (Ctrl+C)"))
+        a = menu.addAction(_tr("Copy (Ctrl+C)"))
         a.setEnabled(has_sel)
         a.triggered.connect(self.copy)
 
-        menu.addAction(_tr("Вставити (Ctrl+V)")).triggered.connect(self.paste)
+        menu.addAction(_tr("Paste (Ctrl+V)")).triggered.connect(self.paste)
         menu.addSeparator()
 
         # ── Виконання ───────────────────────────────────────────────────
-        menu.addAction(_tr("▶  Виконати з цього рядка")).triggered.connect(
+        menu.addAction(_tr("▶  Run from this line")).triggered.connect(
             self._on_set_next_line)
         menu.addSeparator()
 
         # ── Редагування тексту ──────────────────────────────────────────
-        menu.addAction(_tr("Закоментувати")).triggered.connect(
+        menu.addAction(_tr("Comment out")).triggered.connect(
             lambda: self._toggle_comment(True))
-        menu.addAction(_tr("Розкоментувати")).triggered.connect(
+        menu.addAction(_tr("Uncomment")).triggered.connect(
             lambda: self._toggle_comment(False))
         menu.addSeparator()
 
-        menu.addAction(_tr("Пошук та заміна  (Ctrl+H)")).triggered.connect(
+        menu.addAction(_tr("Find and replace  (Ctrl+H)")).triggered.connect(
             self._show_search)
         menu.addSeparator()
 
@@ -270,7 +288,7 @@ class GCodeEditorWidget(QPlainTextEdit):
         from .editor_snippets import get_snippets
 
         snippets = get_snippets()
-        motion_category = _tr("Команди руху")
+        motion_category = _tr("Motion commands")
 
         for category, commands in snippets.items():
             cat_menu = parent_menu.addMenu(category)
@@ -297,9 +315,9 @@ class GCodeEditorWidget(QPlainTextEdit):
             block = doc.findBlockByNumber(bn)
             bc    = QTextCursor(block)
             if add:
-                bc.insertText("; ")
+                bc.insertText("// ")
             else:
-                m = re.match(r"^;\s?", block.text())
+                m = re.match(r"^//\s?", block.text())
                 if m:
                     bc.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor, m.end())
                     bc.removeSelectedText()
