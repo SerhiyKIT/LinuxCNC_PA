@@ -36,3 +36,5 @@ htmlcov/
 *.tmp_versions/
 modules.order
 Module.symvers
+# Повинен створюватися під час запуску, інакше призведе до збою системи
+robot_cmds.hal
