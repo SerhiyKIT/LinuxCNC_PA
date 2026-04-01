@@ -1906,5 +1906,143 @@
     "level": "INFO",
     "module": "system",
     "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-31T18:52:06.051+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-31T18:54:43.153+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-31T18:57:26.421+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-31T18:58:44.015+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-31T20:09:11.202+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-31T20:13:35.652+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-31T20:15:24.426+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-31T20:17:04.533+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-03-31T20:18:34.625+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-04-01T16:10:43.823+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-04-01T16:13:05.748+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-04-01T16:13:38.532+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-04-01T16:13:55.466+03:00",
+    "level": "ERROR",
+    "module": "project",
+    "message": "Unknown m code used: M102"
+  },
+  {
+    "timestamp": "2026-04-01T16:15:27.644+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-04-01T16:15:35.144+03:00",
+    "level": "ERROR",
+    "module": "system",
+    "message": "Unknown m code used: M102"
+  },
+  {
+    "timestamp": "2026-04-01T16:15:37.097+03:00",
+    "level": "ERROR",
+    "module": "system",
+    "message": "Unknown m code used: M102"
+  },
+  {
+    "timestamp": "2026-04-01T16:15:47.957+03:00",
+    "level": "ERROR",
+    "module": "system",
+    "message": "Unknown m code used: M102"
+  },
+  {
+    "timestamp": "2026-04-01T16:17:16.440+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-04-01T16:19:27.863+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-04-01T16:19:38.666+03:00",
+    "level": "ERROR",
+    "module": "system",
+    "message": "Exceeded POSITIVE soft limit (35.00000) on joint 2\n"
+  },
+  {
+    "timestamp": "2026-04-01T16:19:38.766+03:00",
+    "level": "ERROR",
+    "module": "system",
+    "message": "Hint: switch to joint mode to jog off soft limit"
+  },
+  {
+    "timestamp": "2026-04-01T16:24:10.568+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
+  },
+  {
+    "timestamp": "2026-04-01T16:30:58.852+03:00",
+    "level": "INFO",
+    "module": "system",
+    "message": " ini: startup offsets set"
   }
 ]
