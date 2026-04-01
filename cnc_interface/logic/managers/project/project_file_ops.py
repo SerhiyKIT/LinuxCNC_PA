@@ -43,35 +43,35 @@ def build_project_tree_context_menu(manager, pos) -> None:
     menu = QMenu(manager._project_tree)
     menu.setStyleSheet(STYLE_MENU)
 
-    menu.addAction(_tr("Новий файл")).triggered.connect(
+    menu.addAction(_tr("New file")).triggered.connect(
         lambda: on_new_file(manager, path))
     menu.addSeparator()
 
     if path is not None:
         if path.is_file():
-            menu.addAction(_tr("Відкрити (читання)")).triggered.connect(
+            menu.addAction(_tr("Open (read only)")).triggered.connect(
                 lambda: on_open_file(manager, path, read_only=True))
-            menu.addAction(_tr("Відкрити (редагування)")).triggered.connect(
+            menu.addAction(_tr("Open (edit)")).triggered.connect(
                 lambda: on_open_file(manager, path, read_only=False))
             menu.addSeparator()
 
-        menu.addAction(_tr("Перейменувати")).triggered.connect(
+        menu.addAction(_tr("Rename")).triggered.connect(
             lambda: on_rename(manager, path, index))
-        menu.addAction(_tr("Видалити")).triggered.connect(
+        menu.addAction(_tr("Delete")).triggered.connect(
             lambda: on_delete_file(manager, path))
         menu.addSeparator()
 
-        menu.addAction(_tr("Вирізати")).triggered.connect(
+        menu.addAction(_tr("Cut")).triggered.connect(
             lambda: clipboard_op(manager, path, cut=True))
-        menu.addAction(_tr("Копіювати")).triggered.connect(
+        menu.addAction(_tr("Copy")).triggered.connect(
             lambda: clipboard_op(manager, path, cut=False))
 
     clipboard_src = getattr(manager, "_clipboard_path", None)
     if clipboard_src is not None:
         if path is not None:
             menu.addSeparator()
-        cut_label   = _tr("(вирізано)") if getattr(manager, "_clipboard_cut", False) else _tr("(копія)")
-        paste_label = f"{_tr('Вставити')}  [{clipboard_src.name}]  {cut_label}"
+        cut_label   = _tr("(excised)") if getattr(manager, "_clipboard_cut", False) else _tr("(copy)")
+        paste_label = f"{_tr('Paste')}  [{clipboard_src.name}]  {cut_label}"
         menu.addAction(paste_label).triggered.connect(
             lambda: on_paste(manager, path))
 
@@ -92,7 +92,7 @@ def on_new_file(manager, context_path: Optional[Path]) -> None:
     from PyQt5.QtWidgets import QInputDialog
     name, ok = QInputDialog.getText(
         manager._w("tree_view_project"),
-        _tr("Новий файл"), _tr("Назва файлу:")
+        _tr("New file"), _tr("Name file:")
     )
     if not ok or not name.strip():
         return
@@ -100,7 +100,7 @@ def on_new_file(manager, context_path: Optional[Path]) -> None:
     try:
         dest.touch()
     except Exception as exc:
-        show_error(manager, _tr(f"Помилка створення файлу: {exc}"))
+        show_error(manager, _tr(f"Error creating file: {exc}"))
 
 
 def on_open_file(manager, path: Path, read_only: bool) -> None:
@@ -125,8 +125,8 @@ def on_delete_file(manager, path: Path) -> None:
     """Видалити файл або папку після підтвердження."""
     reply = QMessageBox.question(
         manager._w("tree_view_project"),
-        _tr("Видалити файл"),
-        _tr(f'Видалити "{path.name}"?'),
+        _tr("Delete file"),
+        _tr(f'Delete "{path.name}"?'),
         QMessageBox.Yes | QMessageBox.No,
     )
     if reply != QMessageBox.Yes:
@@ -140,7 +140,7 @@ def on_delete_file(manager, path: Path) -> None:
         if em is not None and em._current_file == str(path):
             em.clear_editor()
     except Exception as exc:
-        show_error(manager, _tr(f"Помилка видалення: {exc}"))
+        show_error(manager, _tr(f"Deletion error: {exc}"))
 
 
 # ---------------------------------------------------------------------------
@@ -163,7 +163,7 @@ def on_paste(manager, context_path: Optional[Path]) -> None:
     """
     src = getattr(manager, "_clipboard_path", None)
     if src is None or not src.exists():
-        show_error(manager, _tr("Буфер порожній або файл більше не існує."))
+        show_error(manager, _tr("Clipboard is empty or file no longer exists."))
         manager._clipboard_path = None
         return
 
@@ -177,7 +177,7 @@ def on_paste(manager, context_path: Optional[Path]) -> None:
     base_dest = dest_dir / src.name
     if base_dest == src:
         if manager._clipboard_cut:
-            show_error(manager, _tr("Джерело і призначення збігаються."))
+            show_error(manager, _tr("Source and destination are the same."))
             return
 
     dest = base_dest if manager._clipboard_cut else unique_path(base_dest)
@@ -188,7 +188,7 @@ def on_paste(manager, context_path: Optional[Path]) -> None:
         else:
             shutil.copy2(src, dest)
     except Exception as exc:
-        show_error(manager, _tr(f"Помилка вставки: {exc}"))
+        show_error(manager, _tr(f"Paste error: {exc}"))
         return
 
     if manager._clipboard_cut:
@@ -199,7 +199,7 @@ def on_paste(manager, context_path: Optional[Path]) -> None:
                 src.unlink()
         except Exception as exc:
             show_error(manager, _tr(
-                f"Файл скопійовано, але не вдалося видалити оригінал: {exc}"))
+                f"File copied, but failed to delete original: {exc}"))
         manager._clipboard_path = None
         manager._clipboard_cut  = False
 
@@ -240,5 +240,5 @@ def unique_path(dest: Path) -> Path:
 def show_error(manager, message: str) -> None:
     QMessageBox.critical(
         manager._w("tree_view_project"),
-        _tr("Помилка"), message
+        _tr("Error"), message
     )

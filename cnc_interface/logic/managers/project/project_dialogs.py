@@ -32,7 +32,7 @@ class _NewProjectDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle(_tr("Новий проєкт"))
+        self.setWindowTitle(_tr("New project"))
         self.setMinimumWidth(420)
         self.setModal(True)
         self.setStyleSheet(STYLE_DIALOG)
@@ -42,7 +42,7 @@ class _NewProjectDialog(QDialog):
         root.setSpacing(12)
         root.setContentsMargins(16, 16, 16, 16)
 
-        root.addWidget(QLabel(_tr("Назва проєкту:")))
+        root.addWidget(QLabel(_tr("Name project:")))
         self._name_edit = QLineEdit()
         self._name_edit.setPlaceholderText("my_project")
         self._name_edit.textChanged.connect(self._validate)
@@ -52,18 +52,18 @@ class _NewProjectDialog(QDialog):
         self._lbl_error.setStyleSheet("color:#FF6161; font-size:12px;")
         root.addWidget(self._lbl_error)
 
-        self._chk_repo = QCheckBox(_tr("Ініціалізувати git-репозиторій"))
+        self._chk_repo = QCheckBox(_tr("Initialize Git Repository"))
         root.addWidget(self._chk_repo)
         root.addStretch()
 
         btn_row = QHBoxLayout()
         btn_row.addStretch()
-        self._btn_cancel = QPushButton(_tr("Скасувати"))
+        self._btn_cancel = QPushButton(_tr("Cancel"))
         self._btn_cancel.setAutoDefault(False)
         self._btn_cancel.setDefault(False)
         self._btn_cancel.clicked.connect(self.reject)
 
-        self._btn_create = QPushButton(_tr("Створити"))
+        self._btn_create = QPushButton(_tr("Create"))
         self._btn_create.setObjectName("btn_confirm")
         self._btn_create.setAutoDefault(False)
         self._btn_create.setDefault(False)
@@ -86,9 +86,9 @@ class _NewProjectDialog(QDialog):
         if not name:
             error = ""
         elif any(c in name for c in r'\/:*?"<>|'):
-            error = _tr("Назва містить недопустимі символи")
+            error = _tr("Name contains invalid characters")
         elif (PROJECTS_ROOT / name).exists():
-            error = _tr(f'Проєкт "{name}" вже існує')
+            error = _tr(f'Project "{name}" already exists')
 
         self._lbl_error.setText(error)
         self._name_edit.setProperty("invalid", "true" if error else "")
@@ -114,7 +114,7 @@ class _OpenProjectDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle(_tr("Відкрити проєкт"))
+        self.setWindowTitle(_tr("Open project"))
         self.setMinimumSize(400, 480)
         self.setModal(True)
         self.setStyleSheet(STYLE_DIALOG)
@@ -125,7 +125,7 @@ class _OpenProjectDialog(QDialog):
         root.setContentsMargins(16, 16, 16, 16)
 
         path_row = QHBoxLayout()
-        path_row.addWidget(QLabel(_tr("Шлях:")))
+        path_row.addWidget(QLabel(_tr("Path:")))
         lbl_path = QLineEdit(str(PROJECTS_ROOT))
         lbl_path.setReadOnly(True)
         lbl_path.setStyleSheet("color:#9E9E9E; background:#161616;")
@@ -133,7 +133,7 @@ class _OpenProjectDialog(QDialog):
         root.addLayout(path_row)
 
         self._model = QStandardItemModel()
-        self._model.setHorizontalHeaderLabels([_tr("Проєкти:")])
+        self._model.setHorizontalHeaderLabels([_tr("Projects:")])
         self._tree  = QTreeView()
         self._tree.setModel(self._model)
         self._tree.setStyleSheet(STYLE_TREE)
@@ -146,12 +146,12 @@ class _OpenProjectDialog(QDialog):
 
         btn_row = QHBoxLayout()
         btn_row.addStretch()
-        btn_cancel = QPushButton(_tr("Скасувати"))
+        btn_cancel = QPushButton(_tr("Cancel"))
         btn_cancel.setAutoDefault(False)
         btn_cancel.setDefault(False)
         btn_cancel.clicked.connect(self.reject)
 
-        self._btn_ok = QPushButton(_tr("ОК"))
+        self._btn_ok = QPushButton(_tr("OK"))
         self._btn_ok.setObjectName("btn_confirm")
         self._btn_ok.setAutoDefault(False)
         self._btn_ok.setDefault(False)
@@ -202,7 +202,7 @@ class _DeleteProjectDialog(QDialog):
     def __init__(self, project_name: str, parent=None):
         super().__init__(parent)
         self._project_name = project_name
-        self.setWindowTitle(_tr("Видалення проєкту"))
+        self.setWindowTitle(_tr("Delete project"))
         self.setMinimumWidth(440)
         self.setModal(True)
         self.setStyleSheet(STYLE_DIALOG)
@@ -213,33 +213,33 @@ class _DeleteProjectDialog(QDialog):
         root.setContentsMargins(16, 16, 16, 16)
 
         warn = QLabel(
-            _tr(f'⚠  Ви збираєтесь <b>назавжди видалити</b> проєкт '
+            _tr(f'⚠  You are about to permanently delete the project '
                 f'<span style="color:#FF6161; font-size:12px;">{project_name}</span> '
-                f'та весь його вміст з диска. Цю дію неможливо скасувати.')
+                f'and all its content from the disk. This action cannot be undone.')
         )
         warn.setTextFormat(Qt.RichText)
         warn.setWordWrap(True)
         root.addWidget(warn)
 
-        root.addWidget(QLabel(_tr("Введіть назву проєкту для підтвердження:")))
+        root.addWidget(QLabel(_tr("Enter project name to confirm:")))
         self._confirm_edit = QLineEdit()
         self._confirm_edit.setPlaceholderText(project_name)
         self._confirm_edit.textChanged.connect(self._validate)
         root.addWidget(self._confirm_edit)
 
-        self._chk = QCheckBox(_tr("Я розумію що видалення незворотнє"))
+        self._chk = QCheckBox(_tr("I understand that deletion is irreversible"))
         self._chk.stateChanged.connect(self._validate)
         root.addWidget(self._chk)
         root.addStretch()
 
         btn_row = QHBoxLayout()
         btn_row.addStretch()
-        btn_cancel = QPushButton(_tr("Скасувати"))
+        btn_cancel = QPushButton(_tr("Cancel"))
         btn_cancel.setAutoDefault(False)
         btn_cancel.setDefault(False)
         btn_cancel.clicked.connect(self.reject)
 
-        self._btn_delete = QPushButton(_tr("Видалити назавжди"))
+        self._btn_delete = QPushButton(_tr("Delete permanently"))
         self._btn_delete.setObjectName("btn_delete_confirm")
         self._btn_delete.setAutoDefault(False)
         self._btn_delete.setDefault(False)

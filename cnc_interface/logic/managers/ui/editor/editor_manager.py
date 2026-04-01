@@ -16,10 +16,12 @@ import logging
 import os
 from typing import TYPE_CHECKING
 from PyQt5.QtCore import QTimer
-from .editor_colors    import EDITABLE_EXTS
-from .editor_container import _EditorContainer
-from .editor_search    import _SearchReplaceBar
-from .editor_widget    import GCodeEditorWidget
+from .editor_colors       import EDITABLE_EXTS
+from .editor_container    import _EditorContainer
+from .editor_search       import _SearchReplaceBar
+from .editor_widget       import GCodeEditorWidget
+from .editor_symbol_table import SymbolTable
+from .editor_completer    import EditorCompleter
 
 if TYPE_CHECKING:
     from core.machine import MachineController
@@ -47,6 +49,11 @@ class GCodeEditorManager:
         self._editor.set_cnc(machine_controller)
         self._editor.contentChanged.connect(self._on_content_changed)
         self._editor.set_locked(True)
+
+        # ── Автодоповнення ────────────────────────────────────────────────
+        self._symbol_table = SymbolTable()
+        self._completer    = EditorCompleter(self._editor, self._symbol_table)
+        self._editor.set_completer(self._completer)
 
         self._snl_timer = QTimer()
         self._snl_timer.setInterval(100)
@@ -159,6 +166,29 @@ class GCodeEditorManager:
     def set_project_active(self, active: bool) -> None:
         if not active:
             self.clear_editor()
+            self._symbol_table.set_project(None)
+
+    def set_project(self, project_path) -> None:
+        """
+        Завантажити символи для автодоповнення при відкритті проекту.
+        Викликається з ProjectManager._open_project().
+        """
+        from pathlib import Path as _Path
+        self._symbol_table.set_project(
+            _Path(project_path) if project_path else None
+        )
+        self._refresh_highlighter()
+
+    def _refresh_highlighter(self) -> None:
+        """Передати актуальні символи у підсвітку синтаксису."""
+        hl = getattr(self._editor, "_highlighter", None)
+        if hl is None:
+            return
+        if hasattr(hl, "set_symbols"):
+            hl.set_symbols(
+                self._symbol_table._variables,
+                self._symbol_table._subroutines,
+            )
 
     def set_current_file(self, filepath: str) -> None:
         self._current_file = filepath
@@ -198,6 +228,8 @@ class GCodeEditorManager:
             with open(self._current_file, "w", encoding="utf-8") as fh:
                 fh.write(self._editor.toPlainText())
             logger.debug("Auto-saved → %s", os.path.basename(self._current_file))
+            self._symbol_table.refresh_file(self._current_file)
+            self._refresh_highlighter()
         except OSError as exc:
             logger.error("Auto-save: %s", exc)
 

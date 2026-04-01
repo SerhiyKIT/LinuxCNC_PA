@@ -26,10 +26,12 @@ CLR_KEYWORD    = QColor("#cba6f7")   # IF ELSE WHILE FOR REPEAT DEF CALL ENDIF..
 CLR_IO_CMD     = QColor("#94e2d5")   # SET_DO GET_DI WAIT_DI
 CLR_FLOW_CMD   = QColor("#f5c2e7")   # WAIT PAUSE STOP OFFSET
 CLR_STRING     = QColor("#a6e3a1")   # рядкові літерали "..."
+CLR_IDENT      = QColor("#cdd6f4")   # змінні та підпрограми користувача
+CLR_PLACEHOLDER= QColor("#6c7086")   # плейсхолдери [умова] [Pin]
 
 # Константи поведінки
 AUTOSAVE_DELAY_MS: int   = 800
-EDITABLE_EXTS:     tuple = (".txt", ".ini", ".xml", ".log", ".parl")
+EDITABLE_EXTS:     tuple = (".txt", ".ini", ".xml", ".json", ".log", ".parl")
 POS_AXES:          tuple = ("X", "Y", "Z", "A", "B", "C")
 
 # Стиль контекстного меню

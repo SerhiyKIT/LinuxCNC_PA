@@ -15,7 +15,7 @@ PROJECTS_ROOT = Path.home() / "ProjectLinuxCNC"
 PROJECT_STRUCTURE: dict[str, list[str]] = {
     "src":  ["program.txt"],
     "bin":  ["main.parl"],
-    "data": ["variables.json"],
+    "data": ["variables.json", "io_config.json"],
     "logs": ["execution.json"],
 }
 PROJECT_ROOT_FILES = ["config.ini"]

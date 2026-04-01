@@ -171,6 +171,8 @@ class ProjectManager:
         em = getattr(self, "_editor_manager", None)
         if em is not None:
             em.set_project_active(True)
+            if hasattr(em, "set_project"):
+                em.set_project(project_path)   # завантажити символи автодоповнення
 
         pl = getattr(self, "_project_logger", None)
         if pl is not None:
@@ -232,10 +234,10 @@ class ProjectManager:
             return
         menu = QMenu()
         menu.setStyleSheet(STYLE_MENU)
-        menu.addAction(_tr("Відкрити проєкт"),  self._on_open_project)
-        menu.addAction(_tr("Новий проєкт"),     self._on_create_project)
+        menu.addAction(_tr("Open project"),  self._on_open_project)
+        menu.addAction(_tr("New project"),     self._on_create_project)
         menu.addSeparator()
-        act_del = menu.addAction(_tr("Видалити проєкт..."))
+        act_del = menu.addAction(_tr("Delete project..."))
         act_del.setEnabled(self._current_project is not None)
         act_del.triggered.connect(self._on_delete_project)
         menu.exec_(btn.mapToGlobal(btn.rect().bottomLeft()))
@@ -384,7 +386,7 @@ class ProjectManager:
     def _show_open_or_create_link(self) -> None:
         from PyQt5.QtWidgets import QTreeView
         self._list_model.clear()
-        item = QStandardItem(_tr("Відкрийте або Створіть Новий Проєкт"))
+        item = QStandardItem(_tr("Open or Create a New Project"))
         item.setForeground(QColor("#FE5C0D"))
         font = item.font()
         font.setPixelSize(14)
