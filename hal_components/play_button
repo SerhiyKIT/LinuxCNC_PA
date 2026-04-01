@@ -1,0 +1,44 @@
+#!/usr/bin/env python3
+import hal
+import time
+
+h = hal.component("play_button")
+
+h.newpin("in", hal.HAL_BIT, hal.HAL_IN)         # Кнопка виконання
+h.newpin("line_done", hal.HAL_BIT, hal.HAL_IN)  # Сигнал від інтепритатора що він виконав 1 рядок
+
+h.newpin("play", hal.HAL_BIT, hal.HAL_OUT)      # Для звичайного режиму
+h.newpin("play_step", hal.HAL_BIT, hal.HAL_OUT) # Для покрокового режиму
+# В обох випадках код стане в паузу при відпускані кнопки виконання
+# Але в покроковому він точно має ставати в паузу після кожного рядка
+
+h.ready()
+
+# Внутрішня змінна чи дозволено виконувати поточний крок
+can_step = True 
+
+try:
+    while True:
+        current_in = h['in']
+        
+        # Просто дублюємо кнопку, ще не знаю чи треба якась перевірка
+        h['play'] = current_in
+
+        # Покроковий режим
+        if not current_in:
+            # Якщо кнопку відпустили знімаємо блокування і дозволяємо наступний крок
+            can_step = True
+            
+        if h['line_done']:
+            # Якщо рядок виконано ставим в блок 
+            can_step = False
+            
+            # Знімаємо статус піна щоб не робити це в інтепритаторі
+            # Інтепритатор буде ставити в True кожен раз коли рядок виконаний но знімати не буде
+            h['line_done'] = False
+
+        # play_step буде True якщо кнопка затиснута і немає блокування
+        h['play_step'] = current_in and can_step
+
+except KeyboardInterrupt:
+    raise SystemExit
