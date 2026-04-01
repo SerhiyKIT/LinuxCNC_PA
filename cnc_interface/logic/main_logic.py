@@ -200,6 +200,10 @@ class HandlerClass:
             self.widgets.combo_language.addItem("UA", "ua")
             self.widgets.combo_language.currentIndexChanged.connect(self.change_language)
 
+        # HALShow (тимчасова кнопка для діагностики)
+        if hasattr(self.widgets, 'btn_halshow'):
+            self.widgets.btn_halshow.clicked.connect(self._open_halshow)
+
     # ------------------------------------------------------------------
 
     def _on_project_open_file(self, filepath: str, read_only: bool) -> None:
@@ -332,6 +336,21 @@ class HandlerClass:
             index = self.widgets.combo_language.findData(lang_code)
             if index >= 0:
                 self.widgets.combo_language.setCurrentIndex(index)
+
+    # ------------------------------------------------------------------
+    # HALShow (тимчасово)
+    # ------------------------------------------------------------------
+
+    def _open_halshow(self) -> None:
+        """Відкрити halshow у окремому процесі."""
+        import subprocess
+        try:
+            subprocess.Popen(["halshow"])
+            logger.debug("halshow запущено")
+        except FileNotFoundError:
+            logger.warning("halshow не знайдено")
+        except Exception as exc:
+            logger.error("halshow: %s", exc)
 
     def _setup_gcode_sync(self):
         """No-op: збережено для сумісності."""
