@@ -302,6 +302,49 @@ QComboBox {
       </property>
      </item>
     </widget>
+    <widget class="QPushButton" name="btn_halshow">
+     <property name="geometry">
+      <rect>
+       <x>875</x>
+       <y>30</y>
+       <width>120</width>
+       <height>50</height>
+      </rect>
+     </property>
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="font">
+      <font>
+       <family>JetBrains Mono</family>
+       <pointsize>12</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="mouseTracking">
+      <bool>true</bool>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">QPushButton {
+	background-color: #FE5C0D;
+	color: #FFFFFF;
+	padding: 5px;
+	border-radius: 10px;
+	border: none;
+}
+QPushButton:hover{
+	background-color: rgb(254, 81, 13);
+    border: 2px solid rgb(254, 174, 13);
+}</string>
+     </property>
+     <property name="text">
+      <string>HALSHOW</string>
+     </property>
+    </widget>
    </widget>
    <widget class="QFrame" name="frame_2">
     <property name="geometry">
