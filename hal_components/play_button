@@ -40,7 +40,5 @@ try:
         # play_step буде True якщо кнопка затиснута і немає блокування
         h['play_step'] = current_in and can_step
 
-        time.sleep(0.01)
-
 except KeyboardInterrupt:
     raise SystemExit
