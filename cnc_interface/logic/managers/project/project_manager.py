@@ -128,6 +128,10 @@ class ProjectManager:
         if ldm is not None:
             ldm.set_project(None)
 
+        tp = getattr(self, "_tool_panel", None)
+        if tp is not None:
+            tp.set_project(None)
+
         clear_project_info(self)
         self._populate_project_list()
 
@@ -181,6 +185,10 @@ class ProjectManager:
         ldm = getattr(self, "_logger_display_manager", None)
         if ldm is not None:
             ldm.set_project(project_path)
+
+        tp = getattr(self, "_tool_panel", None)
+        if tp is not None:
+            tp.set_project(project_path)
 
         default_file = project_path / DEFAULT_OPEN_FILE
         if default_file.is_file():
@@ -378,6 +386,9 @@ class ProjectManager:
 
     def set_logger_display_manager(self, logger_display_manager) -> None:
         self._logger_display_manager = logger_display_manager
+
+    def set_tool_panel(self, tool_panel) -> None:
+        self._tool_panel = tool_panel
 
     # ------------------------------------------------------------------
     # "Open or Create" посилання після видалення

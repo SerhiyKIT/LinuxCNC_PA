@@ -56,7 +56,7 @@ import linuxcnc
 from unittest.mock import patch, MagicMock
 
 from logic.core.machine import MachineController
-from logic.managers.tool_manager import (
+from cnc_interface.logic.managers.gripper_manager import (
     ToolManager,
     _MDI_GRIP,
     _MDI_RELEASE,

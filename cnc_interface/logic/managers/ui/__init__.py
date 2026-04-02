@@ -4,7 +4,7 @@ try:
     from .panel_manager import PanelManager
     from .gcode_display import GCodeDisplayManager
     from .logger_display import LoggerDisplayManager
-    from .tool_display import ToolDisplayManager
+    from .gripper_display import GripperDisplayManager
     from .editor import GCodeEditorManager
 except ImportError as e:
     print(f"DEBUG: Error in managers/ui/__init__.py: {e}")
@@ -15,5 +15,5 @@ __all__ = [
     'GCodeDisplayManager',
     'LoggerDisplayManager',
     'GCodeEditorManager',
-    'ToolDisplayManager'
+    'GripperDisplayManager'
 ]

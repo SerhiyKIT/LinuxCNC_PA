@@ -17,11 +17,12 @@ PROJECT_STRUCTURE: dict[str, list[str]] = {
     "bin":  ["main.parl"],
     "data": ["variables.json", "io_config.json"],
     "logs": ["execution.json"],
+    "tool": ["tools.json"],
 }
 PROJECT_ROOT_FILES = ["config.ini"]
 DEFAULT_OPEN_FILE  = Path("src") / "program.txt"
 EDITABLE_EXTS      = (".txt", ".ini", ".json", ".parl")
-HIDDEN_FOLDERS     = {"bin", "logs"}
+HIDDEN_FOLDERS     = {"bin", "logs", "tool"}
 WATCHER_IGNORE_DIRS = {"logs"}
 
 # ---------------------------------------------------------------------------

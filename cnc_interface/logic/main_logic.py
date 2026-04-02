@@ -23,12 +23,13 @@ from core import MachineController, LoggerController
 from managers import (
     ControlManager, UIManager,
     JointManager, JointUIBinder,
+    GripperManager, GripperUIBinder,
     AxisManager, AxisUIBinder,
     OverridesManager, OverridesUIBinder,
     CycleManager, CycleUIBinder,
-    ToolManager, ToolUIBinder,
     KeyboardManager,
 )
+from managers.tool import ToolPanelManager
 from managers.ui.editor.editor_manager import GCodeEditorManager
 from managers.project.project_manager import ProjectManager
 from managers.project_logger import ProjectLogger
@@ -58,7 +59,7 @@ class HandlerClass:
         self.joint_manager     = JointManager(self.cnc)
         self.axis_manager      = AxisManager(self.cnc)
         self.overrides_manager = OverridesManager(self.cnc)
-        self.tool_manager      = ToolManager(self.cnc)
+        self.gripper_manager   = GripperManager(self.cnc)
 
         self.control    = ControlManager(self.cnc, self.widgets)
         self.ui_manager = UIManager(self.cnc, self.widgets, self.cycle_manager)
@@ -72,7 +73,7 @@ class HandlerClass:
         self.joint_binder        = None
         self.axis_ui_binder      = None
         self.overrides_ui_binder = None
-        self.tool_ui_binder      = None
+        self.gripper_ui_binder   = None
         self.keyboard_manager    = None
         self.context_menu_manager = None
         self.project_manager      = None
@@ -86,6 +87,10 @@ class HandlerClass:
         # ── ProjectManager ────────────────────────────────────────────────
         self.project_manager = ProjectManager(self.widgets)
         self.project_manager.connect_buttons()
+        # ── ToolManager ────────────────────────────────────────────────
+        self.tool_panel = ToolPanelManager(self.widgets)
+        self.project_manager.set_tool_panel(self.tool_panel)
+
         # Callback: відкрити файл проекту у GCodeEditor
         self.project_manager.set_open_file_callback(self._on_project_open_file)
 
@@ -117,12 +122,12 @@ class HandlerClass:
         self.joint_binder         = JointUIBinder(self.joint_manager, self.widgets)
         self.axis_ui_binder       = AxisUIBinder(self.axis_manager, self.widgets)
         self.overrides_ui_binder  = OverridesUIBinder(self.overrides_manager, self.widgets)
-        self.tool_ui_binder       = ToolUIBinder(self.tool_manager, self.widgets)
+        self.gripper_ui_binder    = GripperUIBinder(self.gripper_manager, self.widgets)
 
         self.managers_map = {
             MGR_CONTROL: self.control,
             MGR_CYCLE:   self.cycle_manager,
-            MGR_TOOL:    self.tool_manager,
+            MGR_TOOL:    self.gripper_manager,
         }
         self.keyboard_manager = KeyboardManager(self.widgets, self.managers_map)
 
@@ -181,7 +186,7 @@ class HandlerClass:
         self.cycle_ui_binder.connect_buttons()
 
         # Tool
-        self.tool_ui_binder.connect_tool_buttons()
+        self.gripper_ui_binder.connect_buttons()
 
         # Output panel
         if hasattr(self.widgets, 'list_output_view'):

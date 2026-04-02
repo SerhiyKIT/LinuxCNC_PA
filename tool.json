@@ -1,0 +1,44 @@
+[
+  {
+    "id": "T10",
+    "name": "Pneumatic Gripper 2-Finger",
+    "type": "Gripper",
+    "pocket": 10,
+    "status": "Ready",
+    "mass": 1.250,
+    "offset": 0.00,
+    "dimensions": {
+      "length_x": 165.0,
+      "width_y": 80.0,
+      "height_z": 60.0
+    }
+  },
+  {
+    "id": "T11",
+    "name": "Vacuum Suction Pad 80mm",
+    "type": "Vacuum",
+    "pocket": 11,
+    "status": "Ready",
+    "mass": 0.450,
+    "offset": 5.00,
+    "dimensions": {
+      "length_x": 95.0,
+      "width_y": 80.0,
+      "height_z": 80.0
+    }
+  },
+  {
+    "id": "T12",
+    "name": "MIG Welding Torch",
+    "type": "Welding",
+    "pocket": 0,
+    "status": "Ready",
+    "mass": 2.100,
+    "offset": 12.50,
+    "dimensions": {
+      "length_x": 210.0,
+      "width_y": 30.0,
+      "height_z": 30.0
+    }
+  }
+]
