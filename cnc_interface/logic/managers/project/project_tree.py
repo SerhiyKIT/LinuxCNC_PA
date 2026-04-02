@@ -62,7 +62,7 @@ def setup_project_tree(manager) -> None:
 
     parent_widget = tree.parent() if tree is not None else None
     manager._project_tree = QTreeView(parent_widget)
-    manager._project_tree.setGeometry(5, 70, 275, 420)
+    manager._project_tree.setGeometry(5, 70, 275, 300)
     manager._project_tree.setStyleSheet(STYLE_TREE)
     manager._project_tree.setEditTriggers(QAbstractItemView.NoEditTriggers)
     manager._project_tree.setContextMenuPolicy(Qt.CustomContextMenu)

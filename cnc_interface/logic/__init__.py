@@ -5,7 +5,7 @@ from .main_logic import HandlerClass
 from .managers.ui import ui_mapping
 from .managers import (
     CycleManager,
-    ToolManager,
+    GripperManager,
     JointManager,
     KeyboardManager,
     OverridesManager,
@@ -20,7 +20,7 @@ __all__ = [
     'HandlerClass',
     'ui_mapping',
     'CycleManager',
-    'ToolManager',
+    'GripperManager',
     'JointManager',
     'KeyboardManager',
     'OverridesManager',

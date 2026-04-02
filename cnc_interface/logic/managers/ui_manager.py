@@ -3,7 +3,7 @@ from managers.ui.motion_display import MotionDisplayManager
 from managers.ui.panel_manager import PanelManager
 from managers.ui.gcode_display import GCodeDisplayManager
 from managers.ui.logger_display import LoggerDisplayManager
-from managers.ui.tool_display import ToolDisplayManager
+from managers.ui.gripper_display import GripperDisplayManager
 
 class UIManager:
     def __init__(self, machine_controller, widgets, cycle_manager=None):
@@ -26,7 +26,7 @@ class UIManager:
         self.logger_display_manager = LoggerDisplayManager(machine_controller, widgets)
         
         # Initialize the tool display manager to manage the state of tool control UI elements (Arm button, Grip button, Power slider) based on machine status and safety conditions
-        self.tool_display_manager = ToolDisplayManager(machine_controller, widgets)
+        self.gripper_display_manager = GripperDisplayManager(machine_controller, widgets)
 
     def update_ui(self, states):
         """Main method to update all UI elements based on the current machine status"""
@@ -38,10 +38,11 @@ class UIManager:
             self.panel_manager.update_manual_controls(states)
             self.panel_manager.update_gcode_controls(states)
             self.panel_manager.update_project_manager(states)
+            self.panel_manager.update_tool_manager(states)
             self.gcode_display_manager.update_cycle_buttons(states)
             self.gcode_display_manager.update_active_gcodes(states)
             self.gcode_display_manager.update_gcode_display(states)
-            self.tool_display_manager.update_tool_ui_state(states)
+            self.gripper_display_manager.update_gripper_ui_state(states)
         except Exception as e:
             print(f"DEBUG UI Error: {e}")
                 
