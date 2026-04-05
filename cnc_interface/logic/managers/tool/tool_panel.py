@@ -25,6 +25,24 @@ from .tool_constants import (
     STATUS_COLORS, STYLE_BTN_ACTIVE, STYLE_BTN_INACTIVE,
     STYLE_TABLE, TOOL_STATUSES, TOOL_TYPES,
 )
+
+_STYLE_MSGBOX = (
+    "QMessageBox{"
+        "background:#1A1A1A; color:#F1F1F1;"
+    "}"
+    "QMessageBox QLabel{"
+        "color:#F1F1F1; font-size:13px; border: none; background: none;"
+    "}"
+    "QPushButton{"
+        "background:#333333; color:#F1F1F1; border:none;"
+        "border-radius:6px; padding:5px 18px; min-height:28px; min-width:80px;"
+    "}"
+    "QPushButton:hover{ background:#5B5B5B; }"
+    "QPushButton:default{"
+        "background:#FE5C0D; color:#FFFFFF; font-weight:bold;"
+    "}"
+    "QPushButton:default:hover{ background:#FF7533; }"
+)
 from .tool_dialogs import _AddToolDialog
 from .tool_models  import Tool
 from .tool_store   import ToolStore
@@ -329,23 +347,17 @@ class ToolPanelManager:
             return
         tool = self._selected_tool
         if tool.status == "Active":
-            reply = QMessageBox.question(
-                self._w("table_tools"),
+            if not self._show_question(
                 _tr("Delete Active Tool"),
                 _tr(f'Tool "{tool.name}" is currently Active.\n'
                     f'Are you sure you want to delete it?'),
-                QMessageBox.Yes | QMessageBox.No,
-            )
-            if reply != QMessageBox.Yes:
+            ):
                 return
         else:
-            reply = QMessageBox.question(
-                self._w("table_tools"),
+            if not self._show_question(
                 _tr("Delete Tool"),
                 _tr(f'Delete "{tool.name}" ({tool.id})?'),
-                QMessageBox.Yes | QMessageBox.No,
-            )
-            if reply != QMessageBox.Yes:
+            ):
                 return
 
         if ToolStore.delete_tool(self._project_path, tool.id):
@@ -448,9 +460,25 @@ class ToolPanelManager:
             return w.toPlainText().strip()
         return ""
 
+    def _show_question(self, title: str, text: str) -> bool:
+        """Стилізований діалог підтвердження. Повертає True якщо Yes."""
+        box = QMessageBox()
+        box.setWindowTitle(title)
+        box.setText(text)
+        box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        box.setDefaultButton(QMessageBox.No)
+        box.setStyleSheet(_STYLE_MSGBOX)
+        return box.exec_() == QMessageBox.Yes
+
     def _show_error(self, message: str) -> None:
-        QMessageBox.critical(
-            self._w("table_tools"), _tr("Error"), message)
+        """Стилізований діалог помилки."""
+        box = QMessageBox()
+        box.setWindowTitle(_tr("Error"))
+        box.setText(message)
+        box.setIcon(QMessageBox.Critical)
+        box.setStandardButtons(QMessageBox.Ok)
+        box.setStyleSheet(_STYLE_MSGBOX)
+        box.exec_()
 
     def __repr__(self) -> str:
         return (f"{self.__class__.__name__}"
