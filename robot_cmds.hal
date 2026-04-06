@@ -1,9 +1,9 @@
 # Fri Apr 03 16:50:17 EEST 2026
 #
 # This file:    ./robot_cmds.hal
-# Created by:   /home/anna/linuxcnc-dev/lib/hallib/basic_sim.tcl
+# Created by:   /home/rnd/linuxcnc-dev/lib/hallib/basic_sim.tcl
 # With options: 
-# From inifile: /home/anna/LinuxCNC_PA/robot.ini
+# From inifile: /home/rnd/LinuxCNC_PA/robot.ini
 # Halfiles:     LIB:basic_sim.tcl robot_dh.hal
 #
 # This file contains the hal commands produced by basic_sim.tcl
