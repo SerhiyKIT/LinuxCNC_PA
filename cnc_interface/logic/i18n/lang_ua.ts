@@ -443,11 +443,6 @@ CYCLE</source>
         <source>Log History</source>
         <translation>Журнал подій</translation>
     </message>
-
-    <!-- ═══════════════════════════════════════════════════════════════
-         Editor context menu
-         ═══════════════════════════════════════════════════════════════ -->
- 
     <message>
         <source>Copy (Ctrl+C)</source>
         <translation>Копіювати (Ctrl+C)</translation>
@@ -476,8 +471,6 @@ CYCLE</source>
         <source>Find and replace  (Ctrl+H)</source>
         <translation>Пошук та заміна  (Ctrl+H)</translation>
     </message>
- 
-    <!-- Snippet submenu categories -->
     <message>
         <source>Motion commands</source>
         <translation>Команди руху</translation>
@@ -506,8 +499,6 @@ CYCLE</source>
         <source>Subroutines</source>
         <translation>Підпрограми</translation>
     </message>
- 
-    <!-- Snippet names -->
     <message>
         <source>IF ... ENDIF</source>
         <translation>IF ... ENDIF</translation>
@@ -540,8 +531,6 @@ CYCLE</source>
         <source>CALL (invoke)</source>
         <translation>CALL (виклик)</translation>
     </message>
- 
-    <!-- Search/replace bar -->
     <message>
         <source>Search…</source>
         <translation>Пошук…</translation>
@@ -566,8 +555,6 @@ CYCLE</source>
         <source>Replaced: </source>
         <translation>Замінено: </translation>
     </message>
- 
-    <!-- Motion command dialog -->
     <message>
         <source>Current coords.</source>
         <translation>Поточні коорд.</translation>
@@ -636,9 +623,6 @@ CYCLE</source>
         <source>⚠  Fill in all fields correctly (red fields are out of range)</source>
         <translation>⚠  Заповніть усі поля коректно (червоні поля — поза діапазоном)</translation>
     </message>
-    <!-- ═══════════════════════════════════════════════════════════════
-        Project maanger context menu
-    ═══════════════════════════════════════════════════════════════ -->
     <message>
         <source>New project</source>
         <translation>Новий проєкт</translation>
@@ -699,7 +683,6 @@ CYCLE</source>
         <source>Delete permanently</source>
         <translation>Видалити назавжди</translation>
     </message>
-
     <message>
         <source>New file</source>
         <translation>Новий файл</translation>
@@ -740,7 +723,6 @@ CYCLE</source>
         <source>Name file:</source>
         <translation>Назва файлу:</translation>
     </message>
-
     <message>
         <source>Open or Create a New Project</source>
         <translation>Відкрийте або Створіть Новий Проєкт</translation>
@@ -755,9 +737,9 @@ CYCLE</source>
     </message>
     <message>
         <source>Name project:</source>
-        <translation>Ім'я проєкту:</translation>
+        <translation>Ім&apos;я проєкту:</translation>
     </message>
-     <message>
+    <message>
         <source>(copy)</source>
         <translation>(копія)</translation>
     </message>
@@ -792,6 +774,170 @@ CYCLE</source>
     <message>
         <source>Clipboard is empty or file no longer exists.</source>
         <translation>Буфер порожній або файл більше не існує.</translation>
+    </message>
+    <message>
+        <source>Type:</source>
+        <translation>Тип:</translation>
+    </message>
+    <message>
+        <source>Mass (kg):</source>
+        <translation>Маса (кг):</translation>
+    </message>
+    <message>
+        <source>Offset (mm):</source>
+        <translation>Зміщення (мм):</translation>
+    </message>
+    <message>
+        <source>Length X (mm):</source>
+        <translation>Довжина X (мм):</translation>
+    </message>
+    <message>
+        <source>Width Y (mm):</source>
+        <translation>Ширина Y (мм):</translation>
+    </message>
+    <message>
+        <source>Height Z (mm):</source>
+        <translation>Висота Z (мм):</translation>
+    </message>
+    <message>
+        <source>Add to Project</source>
+        <translation>Додати до проєкту</translation>
+    </message>
+    <message>
+        <source>Available Tools</source>
+        <translation>Доступні Інструменти</translation>
+    </message>
+    <message>
+        <source>Tool Properties</source>
+        <translation>Властивості інструментів</translation>
+    </message>
+    <message>
+        <location filename="main_window.ui" line="4024"/>
+        <source>SAVE</source>
+        <translation>ЗБЕРЕГТИ</translation>
+    </message>
+    <message>
+        <location filename="main_window.ui" line="4070"/>
+        <source>CANCEL</source>
+        <translation>СКАСУВАТИ</translation>
+    </message>
+    <message>
+        <location filename="main_window.ui" line="4096"/>
+        <source>Status:</source>
+        <translation>Статус:</translation>
+    </message>
+    <message>
+        <location filename="main_window.ui" line="4122"/>
+        <source>Name:</source>
+        <translation>Ім&apos;я:</translation>
+    </message>
+    <message>
+        <location filename="main_window.ui" line="4148"/>
+        <source>Physical Parameters</source>
+        <translation>Фізичні параметри</translation>
+    </message>
+    <message>
+        <location filename="main_window.ui" line="4174"/>
+        <source>ID:</source>
+        <translation>ID:</translation>
+    </message>
+    <message>
+        <location filename="main_window.ui" line="4200"/>
+        <source>General Info</source>
+        <translation>Загальна інформація</translation>
+    </message>
+    <message>
+        <location filename="main_window.ui" line="4226"/>
+        <source>Dimensions</source>
+        <translation>Розміри</translation>
+    </message>
+    <message>
+        <location filename="main_window.ui" line="4252"/>
+        <source>L (X):</source>
+        <translation>L (X):</translation>
+    </message>
+    <message>
+        <location filename="main_window.ui" line="4278"/>
+        <source>W (Y):</source>
+        <translation>W (Y):</translation>
+    </message>
+    <message>
+        <location filename="main_window.ui" line="4304"/>
+        <source>H (Z):</source>
+        <translation>H (Z):</translation>
+    </message>
+    <message>
+        <location filename="main_window.ui" line="4330"/>
+        <source>Mass:</source>
+        <translation>Маса:</translation>
+    </message>
+    <message>
+        <location filename="main_window.ui" line="4356"/>
+        <source>Offset:</source>
+        <translation>Зміщення:</translation>
+    </message>
+    <message>
+        <location filename="main_window.ui" line="4382"/>
+        <location filename="main_window.ui" line="4408"/>
+        <location filename="main_window.ui" line="4434"/>
+        <location filename="main_window.ui" line="4460"/>
+        <source>mm</source>
+        <translation>мм</translation>
+    </message>
+    <message>
+        <location filename="main_window.ui" line="4486"/>
+        <source>kg</source>
+        <translation>кг</translation>
+    </message>
+    <message>
+        <location filename="main_window.ui" line="4512"/>
+        <source>Pocket:</source>
+        <translation>Гніздо:</translation>
+    </message>
+    <message>
+        <location filename="main_window.ui" line="4689"/>
+        <source>Properties</source>
+        <translation>Властивості</translation>
+    </message>
+    <message>
+        <location filename="main_window.ui" line="4757"/>
+        <source>DELETE</source>
+        <translation>ВИДАЛИТИ</translation>
+    </message>
+    <message>
+        <location filename="main_window.ui" line="4803"/>
+        <source>ADD</source>
+        <translation>ДОДАТИ</translation>
+    </message>
+    <message>
+        <location filename="main_window.ui" line="4849"/>
+        <source>COPY</source>
+        <translation>КОПІЮВАТИ</translation>
+    </message>
+    <message>
+        <location filename="main_window.ui" line="4903"/>
+        <source>ID</source>
+        <translation>ID</translation>
+    </message>
+    <message>
+        <location filename="main_window.ui" line="4924"/>
+        <source>Pocket</source>
+        <translation>Гніздо</translation>
+    </message>
+    <message>
+        <location filename="main_window.ui" line="4934"/>
+        <source>Status</source>
+        <translation>Стан</translation>
+    </message>
+    <message>
+        <location filename="main_window.ui" line="4964"/>
+        <source>Tool List</source>
+        <translation>Список інструментів</translation>
+    </message>
+    <message>
+        <location filename="main_window.ui" line="5014"/>
+        <source>Tool Manager</source>
+        <translation>Менеджер інструментів</translation>
     </message>
 </context>
 </TS>
