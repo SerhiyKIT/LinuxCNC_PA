@@ -50,13 +50,13 @@ class _AddToolDialog(QDialog):
         # ── Ліва частина: список ─────────────────────────────────────
         left = QVBoxLayout()
         lbl = QLabel(_tr("Available Tools"))
-        lbl.setStyleSheet("color:#FE5C0D; font-weight:bold; font-size:13px;")
+        lbl.setStyleSheet("color:#9E9E9E; font-size:14px; border: none; padding-left: 10px; background: none;")
         left.addWidget(lbl)
 
         self._list = QListWidget()
         self._list.setStyleSheet(
             "QListWidget{background:#161616;color:#F1F1F1;"
-            "border:1px solid #333333;border-radius:6px;font-size:13px;}"
+            "border:3px solid #333333;border-radius:10px;font-size:12px;}"
             "QListWidget::item{padding:6px 10px;}"
             "QListWidget::item:selected{background:#FE5C0D;color:#FFFFFF;}"
             "QListWidget::item:hover{background:#2D2D2D;}"
@@ -69,25 +69,25 @@ class _AddToolDialog(QDialog):
         # ── Права частина: властивості ───────────────────────────────
         right = QVBoxLayout()
         lbl2 = QLabel(_tr("Tool Properties"))
-        lbl2.setStyleSheet("color:#FE5C0D; font-weight:bold; font-size:13px;")
+        lbl2.setStyleSheet("color:#9E9E9E; font-size:14px; border: none; padding-left: 10px; background: none;")
         right.addWidget(lbl2)
 
         props_box = QGroupBox()
         props_box.setStyleSheet(
-            "QGroupBox{border:1px solid #333333;border-radius:6px;"
-            "background:#161616;}"
+            "QGroupBox{border:3px solid #333333;border-radius:10px;background:#161616;}"
+            "QLabel{color: #F1F1F1; border: none;}"
         )
         pf = QFormLayout(props_box)
         pf.setSpacing(8)
-        pf.setContentsMargins(12, 12, 12, 12)
+        pf.setContentsMargins(14, 14, 14, 14)
         pf.setLabelAlignment(Qt.AlignRight)
 
         def _ro_field() -> QLineEdit:
             f = QLineEdit()
             f.setReadOnly(True)
             f.setStyleSheet(
-                "QLineEdit{background:#1A1A1A;color:#9E9E9E;"
-                "border:1px solid #2D2D2D;border-radius:4px;padding:3px 6px;}")
+                "QLineEdit{background:#333333;color:#FFFFFF;"
+                "border:none;border-radius:10px;padding:3px;}")
             return f
 
         self._f_id     = _ro_field()
@@ -134,7 +134,27 @@ class _AddToolDialog(QDialog):
         root.addLayout(right, stretch=1)
 
         self._populate_list()
-
+        self._list.setFocusPolicy(Qt.NoFocus)
+        self._list.setStyleSheet(
+            "QListWidget{"
+                "background:#161616; color:#F1F1F1;"
+                "border:3px solid #333333; border-radius:10px; font-size:12px;"
+            "}"
+            "QListWidget::item{"
+                "padding:8px 12px;"
+                "border-bottom: 1px solid #252525;" 
+            "}"
+            "QListWidget::item:disabled{"
+                "color: #5B5B5B;"
+                "background: #333333;" 
+            "}"
+            "QListWidget::item:selected{"
+                "background:#FE5C0D; color:#FFFFFF; border-radius:5px;"
+            "}"
+            "QListWidget::item:hover:!selected{"
+                "background:#2D2D2D;"
+            "}"
+        )
     # ------------------------------------------------------------------
 
     def _populate_list(self) -> None:
@@ -169,10 +189,10 @@ class _AddToolDialog(QDialog):
         self._f_y.setText(str(tool.dimensions.width_y))
         self._f_z.setText(str(tool.dimensions.height_z))
 
-        color = STATUS_COLORS.get(tool.status, "#F1F1F1")
+        color = STATUS_COLORS.get(tool.status, "#FFFFFF")
         self._f_status.setStyleSheet(
-            f"QLineEdit{{background:#1A1A1A;color:{color};"
-            "border:1px solid #2D2D2D;border-radius:4px;padding:3px 6px;}")
+            f"QLineEdit{{background:#333333;color:{color};"
+            "border:none;border-radius:10px;padding:3px;}")
 
         self._selected = tool if not already else None
 
