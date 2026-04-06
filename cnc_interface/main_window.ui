@@ -3059,7 +3059,7 @@ color: #fff;
      <property name="geometry">
       <rect>
        <x>650</x>
-       <y>940</y>
+       <y>770</y>
        <width>160</width>
        <height>20</height>
       </rect>
@@ -3085,7 +3085,7 @@ color: #FE5C0D</string>
      <property name="geometry">
       <rect>
        <x>5</x>
-       <y>940</y>
+       <y>770</y>
        <width>820</width>
        <height>220</height>
       </rect>
@@ -4122,7 +4122,7 @@ background: none;</string>
         <string>Name:</string>
        </property>
       </widget>
-      <widget class="QLabel" name="lbl_last_modified_2">
+      <widget class="QLabel" name="lbl_physical_parameters">
        <property name="geometry">
         <rect>
          <x>20</x>
@@ -4330,7 +4330,7 @@ background: none;</string>
         <string>Mass:</string>
        </property>
       </widget>
-      <widget class="QLabel" name="lbl_project_name_6">
+      <widget class="QLabel" name="lbl_tool_offset">
        <property name="geometry">
         <rect>
          <x>20</x>
@@ -4853,8 +4853,8 @@ QPushButton:hover{
        <property name="geometry">
         <rect>
          <x>3</x>
-         <y>1</y>
-         <width>450</width>
+         <y>3</y>
+         <width>447</width>
          <height>255</height>
         </rect>
        </property>
@@ -5809,9 +5809,9 @@ color: #9E9E9E</string>
     <zorder>lbl_project_manager</zorder>
     <zorder>frm_project_manager</zorder>
     <zorder>lbl_tool_manager</zorder>
-    <zorder>frm_tool_manager</zorder>
     <zorder>frm_gcode_control</zorder>
     <zorder>lbl_gcode_control</zorder>
+    <zorder>frm_tool_manager</zorder>
    </widget>
   </widget>
  </widget>
