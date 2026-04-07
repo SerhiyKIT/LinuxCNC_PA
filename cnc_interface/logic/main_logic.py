@@ -33,7 +33,6 @@ from managers.tool import ToolPanelManager
 from managers.ui.editor.editor_manager import GCodeEditorManager
 from managers.project.project_manager import ProjectManager
 from managers.project_logger import ProjectLogger
-from managers.tool.tool_panel import ToolPanelManager
 from managers.auth import AuthManager
 from config import STYLES, MACHINE_PARAMS, MGR_CONTROL, MGR_CYCLE, MGR_TOOL
 from managers.ui.ui_mapping import (
@@ -91,9 +90,6 @@ class HandlerClass:
         # ── ProjectManager ────────────────────────────────────────────────
         self.project_manager = ProjectManager(self.widgets)
         self.project_manager.connect_buttons()
-        # ── ToolManager ────────────────────────────────────────────────
-        self.tool_panel = ToolPanelManager(self.widgets)
-        self.project_manager.set_tool_panel(self.tool_panel)
 
         # Callback: відкрити файл проекту у GCodeEditor
         self.project_manager.set_open_file_callback(self._on_project_open_file)
@@ -147,6 +143,10 @@ class HandlerClass:
         # ── З'єднання ─────────────────────────────────────────────────────
         self._setup_connections()
         self.set_default_language("ua")
+
+        # ── Глобальна БД інструментів ─────────────────────────────────────
+        from managers.tool.tool_store import ToolStore
+        ToolStore.init_global()
 
         # ── ToolPanelManager ──────────────────────────────────────────────
         self.tool_panel = ToolPanelManager(self.widgets)

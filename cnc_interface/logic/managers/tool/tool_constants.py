@@ -9,21 +9,45 @@ from pathlib import Path
 # Шляхи
 # ---------------------------------------------------------------------------
 
-GLOBAL_TOOL_DIR  = Path.home() / "LinuxCNC_PA"
-GLOBAL_TOOL_FILE = GLOBAL_TOOL_DIR / "tool.json"
+GLOBAL_TOOL_DIR = Path.home() / "LinuxCNC_PA" / "db"
+GLOBAL_TOOL_DB  = GLOBAL_TOOL_DIR / "tool.db"    # окремий файл від users.db
 
 PROJECTS_ROOT    = Path.home() / "ProjectLinuxCNC"
 PROJECT_TOOL_DIR  = "tool"
-PROJECT_TOOL_FILE = "tools.json"
+PROJECT_TOOL_DB   = "tools.db"
+
+# ---------------------------------------------------------------------------
+# Дефолтні інструменти — вставляються при першому запуску якщо таблиця порожня
+# ---------------------------------------------------------------------------
+
+DEFAULT_TOOLS: list[dict] = [
+    {
+        "id": "T10", "name": "Pneumatic Gripper 2-Finger",
+        "type": "Gripper", "pocket": 10, "status": "Ready",
+        "mass": 1.25, "offset": 0.0,
+        "length_x": 165.0, "width_y": 80.0, "height_z": 60.0,
+    },
+    {
+        "id": "T11", "name": "Vacuum Suction Pad 80mm",
+        "type": "Vacuum", "pocket": 11, "status": "Ready",
+        "mass": 0.45, "offset": 5.0,
+        "length_x": 95.0, "width_y": 80.0, "height_z": 80.0,
+    },
+    {
+        "id": "T12", "name": "MIG Welding Torch",
+        "type": "Welding", "pocket": 0, "status": "Ready",
+        "mass": 2.1, "offset": 12.5,
+        "length_x": 210.0, "width_y": 30.0, "height_z": 30.0,
+    },
+]
 
 # ---------------------------------------------------------------------------
 # Enum-подібні константи
 # ---------------------------------------------------------------------------
 
-TOOL_TYPES   = ("Gripper", "Vacuum", "Welding", "Milling")
+TOOL_TYPES    = ("Gripper", "Vacuum", "Welding", "Milling")
 TOOL_STATUSES = ("Ready", "Active", "Wear", "Error")
 
-# Колір рядка таблиці залежно від статусу
 STATUS_COLORS: dict[str, str] = {
     "Ready":  "#F1F1F1",
     "Active": "#FE5C0D",
@@ -32,7 +56,7 @@ STATUS_COLORS: dict[str, str] = {
 }
 
 # ---------------------------------------------------------------------------
-# Стилі
+# Стилі (без змін)
 # ---------------------------------------------------------------------------
 
 STYLE_TABLE = """
