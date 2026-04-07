@@ -33,6 +33,8 @@ from managers.tool import ToolPanelManager
 from managers.ui.editor.editor_manager import GCodeEditorManager
 from managers.project.project_manager import ProjectManager
 from managers.project_logger import ProjectLogger
+from managers.tool.tool_panel import ToolPanelManager
+from managers.auth import AuthManager
 from config import STYLES, MACHINE_PARAMS, MGR_CONTROL, MGR_CYCLE, MGR_TOOL
 from managers.ui.ui_mapping import (
     UI_TEXT_MAPPING, UI_TOOLTIP_MAPPING,
@@ -78,6 +80,8 @@ class HandlerClass:
         self.context_menu_manager = None
         self.project_manager      = None
         self.project_logger       = None
+        self.tool_panel           = None
+        self.auth_manager         = None
 
     # ------------------------------------------------------------------
     # initialized__ – викликається ПІСЛЯ loadUi, всі widgets існують
@@ -143,6 +147,16 @@ class HandlerClass:
         # ── З'єднання ─────────────────────────────────────────────────────
         self._setup_connections()
         self.set_default_language("ua")
+
+        # ── ToolPanelManager ──────────────────────────────────────────────
+        self.tool_panel = ToolPanelManager(self.widgets)
+        self.project_manager.set_tool_panel(self.tool_panel)
+
+        # ── AuthManager — запускати останнім (блокує UI до входу) ────────
+        self.auth_manager = AuthManager(self.widgets)
+        self.auth_manager.set_project_manager(self.project_manager)
+        self.auth_manager.connect_profile_button()
+        self.auth_manager.start()
 
     # ------------------------------------------------------------------
 

@@ -1,0 +1,9 @@
+<RCC>
+  <qresource prefix="/icons">
+    <file>trash.png</file>
+    <file>edit.png</file>
+    <file>user.png</file>
+    <file>edit-active.png</file>
+    <file>trash-active.png</file>
+  </qresource>
+</RCC>
