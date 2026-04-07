@@ -1,6 +1,7 @@
 import os
 import sys
 import traceback
+import resources_rc
 from PyQt5 import QtWidgets
 
 # Adding the logic/managers directory to the path for imports
