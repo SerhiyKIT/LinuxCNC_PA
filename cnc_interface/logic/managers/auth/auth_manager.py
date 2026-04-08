@@ -96,6 +96,7 @@ class AuthManager:
             return
         self._lock_main_window(False)
         self._populate_user_ui()
+        self._sync_current_user()
         logger.info("Вхід: %s [%s]",
                     AuthSession.user().login, AuthSession.active_role())
 
@@ -264,14 +265,24 @@ class AuthManager:
             self._overlay = None
 
     def _reset_project(self) -> None:
-        """Закрити поточний проект при виході."""
+        """Закрити поточний проект і скинути автора при виході."""
         pm = self._project_manager
         if pm is None:
             return
         try:
+            pm.set_current_user("")
             pm._set_initial_state()
             lbl = getattr(pm.widgets, "lbl_project_name", None)
             if lbl:
                 lbl.setText("Project")
         except Exception as exc:
             logger.warning("_reset_project: %s", exc)
+
+    def _sync_current_user(self) -> None:
+        """Передати login активного користувача у ProjectManager."""
+        pm = self._project_manager
+        if pm is None:
+            return
+        user = AuthSession.user()
+        if user is not None:
+            pm.set_current_user(user.login)

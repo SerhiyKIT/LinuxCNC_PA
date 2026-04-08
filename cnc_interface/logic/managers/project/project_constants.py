@@ -16,26 +16,21 @@ PROJECT_STRUCTURE: dict[str, list[str]] = {
     "src":  ["program.txt"],
     "bin":  ["main.parl"],
     "data": ["variables.json", "io_config.json"],
-    "logs": ["execution.json"],
-    "tool": ["tools.json"],
 }
-PROJECT_ROOT_FILES = ["config.ini"]
+PROJECT_ROOT_FILES = []
 DEFAULT_OPEN_FILE  = Path("src") / "program.txt"
 EDITABLE_EXTS      = (".txt", ".ini", ".json", ".parl")
-HIDDEN_FOLDERS     = {"bin", "logs", "tool"}
-WATCHER_IGNORE_DIRS = {"logs"}
+HIDDEN_FOLDERS     = {"bin"}
+WATCHER_IGNORE_DIRS = {}
 
 # ---------------------------------------------------------------------------
-# config.ini
+# БД метаданих проектів (system.db → таблиця projects)
 # ---------------------------------------------------------------------------
 
-CFG_SECTION    = "project"
-CFG_NAME       = "name"
-CFG_AUTHOR     = "author"
-CFG_CREATED    = "created"
-CFG_MODIFIED   = "last_modified"
-CFG_DATE_FMT   = "%Y-%m-%d %H:%M"
-DEFAULT_AUTHOR = "Admin_User"
+PROJECT_DB_DIR   = Path.home() / "LinuxCNC_PA" / "db"
+PROJECT_DB       = PROJECT_DB_DIR / "system.db"
+CFG_DATE_FMT     = "%Y-%m-%d %H:%M"
+DEFAULT_AUTHOR   = "Admin_User"
 
 # ---------------------------------------------------------------------------
 # Стилі

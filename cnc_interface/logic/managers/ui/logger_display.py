@@ -4,21 +4,20 @@ LoggerDisplayManager – панель повідомлень з трьома в�
 
   tab_live_stream    → list_output_view   – всі події в реальному часі
   tab_project_status → list_output_view_2 – події поточної сесії проекту
-  tab_log_history    → list_output_view_3 – повна історія з файлів логів
+  tab_log_history    → list_output_view_3 – повна історія з БД (system_log)
 
 Логіка:
   • live_stream    — завжди активна
   • project_status — активна лише коли проект відкритий, очищається
                      при зміні проекту
-  • log_history    — завантажується з диска один раз при відкритті проекту,
-                     нові записи додаються через on_new_entry callback
-                     без перечитування файлу і без таймера
+  • log_history    — завантажується з таблиці system_log (WHERE module = ?)
+                     один раз при відкритті проекту, нові записи додаються
+                     через on_new_entry callback без таймера
 """
 from __future__ import annotations
 
 import re
 from datetime import datetime
-from pathlib import Path
 from typing import Optional
 
 from PyQt5 import QtCore, QtWidgets, sip
@@ -35,8 +34,9 @@ class LoggerDisplayManager:
         self.style_manager = StyleManager()
         self.style_manager._set_logger_styles()
 
-        self._current_project: Optional[Path] = None
-        self._project_logger                  = None
+        self._current_project_id:   Optional[str] = None
+        self._current_project_name: Optional[str] = None
+        self._project_logger                      = None
 
     # ------------------------------------------------------------------
     # Ініціалізація
@@ -84,17 +84,19 @@ class LoggerDisplayManager:
     # Керування проектом
     # ------------------------------------------------------------------
 
-    def set_project(self, project_path: Optional[Path]) -> None:
+    def set_project(self, project_id: Optional[str],
+                    project_name: Optional[str] = None) -> None:
         """
         Повідомити про зміну активного проекту.
 
         None → заблокувати вкладки, очистити їх вміст.
-        Path → активувати вкладки, очистити project_status,
-               завантажити log_history з файлів одним разом.
+        str  → активувати вкладки, очистити project_status,
+               завантажити log_history з БД (WHERE module = project_id).
         """
-        self._current_project = project_path
+        self._current_project_id   = project_id
+        self._current_project_name = project_name
 
-        if project_path is None:
+        if project_id is None:
             self._set_project_tabs_enabled(False)
             self._clear_view("list_output_view_2")
             self._clear_view("list_output_view_3")
@@ -104,8 +106,8 @@ class LoggerDisplayManager:
         self._clear_view("list_output_view_2")
         self._set_project_tabs_enabled(True)
 
-        # Завантажуємо повну історію з файлів один раз
-        self._load_history_from_disk(project_path)
+        # Завантажуємо повну історію з БД за id проекту
+        self._load_history(project_id)
 
         # Перемикаємо на project_status
         self._switch_to_tab("tab_project_status")
@@ -129,16 +131,16 @@ class LoggerDisplayManager:
         )
 
         # project_status — без мітки module (і так зрозуміло який проект)
-        if self._current_project is not None:
+        if self._current_project_id is not None:
             self._add_entry("list_output_view_2", message, level, timestamp)
 
     # ------------------------------------------------------------------
-    # Callback з фонового потоку (новий запис у файл)
+    # Callback з фонового потоку (новий запис у БД)
     # ------------------------------------------------------------------
 
     def _on_new_entry_from_thread(self, entry: dict) -> None:
         """
-        Викликається з фонового потоку після запису на диск.
+        Викликається з фонового потоку після запису в БД.
         QTimer.singleShot(0, lambda) планує виконання у UI потоці
         через event loop — безпечна передача між потоками у PyQt5.
         """
@@ -150,24 +152,23 @@ class LoggerDisplayManager:
 
     def _append_history_entry_ui(self, entry: dict) -> None:
         """Додати один запис у log_history. Виконується в UI потоці."""
-        # Показуємо лише якщо запис стосується поточного проекту
-        if self._current_project is None:
+        if self._current_project_id is None:
             return
         module = entry.get("module", "")
-        if module != self._current_project.name:
+        if module != self._current_project_id:
             return
         self._display_history_entry(entry)
 
     # ------------------------------------------------------------------
-    # Завантаження history з диска
+    # Завантаження history з БД
     # ------------------------------------------------------------------
 
-    def _load_history_from_disk(self, project_path: Path) -> None:
-        """Зчитати всі записи з файлів і відобразити у list_output_view_3."""
+    def _load_history(self, module: str) -> None:
+        """Зчитати записи проекту з system_log і відобразити у list_output_view_3."""
         self._clear_view("list_output_view_3")
         if self._project_logger is None:
             return
-        entries = self._project_logger.read_project_log(project_path)
+        entries = self._project_logger.read_project_log(module)
         for entry in entries:
             self._display_history_entry(entry)
 
@@ -177,8 +178,27 @@ class LoggerDisplayManager:
         level   = entry.get("level", "INFO").lower()
         module  = entry.get("module", "")
         message = entry.get("message", "")
-        prefix  = f"[{module}] " if module and module != "system" else ""
+
+        # Резолв module (project_id) → назва проекту для відображення
+        if module and module != "system":
+            display_name = self._resolve_module_name(module)
+        else:
+            display_name = ""
+        prefix = f"[{display_name}] " if display_name else ""
         self._add_entry("list_output_view_3", message, level, ts, prefix=prefix)
+
+    def _resolve_module_name(self, module: str) -> str:
+        """Перетворити module (project_id) у людиночитабельну назву."""
+        # Якщо це поточний проект — повертаємо кешовану назву
+        if module == self._current_project_id and self._current_project_name:
+            return self._current_project_name
+        # Інакше — запит до БД
+        try:
+            from managers.project.project_watcher import get_project_name_by_id
+            name = get_project_name_by_id(module)
+            return name or module
+        except Exception:
+            return module
 
     # ------------------------------------------------------------------
     # Приватні хелпери UI

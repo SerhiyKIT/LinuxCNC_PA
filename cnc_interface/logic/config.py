@@ -1,10 +1,7 @@
 import os
 import linuxcnc
 
-try:
-    from PyQt5.QtCore import Qt
-except ImportError:
-    from PyQt6.QtCore  import Qt
+from PyQt5.QtCore import Qt
 
 # --- INI FILE ---
 INI_PATH = os.environ.get('INI_FILE_NAME')

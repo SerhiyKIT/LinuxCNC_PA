@@ -35,9 +35,10 @@ from .project_file_ops   import (
 )
 from .project_tree       import setup_project_tree, rebuild_fs_model
 from .project_watcher    import (
-    clear_project_info, flush_modified_update,
+    clear_project_info, create_project_meta, delete_project_meta,
+    flush_modified_update, get_project_id, init_projects_table,
     load_project_info, on_dir_changed, on_file_changed,
-    start_watcher, stop_watcher, write_config,
+    start_watcher, stop_watcher, update_last_modified,
 )
 
 logger = logging.getLogger(__name__)
@@ -56,6 +57,8 @@ class ProjectManager:
     def __init__(self, widgets: object) -> None:
         self.widgets = widgets
         self._current_project: Optional[Path] = None
+        self._current_project_id: Optional[str] = None
+        self._current_author: str = ""
         self._w = lambda name: getattr(self.widgets, name, None)
 
         # FileWatcher
@@ -106,6 +109,7 @@ class ProjectManager:
 
     def _set_initial_state(self) -> None:
         self._current_project = None
+        self._current_project_id = None
         for name in ("btn_open_project", "btn_create_new_project",
                      "btn_clone_repository", "text_edit_search_project",
                      "line", "line_3"):
@@ -126,7 +130,11 @@ class ProjectManager:
 
         ldm = getattr(self, "_logger_display_manager", None)
         if ldm is not None:
-            ldm.set_project(None)
+            ldm.set_project(None, None)
+
+        pl = getattr(self, "_project_logger", None)
+        if pl is not None:
+            pl.set_project(None)
 
         tp = getattr(self, "_tool_panel", None)
         if tp is not None:
@@ -153,6 +161,11 @@ class ProjectManager:
 
         self._current_project = project_path
 
+        # Отримати id проекту з БД (створити запис якщо немає)
+        load_project_info(self, project_path)
+        project_id = get_project_id(project_path.name)
+        self._current_project_id = project_id
+
         for name in ("btn_open_project", "btn_create_new_project",
                      "btn_clone_repository", "text_edit_search_project",
                      "line", "line_3"):
@@ -176,25 +189,24 @@ class ProjectManager:
         if em is not None:
             em.set_project_active(True)
             if hasattr(em, "set_project"):
-                em.set_project(project_path)   # завантажити символи автодоповнення
+                em.set_project(project_path)
 
         pl = getattr(self, "_project_logger", None)
         if pl is not None:
-            pl.set_project(project_path)
+            pl.set_project(project_id)
 
         ldm = getattr(self, "_logger_display_manager", None)
         if ldm is not None:
-            ldm.set_project(project_path)
+            ldm.set_project(project_id, project_path.name)
 
         tp = getattr(self, "_tool_panel", None)
         if tp is not None:
-            tp.set_project(project_path)
+            tp.set_project(project_id)
 
         default_file = project_path / DEFAULT_OPEN_FILE
         if default_file.is_file():
             self._on_open_file(default_file, read_only=True)
 
-        load_project_info(self, project_path)
         start_watcher(self, project_path)
 
         logger.info("Відкрито проєкт: %s", project_path.name)
@@ -223,7 +235,7 @@ class ProjectManager:
                     (folder_path / fname).touch()
             for fname in PROJECT_ROOT_FILES:
                 (path / fname).touch()
-            write_config(path, created=True)
+            create_project_meta(name, self._current_author)
             if dlg.init_repo:
                 self._init_git_repo(path)
             self._open_project(path)
@@ -262,6 +274,7 @@ class ProjectManager:
             if pl is not None:
                 pl.detach_project(name)
             shutil.rmtree(self._current_project)
+            delete_project_meta(name)
             logger.info("Видалено проєкт: %s", name)
         except Exception as exc:
             show_error(self, _tr(f"Помилка видалення: {exc}"))
@@ -344,7 +357,7 @@ class ProjectManager:
         return unique_path(dest)
 
     # ------------------------------------------------------------------
-    # Делегати watcher і config
+    # Делегати watcher і метаданих
     # ------------------------------------------------------------------
 
     def _start_watcher(self, project_path: Path) -> None:
@@ -362,8 +375,8 @@ class ProjectManager:
     def _flush_modified_update(self) -> None:
         flush_modified_update(self)
 
-    def _write_config(self, project_path: Path, created: bool = False) -> None:
-        write_config(project_path, created)
+    def _update_last_modified(self, project_name: str) -> None:
+        update_last_modified(project_name)
 
     def _load_project_info(self, project_path: Path) -> None:
         load_project_info(self, project_path)
@@ -389,6 +402,10 @@ class ProjectManager:
 
     def set_tool_panel(self, tool_panel) -> None:
         self._tool_panel = tool_panel
+
+    def set_current_user(self, login: str) -> None:
+        """Встановити автора для нових проектів (login активного користувача)."""
+        self._current_author = login
 
     # ------------------------------------------------------------------
     # "Open or Create" посилання після видалення

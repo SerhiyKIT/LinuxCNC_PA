@@ -9,12 +9,10 @@ from pathlib import Path
 # Шляхи
 # ---------------------------------------------------------------------------
 
-GLOBAL_TOOL_DIR = Path.home() / "LinuxCNC_PA" / "db"
-GLOBAL_TOOL_DB  = GLOBAL_TOOL_DIR / "tool.db"    # окремий файл від users.db
+TOOL_DB_DIR = Path.home() / "LinuxCNC_PA" / "db"
+TOOL_DB     = TOOL_DB_DIR / "system.db"
 
-PROJECTS_ROOT    = Path.home() / "ProjectLinuxCNC"
-PROJECT_TOOL_DIR  = "tool"
-PROJECT_TOOL_DB   = "tools.db"
+MODULE_GLOBAL = "global"
 
 # ---------------------------------------------------------------------------
 # Дефолтні інструменти — вставляються при першому запуску якщо таблиця порожня
