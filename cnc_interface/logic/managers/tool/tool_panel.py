@@ -6,12 +6,11 @@ ToolPanelManager — менеджер панелі інструментів.
   • Таблицю table_tools (список інструментів проекту)
   • Форму властивостей (txt_tool_*)
   • Кнопки ADD / DELETE / COPY / SAVE / CANCEL
-  • Читання/запис через ToolStore
-  • Активацію інструмента (подвійний клік → статус Active у JSON)
+  • Читання/запис через ToolStore (module = project name)
+  • Активацію інструмента (подвійний клік → статус Active)
 """
 from __future__ import annotations
 import logging
-from pathlib import Path
 from typing import Optional
 
 from PyQt5.QtCore    import QCoreApplication, Qt
@@ -62,7 +61,7 @@ class ToolPanelManager:
     def __init__(self, widgets: object) -> None:
         self.widgets          = widgets
         self._w               = lambda n: getattr(self.widgets, n, None)
-        self._project_path:   Optional[Path] = None
+        self._module:         Optional[str] = None
         self._tools:          list[Tool]     = []
         self._selected_tool:  Optional[Tool] = None
         self._original_tool:  Optional[Tool] = None  # для CANCEL
@@ -77,20 +76,20 @@ class ToolPanelManager:
     # Публічний API
     # ------------------------------------------------------------------
 
-    def set_project(self, project_path: Optional[Path]) -> None:
+    def set_project(self, project_id: Optional[str]) -> None:
         """Викликати при відкритті/закритті проекту."""
-        self._project_path   = project_path
+        self._module         = project_id
         self._selected_tool  = None
         self._original_tool  = None
 
-        if project_path is None:
+        if self._module is None:
             self._tools = []
             self._refresh_table()
             self._clear_form()
             self._set_form_enabled(False)
             self._set_buttons_no_project()
         else:
-            self._tools = ToolStore.load_project(project_path)
+            self._tools = ToolStore.load_project(self._module)
             self._refresh_table()
             self._set_buttons_no_selection()
 
@@ -304,7 +303,7 @@ class ToolPanelManager:
     def _on_row_double_clicked(self, item) -> None:
         """Подвійний клік — встановити статус Active."""
         row = self._current_table_row()
-        if row < 0 or row >= len(self._tools) or self._project_path is None:
+        if row < 0 or row >= len(self._tools) or self._module is None:
             return
         tool = self._tools[row]
         if tool.status == "Active":
@@ -314,7 +313,7 @@ class ToolPanelManager:
             if t.status == "Active":
                 t.status = "Ready"
         tool.status = "Active"
-        ToolStore.save_project(self._project_path, self._tools)
+        ToolStore.save_project(self._module, self._tools)
         self._refresh_table()
         self._select_row_by_id(tool.id)
         self._load_form(tool)
@@ -332,10 +331,10 @@ class ToolPanelManager:
         tool = dlg.selected_tool
         if tool is None:
             return
-        if self._project_path is None:
+        if self._module is None:
             return
-        if ToolStore.add_tool(self._project_path, tool):
-            self._tools = ToolStore.load_project(self._project_path)
+        if ToolStore.add_tool(self._module, tool):
+            self._tools = ToolStore.load_project(self._module)
             self._refresh_table()
             self._select_row_by_id(tool.id)
             logger.info("Додано інструмент: %s", tool.id)
@@ -343,7 +342,7 @@ class ToolPanelManager:
             self._show_error(_tr("Failed to add tool."))
 
     def _on_delete(self) -> None:
-        if self._selected_tool is None or self._project_path is None:
+        if self._selected_tool is None or self._module is None:
             return
         tool = self._selected_tool
         if tool.status == "Active":
@@ -360,8 +359,8 @@ class ToolPanelManager:
             ):
                 return
 
-        if ToolStore.delete_tool(self._project_path, tool.id):
-            self._tools = ToolStore.load_project(self._project_path)
+        if ToolStore.delete_tool(self._module, tool.id):
+            self._tools = ToolStore.load_project(self._module)
             self._selected_tool = None
             self._original_tool = None
             self._refresh_table()
@@ -373,13 +372,13 @@ class ToolPanelManager:
             self._show_error(_tr("Failed to delete tool."))
 
     def _on_copy(self) -> None:
-        if self._selected_tool is None or self._project_path is None:
+        if self._selected_tool is None or self._module is None:
             return
         new_tool        = self._selected_tool.copy()
-        new_tool.id     = ToolStore.next_free_id(self._project_path)
+        new_tool.id     = ToolStore.next_free_id(self._module)
         new_tool.status = "Ready"
-        if ToolStore.add_tool(self._project_path, new_tool):
-            self._tools = ToolStore.load_project(self._project_path)
+        if ToolStore.add_tool(self._module, new_tool):
+            self._tools = ToolStore.load_project(self._module)
             self._refresh_table()
             self._select_row_by_id(new_tool.id)
             logger.info("Скопійовано інструмент → %s", new_tool.id)
@@ -387,7 +386,7 @@ class ToolPanelManager:
             self._show_error(_tr("Failed to copy tool."))
 
     def _on_save(self) -> None:
-        if self._selected_tool is None or self._project_path is None:
+        if self._selected_tool is None or self._module is None:
             return
         data   = self._read_form()
         errors = Tool.validate(data)
@@ -419,7 +418,7 @@ class ToolPanelManager:
                     t.id = tool.id
                     break
 
-        if ToolStore.save_project(self._project_path, self._tools):
+        if ToolStore.save_project(self._module, self._tools):
             self._original_tool = tool.copy()
             self._refresh_table()
             self._select_row_by_id(tool.id)
@@ -482,5 +481,5 @@ class ToolPanelManager:
 
     def __repr__(self) -> str:
         return (f"{self.__class__.__name__}"
-                f"(project={self._project_path!r}, "
+                f"(module={self._module!r}, "
                 f"tools={len(self._tools)})")

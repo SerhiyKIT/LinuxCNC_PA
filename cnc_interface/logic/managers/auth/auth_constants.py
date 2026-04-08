@@ -10,7 +10,7 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 
 AUTH_DIR  = Path.home() / "LinuxCNC_PA" / "db"
-AUTH_DB   = AUTH_DIR / "users.db"
+AUTH_DB   = AUTH_DIR / "system.db"
 
 # ---------------------------------------------------------------------------
 # Ролі — порядок від найвищої до найнижчої (пріоритет вибору: остання доступна)
@@ -25,7 +25,7 @@ ROLES: list[tuple[str, str]] = [
 
 # Логін і id системного суперадміна
 SUPERADMIN_LOGIN = "admin"
-SUPERADMIN_ID    = 1
+SUPERADMIN_ID    = "1"
 
 # Пароль суперадміна за замовчуванням (тільки при першому запуску)
 DEFAULT_PASSWORD = "1111"

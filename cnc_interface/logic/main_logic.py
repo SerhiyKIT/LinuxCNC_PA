@@ -146,7 +146,11 @@ class HandlerClass:
 
         # ── Глобальна БД інструментів ─────────────────────────────────────
         from managers.tool.tool_store import ToolStore
-        ToolStore.init_global()
+        ToolStore.init()
+
+        # ── Таблиця метаданих проектів ─────────────────────────────────────
+        from managers.project.project_watcher import init_projects_table
+        init_projects_table()
 
         # ── ToolPanelManager ──────────────────────────────────────────────
         self.tool_panel = ToolPanelManager(self.widgets)
@@ -262,14 +266,14 @@ class HandlerClass:
         res = self.cnc.poll_errors()
         if res:
             text, level = res
-            # Визначаємо module: назва проекту або "system"
-            module = "system"
+            # Визначаємо module для відображення: назва проекту або "system"
+            display_module = "system"
             if self.project_manager is not None:
                 proj = getattr(self.project_manager, "_current_project", None)
                 if proj is not None:
-                    module = proj.name
+                    display_module = proj.name
             self.ui_manager.logger_display_manager.log_message(
-                text, level, module=module
+                text, level, module=display_module
             )
             if self.project_logger is not None:
                 self.project_logger.log_system_message(text, level)

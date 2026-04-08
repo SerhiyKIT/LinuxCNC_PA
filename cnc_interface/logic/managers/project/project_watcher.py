@@ -1,26 +1,147 @@
 # logic/managers/project/project_watcher.py
 """
-FileWatcher і метадані проекту (config.ini).
+FileWatcher і метадані проекту (таблиця projects у system.db).
 
 Відповідальність:
   • Запуск/зупинка QFileSystemWatcher при відкритті/закритті проекту
   • Debounce оновлення last_modified (2 сек після останньої зміни)
-  • Захист від циклу: запис config.ini → watcher → запис...
-  • Читання/запис метаданих у config.ini
+  • CRUD метаданих проекту у таблиці projects (system.db)
   • Заповнення і очищення UI-полів інформації про проект
 """
 from __future__ import annotations
-import configparser
+
 import logging
+import sqlite3
+import uuid6
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
+from typing import Generator, Optional
 
 from .project_constants import (
-    CFG_AUTHOR, CFG_CREATED, CFG_DATE_FMT, CFG_MODIFIED,
-    CFG_NAME, CFG_SECTION, DEFAULT_AUTHOR, WATCHER_IGNORE_DIRS,
+    CFG_DATE_FMT, DEFAULT_AUTHOR, PROJECT_DB, PROJECT_DB_DIR,
+    WATCHER_IGNORE_DIRS,
 )
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# DDL
+# ---------------------------------------------------------------------------
+
+_DDL_PROJECTS = """
+CREATE TABLE IF NOT EXISTS projects (
+    id            TEXT PRIMARY KEY,
+    name          TEXT NOT NULL UNIQUE,
+    author        TEXT NOT NULL DEFAULT '',
+    created       TEXT NOT NULL,
+    last_modified TEXT NOT NULL
+)
+"""
+
+# ---------------------------------------------------------------------------
+# SQLite хелпери
+# ---------------------------------------------------------------------------
+
+@contextmanager
+def _connect() -> Generator[sqlite3.Connection, None, None]:
+    conn = sqlite3.connect(str(PROJECT_DB))
+    conn.row_factory = sqlite3.Row
+    try:
+        yield conn
+    finally:
+        conn.close()
+
+
+def init_projects_table() -> None:
+    """Створити таблицю projects якщо не існує. Викликати при старті."""
+    PROJECT_DB_DIR.mkdir(parents=True, exist_ok=True)
+    with _connect() as conn:
+        conn.execute(_DDL_PROJECTS)
+        conn.commit()
+
+
+# ---------------------------------------------------------------------------
+# CRUD метаданих проекту
+# ---------------------------------------------------------------------------
+
+def create_project_meta(project_name: str, author: str = "") -> None:
+    """Створити запис метаданих для нового проекту."""
+    now = datetime.now().strftime(CFG_DATE_FMT)
+    author = author or DEFAULT_AUTHOR
+    try:
+        with _connect() as conn:
+            conn.execute(
+                "INSERT INTO projects (id, name, author, created, last_modified) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (str(uuid6.uuid7()), project_name, author, now, now),
+            )
+            conn.commit()
+    except sqlite3.IntegrityError:
+        logger.debug("projects: '%s' вже існує, оновлюємо", project_name)
+        update_last_modified(project_name)
+
+
+def update_last_modified(project_name: str) -> None:
+    """Оновити last_modified для проекту."""
+    now = datetime.now().strftime(CFG_DATE_FMT)
+    with _connect() as conn:
+        conn.execute(
+            "UPDATE projects SET last_modified = ? WHERE name = ?",
+            (now, project_name),
+        )
+        conn.commit()
+
+
+def get_project_meta(project_name: str) -> Optional[dict]:
+    """
+    Повернути метадані проекту як dict.
+    Ключі: id, name, author, created, last_modified.
+    None якщо проект не знайдено.
+    """
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT id, name, author, created, last_modified "
+            "FROM projects WHERE name = ?",
+            (project_name,),
+        ).fetchone()
+    if row is None:
+        return None
+    return {
+        "id":            row["id"],
+        "name":          row["name"],
+        "author":        row["author"],
+        "created":       row["created"],
+        "last_modified": row["last_modified"],
+    }
+
+
+def get_project_id(project_name: str) -> Optional[str]:
+    """Повернути uuid проекту за назвою. None якщо не знайдено."""
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT id FROM projects WHERE name = ?",
+            (project_name,),
+        ).fetchone()
+    return row["id"] if row else None
+
+
+def get_project_name_by_id(project_id: str) -> Optional[str]:
+    """Повернути назву проекту за uuid. None якщо не знайдено."""
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT name FROM projects WHERE id = ?",
+            (project_id,),
+        ).fetchone()
+    return row["name"] if row else None
+
+
+def delete_project_meta(project_name: str) -> None:
+    """Видалити запис метаданих проекту."""
+    with _connect() as conn:
+        conn.execute("DELETE FROM projects WHERE name = ?", (project_name,))
+        conn.commit()
+    logger.info("projects: видалено метадані '%s'", project_name)
 
 
 # ---------------------------------------------------------------------------
@@ -35,7 +156,7 @@ def start_watcher(manager, project_path: Path) -> None:
       • Папки — зміна структури (додано/видалено/перейменовано)
       • Файли — зміна вмісту (auto-save, ручне збереження)
 
-    Папки/файли з WATCHER_IGNORE_DIRS і config.ini виключаються.
+    Папки/файли з WATCHER_IGNORE_DIRS виключаються.
     """
     stop_watcher(manager)
 
@@ -52,7 +173,7 @@ def start_watcher(manager, project_path: Path) -> None:
             continue
         if item.is_dir():
             dirs_to_watch.append(str(item))
-        elif item.is_file() and item.name != "config.ini":
+        elif item.is_file():
             files_to_watch.append(str(item))
 
     dirs_to_watch.append(str(project_path))
@@ -75,10 +196,7 @@ def stop_watcher(manager) -> None:
 
 
 def on_dir_changed(manager, path: str) -> None:
-    """
-    Директорія проекту змінилась.
-    Ігноруємо: системні папки і події від власного _write_config.
-    """
+    """Директорія проекту змінилась."""
     if manager._current_project is None:
         return
     changed = Path(path)
@@ -89,7 +207,6 @@ def on_dir_changed(manager, path: str) -> None:
             return
     except ValueError:
         pass
-    # Якщо таймер активний — подія від _write_config → ігноруємо
     if manager._modified_timer.isActive():
         return
     manager._modified_timer.start()
@@ -110,7 +227,7 @@ def on_file_changed(manager, path: str) -> None:
             return
     except ValueError:
         return
-    if changed.suffix == ".tmp" or changed.name == "config.ini":
+    if changed.suffix == ".tmp":
         return
     # Повторно реєструємо після атомарного запису (tmp → replace)
     if changed.exists() and str(changed) not in manager._watcher.files():
@@ -121,75 +238,39 @@ def on_file_changed(manager, path: str) -> None:
 
 
 def flush_modified_update(manager) -> None:
-    """
-    Debounce callback — 2 сек після останньої зміни.
-    Disconnect сигналів під час запису щоб уникнути циклу.
-    """
+    """Debounce callback — 2 сек після останньої зміни."""
     if manager._current_project is None:
         return
-    manager._watcher.directoryChanged.disconnect(manager._on_project_dir_changed)
-    manager._watcher.fileChanged.disconnect(manager._on_project_file_changed)
-    try:
-        write_config(manager._current_project, created=False)
-        now = datetime.now().strftime(CFG_DATE_FMT)
-        _set_widget_text(manager, "txt_last_modified", now)
-        logger.debug("last_modified оновлено: %s", now)
-    finally:
-        manager._watcher.directoryChanged.connect(manager._on_project_dir_changed)
-        manager._watcher.fileChanged.connect(manager._on_project_file_changed)
-
-
-# ---------------------------------------------------------------------------
-# config.ini — метадані проекту
-# ---------------------------------------------------------------------------
-
-def write_config(project_path: Path, created: bool = False) -> None:
-    """
-    Записати метадані у config.ini.
-    created=True  → встановлює created і last_modified.
-    created=False → оновлює лише last_modified.
-    """
-    cfg_path = project_path / "config.ini"
-    cfg = configparser.ConfigParser()
-    if cfg_path.exists():
-        cfg.read(cfg_path, encoding="utf-8")
-    if not cfg.has_section(CFG_SECTION):
-        cfg.add_section(CFG_SECTION)
-
+    project_name = manager._current_project.name
+    update_last_modified(project_name)
     now = datetime.now().strftime(CFG_DATE_FMT)
-    cfg.set(CFG_SECTION, CFG_NAME,     project_path.name)
-    cfg.set(CFG_SECTION, CFG_AUTHOR,   DEFAULT_AUTHOR)
-    cfg.set(CFG_SECTION, CFG_MODIFIED, now)
+    _set_widget_text(manager, "txt_last_modified", now)
+    logger.debug("last_modified оновлено: %s", now)
 
-    if created or not cfg.get(CFG_SECTION, CFG_CREATED, fallback=""):
-        cfg.set(CFG_SECTION, CFG_CREATED, now)
 
-    try:
-        with open(cfg_path, "w", encoding="utf-8") as fh:
-            cfg.write(fh)
-    except OSError as exc:
-        logger.error("config.ini запис: %s", exc)
-
+# ---------------------------------------------------------------------------
+# UI — завантаження / очищення полів
+# ---------------------------------------------------------------------------
 
 def load_project_info(manager, project_path: Path) -> None:
     """
-    Зчитати config.ini і заповнити UI-поля.
-    Якщо секції немає — генерує config.ini автоматично.
+    Зчитати метадані з БД і заповнити UI-поля.
+    Якщо запису немає — створити автоматично з поточним автором.
     """
-    cfg_path = project_path / "config.ini"
-    cfg = configparser.ConfigParser()
-    if cfg_path.exists():
-        cfg.read(cfg_path, encoding="utf-8")
-    if not cfg.has_section(CFG_SECTION):
-        write_config(project_path, created=True)
-        cfg.read(cfg_path, encoding="utf-8")
+    meta = get_project_meta(project_path.name)
+    if meta is None:
+        author = getattr(manager, "_current_author", "") or DEFAULT_AUTHOR
+        create_project_meta(project_path.name, author)
+        meta = get_project_meta(project_path.name)
 
-    get = lambda key: cfg.get(CFG_SECTION, key, fallback="")
+    if meta is None:
+        return
+
     for widget_name, value in (
-        ("txt_project_name",  get(CFG_NAME)),
-        ("txt_author",        get(CFG_AUTHOR)),
-        ("txt_created",       get(CFG_CREATED)),
-        ("txt_last_modified", get(CFG_MODIFIED)),
+        ("txt_project_name",  meta["name"]),
+        ("txt_author",        meta["author"]),
+        ("txt_created",       meta["created"]),
+        ("txt_last_modified", meta["last_modified"]),
     ):
         _set_widget_text(manager, widget_name, value)
 

@@ -3,7 +3,7 @@
 AuthDB — робота з SQLite базою даних користувачів.
 
 Таблиця users:
-  id             INTEGER PRIMARY KEY
+  id             TEXT PRIMARY KEY (UUID7, суперадмін = "1")
   login          TEXT UNIQUE
   password       TEXT
   role_admin     BOOLEAN
@@ -15,12 +15,13 @@ from __future__ import annotations
 
 import logging
 import sqlite3
+import uuid6
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Generator, Optional
 
-from .auth_constants import AUTH_DB, AUTH_DIR, DEFAULT_PASSWORD, SUPERADMIN_LOGIN
+from .auth_constants import AUTH_DB, AUTH_DIR, DEFAULT_PASSWORD, SUPERADMIN_ID, SUPERADMIN_LOGIN
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class User:
-    id:            int
+    id:            str
     login:         str
     password:      str
     role_admin:    bool
@@ -41,7 +42,7 @@ class User:
 
     @property
     def is_superadmin(self) -> bool:
-        return self.id == 1 or self.login == SUPERADMIN_LOGIN
+        return self.id == SUPERADMIN_ID or self.login == SUPERADMIN_LOGIN
 
     def available_roles(self) -> list[str]:
         """Повертає список доступних ролей від найвищої до найнижчої."""
@@ -72,13 +73,13 @@ class AuthDB:
     def init() -> None:
         """
         Створити БД і таблицю якщо не існують.
-        При порожній БД — створити суперадміна.
+        При порожній БД — створити суперадміна з id="1".
         """
         AUTH_DIR.mkdir(parents=True, exist_ok=True)
         with AuthDB._connect() as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS users (
-                    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id            TEXT    PRIMARY KEY,
                     login         TEXT    NOT NULL UNIQUE,
                     password      TEXT    NOT NULL,
                     role_admin    BOOLEAN NOT NULL DEFAULT 0,
@@ -88,14 +89,13 @@ class AuthDB:
                 )
             """)
             conn.commit()
-            # Якщо таблиця порожня — створити суперадміна
             count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
             if count == 0:
                 conn.execute(
                     "INSERT INTO users "
-                    "(login, password, role_admin, role_engineer, role_program, role_operator) "
-                    "VALUES (?, ?, 1, 1, 1, 1)",
-                    (SUPERADMIN_LOGIN, DEFAULT_PASSWORD),
+                    "(id, login, password, role_admin, role_engineer, role_program, role_operator) "
+                    "VALUES (?, ?, ?, 1, 1, 1, 1)",
+                    (SUPERADMIN_ID, SUPERADMIN_LOGIN, DEFAULT_PASSWORD),
                 )
                 conn.commit()
                 logger.info("AuthDB: створено суперадміна '%s'", SUPERADMIN_LOGIN)
@@ -115,7 +115,7 @@ class AuthDB:
         return AuthDB._row_to_user(row) if row else None
 
     @staticmethod
-    def verify_password(user_id: int, password: str) -> bool:
+    def verify_password(user_id: str, password: str) -> bool:
         """Перевірити пароль конкретного користувача за id."""
         with AuthDB._connect() as conn:
             row = conn.execute(
@@ -137,7 +137,7 @@ class AuthDB:
         return [AuthDB._row_to_user(r) for r in rows]
 
     @staticmethod
-    def get_by_id(user_id: int) -> Optional[User]:
+    def get_by_id(user_id: str) -> Optional[User]:
         with AuthDB._connect() as conn:
             row = conn.execute(
                 "SELECT * FROM users WHERE id = ?", (user_id,)
@@ -153,9 +153,9 @@ class AuthDB:
             with AuthDB._connect() as conn:
                 conn.execute(
                     "INSERT INTO users "
-                    "(login, password, role_admin, role_engineer, role_program, role_operator) "
-                    "VALUES (?, ?, ?, ?, ?, ?)",
-                    (login.strip(), password,
+                    "(id, login, password, role_admin, role_engineer, role_program, role_operator) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (str(uuid6.uuid7()), login.strip(), password,
                      role_admin, role_engineer, role_program, role_operator),
                 )
                 conn.commit()
@@ -166,7 +166,7 @@ class AuthDB:
             return False
 
     @staticmethod
-    def update(user_id: int, login: str, password: str,
+    def update(user_id: str, login: str, password: str,
                role_admin: bool, role_engineer: bool,
                role_program: bool, role_operator: bool) -> bool:
         """Оновити дані користувача."""
@@ -181,22 +181,22 @@ class AuthDB:
                      user_id),
                 )
                 conn.commit()
-            logger.info("AuthDB: оновлено користувача id=%d", user_id)
+            logger.info("AuthDB: оновлено користувача id=%s", user_id)
             return True
         except sqlite3.IntegrityError:
             logger.warning("AuthDB: логін '%s' вже зайнятий", login)
             return False
 
     @staticmethod
-    def delete(user_id: int) -> bool:
-        """Видалити користувача. False якщо id=1 (суперадмін)."""
-        if user_id == 1:
+    def delete(user_id: str) -> bool:
+        """Видалити користувача. False якщо суперадмін (id="1")."""
+        if user_id == SUPERADMIN_ID:
             logger.warning("AuthDB: спроба видалити суперадміна")
             return False
         with AuthDB._connect() as conn:
             conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
             conn.commit()
-        logger.info("AuthDB: видалено користувача id=%d", user_id)
+        logger.info("AuthDB: видалено користувача id=%s", user_id)
         return True
 
     # ------------------------------------------------------------------
