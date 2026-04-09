@@ -1,5 +1,9 @@
 <RCC>
   <qresource prefix="/icons">
+    <file>admin.png</file>
+    <file>engineer.png</file>
+    <file>operator.png</file>
+    <file>program.png</file>
     <file>trash.png</file>
     <file>edit.png</file>
     <file>user.png</file>

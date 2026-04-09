@@ -137,8 +137,17 @@ def get_project_name_by_id(project_id: str) -> Optional[str]:
 
 
 def delete_project_meta(project_name: str) -> None:
-    """Видалити запис метаданих проекту."""
+    """Видалити інструменти проекту з таблиці tools, потім запис з projects."""
     with _connect() as conn:
+        # Знайти id проекту
+        row = conn.execute(
+            "SELECT id FROM projects WHERE name = ?", (project_name,)
+        ).fetchone()
+        if row is not None:
+            project_id = row["id"]
+            conn.execute(
+                "DELETE FROM tools WHERE module = ?", (project_id,))
+            logger.info("projects: видалено інструменти module='%s'", project_id)
         conn.execute("DELETE FROM projects WHERE name = ?", (project_name,))
         conn.commit()
     logger.info("projects: видалено метадані '%s'", project_name)

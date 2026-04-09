@@ -49,3 +49,9 @@ class AuthSession:
     @classmethod
     def is_admin(cls) -> bool:
         return cls._user is not None and cls._user.role_admin
+
+    @classmethod
+    def role_priority(cls, role: str) -> int:
+        """Повернути числовий пріоритет ролі (0=Operator, 3=Admin)."""
+        from .auth_constants import ROLE_PRIORITY
+        return ROLE_PRIORITY.get(role, 0)

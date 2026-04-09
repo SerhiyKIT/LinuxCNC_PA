@@ -71,10 +71,7 @@ class AuthDB:
 
     @staticmethod
     def init() -> None:
-        """
-        Створити БД і таблицю якщо не існують.
-        При порожній БД — створити суперадміна з id="1".
-        """
+        """Створити БД і таблицю якщо не існують."""
         AUTH_DIR.mkdir(parents=True, exist_ok=True)
         with AuthDB._connect() as conn:
             conn.execute("""
@@ -89,16 +86,31 @@ class AuthDB:
                 )
             """)
             conn.commit()
+
+    @staticmethod
+    def is_empty() -> bool:
+        """Перевірити чи таблиця users порожня (перший запуск)."""
+        with AuthDB._connect() as conn:
             count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-            if count == 0:
+        return count == 0
+
+    @staticmethod
+    def create_superadmin(login: str, password: str) -> bool:
+        """Створити суперадміна з фіксованим id при першому запуску."""
+        try:
+            with AuthDB._connect() as conn:
                 conn.execute(
                     "INSERT INTO users "
                     "(id, login, password, role_admin, role_engineer, role_program, role_operator) "
                     "VALUES (?, ?, ?, 1, 1, 1, 1)",
-                    (SUPERADMIN_ID, SUPERADMIN_LOGIN, DEFAULT_PASSWORD),
+                    (SUPERADMIN_ID, login.strip(), password),
                 )
                 conn.commit()
-                logger.info("AuthDB: створено суперадміна '%s'", SUPERADMIN_LOGIN)
+            logger.info("AuthDB: створено суперадміна '%s'", login)
+            return True
+        except sqlite3.IntegrityError:
+            logger.warning("AuthDB: логін '%s' вже існує", login)
+            return False
 
     # ------------------------------------------------------------------
     # Автентифікація
