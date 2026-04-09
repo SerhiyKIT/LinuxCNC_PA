@@ -186,6 +186,163 @@ class ConfirmPassDialog(QDialog):
 
 
 # ===========================================================================
+# FirstRunDialog
+# ===========================================================================
+
+class FirstRunDialog(QDialog):
+    """Вікно створення першого адміністратора при першому запуску."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(_tr("Initial Setup"))
+        self.setFixedSize(400, 320)
+        self.setModal(True)
+        self.setStyleSheet(STYLE_DIALOG)
+        self.setWindowFlags(
+            Qt.Window | Qt.WindowTitleHint | Qt.CustomizeWindowHint
+        )
+
+        root = QVBoxLayout(self)
+        root.setSpacing(16)
+        root.setContentsMargins(32, 32, 32, 32)
+
+        title = QLabel(_tr("Create Administrator"))
+        title.setAlignment(Qt.AlignCenter)
+        title.setStyleSheet(
+            "font-size:20px;font-weight:bold;color:#FE5C0D;background:none;")
+        root.addWidget(title)
+
+        desc = QLabel(_tr(
+            "No users found. Create the first administrator account."))
+        desc.setWordWrap(True)
+        desc.setAlignment(Qt.AlignCenter)
+        desc.setStyleSheet("color:#9E9E9E;font-size:12px;background:none;")
+        root.addWidget(desc)
+
+        form = QFormLayout()
+        form.setSpacing(10)
+        form.setLabelAlignment(Qt.AlignRight)
+
+        self._login_edit = QLineEdit()
+        self._login_edit.setPlaceholderText(_tr("Admin login"))
+        form.addRow(_tr("Login:"), self._login_edit)
+
+        self._pass_edit = QLineEdit()
+        self._pass_edit.setEchoMode(QLineEdit.Password)
+        self._pass_edit.setPlaceholderText(_tr("Password"))
+        form.addRow(_tr("Password:"), self._pass_edit)
+
+        self._pass_confirm = QLineEdit()
+        self._pass_confirm.setEchoMode(QLineEdit.Password)
+        self._pass_confirm.setPlaceholderText(_tr("Confirm password"))
+        form.addRow(_tr("Confirm:"), self._pass_confirm)
+
+        root.addLayout(form)
+
+        self._lbl_error = QLabel("")
+        self._lbl_error.setAlignment(Qt.AlignCenter)
+        self._lbl_error.setStyleSheet("color:#f38ba8;font-size:12px;background:none;")
+        root.addWidget(self._lbl_error)
+
+        root.addStretch()
+
+        btn_create = QPushButton(_tr("Create"))
+        btn_create.setObjectName("btn_confirm")
+        btn_create.setStyleSheet(STYLE_BTN_PRIMARY)
+        btn_create.clicked.connect(self._on_create)
+        self._pass_confirm.returnPressed.connect(self._on_create)
+        self._login_edit.returnPressed.connect(self._pass_edit.setFocus)
+        self._pass_edit.returnPressed.connect(self._pass_confirm.setFocus)
+        root.addWidget(btn_create)
+
+    def _on_create(self) -> None:
+        login    = self._login_edit.text().strip()
+        password = self._pass_edit.text()
+        confirm  = self._pass_confirm.text()
+
+        if not login:
+            self._lbl_error.setText(_tr("Login cannot be empty"))
+            return
+        if not password:
+            self._lbl_error.setText(_tr("Password cannot be empty"))
+            return
+        if password != confirm:
+            self._lbl_error.setText(_tr("Passwords do not match"))
+            self._pass_confirm.clear()
+            self._pass_confirm.setFocus()
+            return
+
+        if AuthDB.create_superadmin(login, password):
+            user = AuthDB.authenticate(login, password)
+            if user is not None:
+                AuthSession.login(user)
+            self.accept()
+        else:
+            self._lbl_error.setText(_tr("Failed to create administrator"))
+
+
+# ===========================================================================
+# RoleEscalationDialog
+# ===========================================================================
+
+class RoleEscalationDialog(QDialog):
+    """Запит пароля при підвищенні рівня доступу (перехід знизу вгору)."""
+
+    def __init__(self, target_role: str, parent=None):
+        super().__init__(parent)
+        self._target_role = target_role
+        self.setWindowTitle(_tr("Elevate Access"))
+        self.setFixedSize(340, 200)
+        self.setModal(True)
+        self.setStyleSheet(STYLE_DIALOG)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
+
+        root = QVBoxLayout(self)
+        root.setSpacing(12)
+        root.setContentsMargins(24, 24, 24, 24)
+
+        msg = QLabel(_tr(f'Enter password to switch to "{target_role}":'))
+        msg.setWordWrap(True)
+        root.addWidget(msg)
+
+        self._pass_edit = QLineEdit()
+        self._pass_edit.setEchoMode(QLineEdit.Password)
+        self._pass_edit.setPlaceholderText(_tr("Password"))
+        root.addWidget(self._pass_edit)
+
+        self._lbl_error = QLabel("")
+        self._lbl_error.setStyleSheet("color:#f38ba8;font-size:12px;")
+        root.addWidget(self._lbl_error)
+
+        row = QHBoxLayout()
+        row.addStretch()
+
+        btn_cancel = QPushButton(_tr("Cancel"))
+        btn_cancel.setStyleSheet(STYLE_BTN_SECONDARY)
+        btn_cancel.clicked.connect(self.reject)
+
+        btn_ok = QPushButton(_tr("Confirm"))
+        btn_ok.setStyleSheet(STYLE_BTN_PRIMARY)
+        btn_ok.clicked.connect(self._on_confirm)
+        self._pass_edit.returnPressed.connect(self._on_confirm)
+
+        row.addWidget(btn_cancel)
+        row.addWidget(btn_ok)
+        root.addLayout(row)
+
+    def _on_confirm(self) -> None:
+        user = AuthSession.user()
+        if user is None:
+            self.reject()
+            return
+        if AuthDB.verify_password(user.id, self._pass_edit.text()):
+            self.accept()
+        else:
+            self._lbl_error.setText(_tr("Incorrect password"))
+            self._pass_edit.clear()
+
+
+# ===========================================================================
 # UserEditDialog
 # ===========================================================================
 

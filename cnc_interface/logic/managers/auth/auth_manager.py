@@ -11,13 +11,15 @@ AuthManager — фасад системи автентифікації.
 """
 from __future__ import annotations
 import logging
-from PyQt5.QtCore    import QCoreApplication, Qt
+from PyQt5.QtCore    import QCoreApplication, QEvent, Qt, QTimer
+from PyQt5.QtGui     import QIcon
 from PyQt5.QtWidgets import QApplication, QComboBox, QDialog, QMenu, QWidget
 
-from .auth_constants  import ROLES, STYLE_MENU
+from .auth_constants  import INACTIVITY_TIMEOUT_MS, ROLE_ICONS, ROLE_PRIORITY, ROLES, STYLE_MENU
 from .auth_db         import AuthDB
 from .auth_dialogs    import (
-    ConfirmPassDialog, LoginDialog, UserAdminDialog,
+    ConfirmPassDialog, FirstRunDialog, LoginDialog,
+    RoleEscalationDialog, UserAdminDialog,
 )
 from .auth_session    import AuthSession
 
@@ -37,8 +39,14 @@ class AuthManager:
         self._project_manager = None
         self._overlay: QWidget | None = None
 
-        # Ініціалізація БД (створює файл і суперадміна якщо потрібно)
+        # Ініціалізація БД (створює таблицю якщо потрібно)
         AuthDB.init()
+
+        # Таймер бездіяльності — скидання до Operator
+        self._inactivity_timer = QTimer()
+        self._inactivity_timer.setSingleShot(True)
+        self._inactivity_timer.setInterval(INACTIVITY_TIMEOUT_MS)
+        self._inactivity_timer.timeout.connect(self._on_inactivity_timeout)
 
     # ------------------------------------------------------------------
     # Публічний API
@@ -49,16 +57,20 @@ class AuthManager:
 
     def start(self) -> None:
         """
-        Показати головне вікно заблокованим, потім відкрити LoginDialog.
-        Викликати з initialized__() після повної ініціалізації UI.
+        Показати головне вікно заблокованим.
+        При першому запуску — FirstRunDialog для створення адміна.
+        Інакше — LoginDialog.
         """
-        # Спочатку показуємо головне вікно — щоб воно було видне під діалогом
         main_window = self._get_main_window()
         if main_window is not None:
             main_window.show()
 
         self._lock_main_window(True)
-        self._show_login()
+
+        if AuthDB.is_empty():
+            self._show_first_run()
+        else:
+            self._show_login()
 
     def connect_profile_button(self) -> None:
         """Підключити btn_user_icon і lbl_user_name до меню профілю."""
@@ -86,6 +98,21 @@ class AuthManager:
     # Логін / Логаут
     # ------------------------------------------------------------------
 
+    def _show_first_run(self) -> None:
+        """Показати діалог створення першого адміністратора."""
+        parent = self._get_main_window()
+        dlg = FirstRunDialog(parent)
+        result = dlg.exec_()
+        if result != QDialog.Accepted:
+            self._show_first_run()
+            return
+        self._lock_main_window(False)
+        self._populate_user_ui()
+        self._sync_current_user()
+        self._start_inactivity_tracking()
+        logger.info("Перший запуск: створено адміністратора '%s'",
+                    AuthSession.user().login)
+
     def _show_login(self) -> None:
         """Показати LoginDialog поверх головного вікна."""
         parent = self._get_main_window()
@@ -97,11 +124,13 @@ class AuthManager:
         self._lock_main_window(False)
         self._populate_user_ui()
         self._sync_current_user()
+        self._start_inactivity_tracking()
         logger.info("Вхід: %s [%s]",
                     AuthSession.user().login, AuthSession.active_role())
 
     def _logout(self) -> None:
         """Скинути сесію, проект і показати LoginDialog знову."""
+        self._stop_inactivity_tracking()
         self._reset_project()
         AuthSession.logout()
         self._lock_main_window(True)
@@ -117,19 +146,14 @@ class AuthManager:
         if user is None:
             return
 
-        # Ім'я користувача
         lbl = self._w("lbl_user_name")
         if lbl is not None:
             lbl.setText(user.login)
 
-        # ComboBox ролей
         combo: QComboBox = self._w("combo_user_role")
         if combo is None:
             return
 
-        # Розширюємо існуючий стиль — додаємо лише правила для
-        # випадаючого списку і недоступних елементів.
-        # Оригінальний стиль (#combo_user_role) залишається у .ui файлі.
         combo.setStyleSheet(
             combo.styleSheet() +
             "QComboBox QAbstractItemView::item{"
@@ -161,8 +185,16 @@ class AuthManager:
                     default_idx = i
 
         combo.setCurrentIndex(default_idx)
-        combo.currentTextChanged.connect(AuthSession.set_active_role)
+
+        # Відключити попередній сигнал і підключити новий з контролем ескалації
+        try:
+            combo.currentTextChanged.disconnect()
+        except TypeError:
+            pass
+        combo.currentTextChanged.connect(self._on_role_change_requested)
         combo.blockSignals(False)
+
+        self._update_role_icon(default_role)
 
     # ------------------------------------------------------------------
     # Меню профілю
@@ -286,3 +318,121 @@ class AuthManager:
         user = AuthSession.user()
         if user is not None:
             pm.set_current_user(user.login)
+
+    # ------------------------------------------------------------------
+    # Зміна ролі з контролем ескалації
+    # ------------------------------------------------------------------
+
+    def _on_role_change_requested(self, new_role: str) -> None:
+        """
+        Обробка зміни ролі через ComboBox.
+        Вгору (Operator→Admin) — запит пароля.
+        Вниз (Admin→Operator) — без запиту.
+        """
+        current_role = AuthSession.active_role()
+        current_prio = ROLE_PRIORITY.get(current_role, 0)
+        new_prio     = ROLE_PRIORITY.get(new_role, 0)
+
+        if new_prio > current_prio and new_role != "Operator":
+            dlg = RoleEscalationDialog(new_role, parent=self._w("combo_user_role"))
+            if dlg.exec_() != QDialog.Accepted:
+                # Повернути ComboBox на попереднє значення
+                combo = self._w("combo_user_role")
+                if combo is not None:
+                    combo.blockSignals(True)
+                    idx = combo.findText(current_role)
+                    if idx >= 0:
+                        combo.setCurrentIndex(idx)
+                    combo.blockSignals(False)
+                return
+
+        AuthSession.set_active_role(new_role)
+        self._update_role_icon(new_role)
+        self._restart_inactivity_timer()
+        logger.info("Роль змінена: %s → %s", current_role, new_role)
+
+    # ------------------------------------------------------------------
+    # Іконка ролі
+    # ------------------------------------------------------------------
+
+    def _update_role_icon(self, role: str) -> None:
+        """Оновити іконку btn_user_icon відповідно до поточної ролі."""
+        btn = self._w("btn_user_icon")
+        if btn is None:
+            return
+        icon_path = ROLE_ICONS.get(role, ROLE_ICONS["Operator"])
+        btn.setIcon(QIcon(icon_path))
+
+    # ------------------------------------------------------------------
+    # Таймер бездіяльності
+    # ------------------------------------------------------------------
+
+    def _start_inactivity_tracking(self) -> None:
+        """Встановити глобальний фільтр подій і запустити таймер."""
+        app = QApplication.instance()
+        if app is not None:
+            app.installEventFilter(self._get_event_filter())
+        self._restart_inactivity_timer()
+
+    def _stop_inactivity_tracking(self) -> None:
+        """Зупинити таймер і зняти фільтр подій."""
+        self._inactivity_timer.stop()
+        app = QApplication.instance()
+        if app is not None:
+            ef = getattr(self, "_event_filter", None)
+            if ef is not None:
+                app.removeEventFilter(ef)
+
+    def _restart_inactivity_timer(self) -> None:
+        """Перезапустити таймер бездіяльності."""
+        self._inactivity_timer.start()
+
+    def _on_inactivity_timeout(self) -> None:
+        """Скинути роль до Operator після бездіяльності."""
+        current = AuthSession.active_role()
+        if current == "Operator":
+            return
+        user = AuthSession.user()
+        if user is None or not user.role_operator:
+            return
+        AuthSession.set_active_role("Operator")
+        combo = self._w("combo_user_role")
+        if combo is not None:
+            combo.blockSignals(True)
+            idx = combo.findText("Operator")
+            if idx >= 0:
+                combo.setCurrentIndex(idx)
+            combo.blockSignals(False)
+        self._update_role_icon("Operator")
+        logger.info("Бездіяльність: роль скинута до Operator")
+
+    def _get_event_filter(self):
+        """Створити або повернути EventFilter для відстеження активності."""
+        if not hasattr(self, "_event_filter") or self._event_filter is None:
+            self._event_filter = _InactivityFilter(self)
+        return self._event_filter
+
+
+# ---------------------------------------------------------------------------
+# EventFilter для відстеження активності користувача
+# ---------------------------------------------------------------------------
+
+class _InactivityFilter(QWidget):
+    """
+    Глобальний фільтр подій — перезапускає таймер
+    при будь-якій активності (клавіша, миша, тач).
+    """
+    _TRACKED_EVENTS = {
+        QEvent.MouseButtonPress, QEvent.MouseButtonRelease,
+        QEvent.MouseMove, QEvent.KeyPress, QEvent.KeyRelease,
+        QEvent.Wheel, QEvent.TouchBegin,
+    }
+
+    def __init__(self, auth_manager: AuthManager) -> None:
+        super().__init__()
+        self._auth_manager = auth_manager
+
+    def eventFilter(self, obj, event) -> bool:
+        if event.type() in self._TRACKED_EVENTS:
+            self._auth_manager._restart_inactivity_timer()
+        return False

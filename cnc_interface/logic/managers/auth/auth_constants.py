@@ -30,6 +30,25 @@ SUPERADMIN_ID    = "1"
 # Пароль суперадміна за замовчуванням (тільки при першому запуску)
 DEFAULT_PASSWORD = "1111"
 
+# Таймаут бездіяльності — скидання до Operator (мілісекунди)
+INACTIVITY_TIMEOUT_MS = 10 * 60 * 1000  # 10 хвилин
+
+# Іконки ролей
+ROLE_ICONS: dict[str, str] = {
+    "Admin":    ":/icons/admin.png",
+    "Engineer": ":/icons/engineer.png",
+    "Program":  ":/icons/program.png",
+    "Operator": ":/icons/operator.png",
+}
+
+# Індекс пріоритету ролі (більше = вище)
+ROLE_PRIORITY: dict[str, int] = {
+    "Operator": 0,
+    "Program":  1,
+    "Engineer": 2,
+    "Admin":    3,
+}
+
 # ---------------------------------------------------------------------------
 # Стилі
 # ---------------------------------------------------------------------------
