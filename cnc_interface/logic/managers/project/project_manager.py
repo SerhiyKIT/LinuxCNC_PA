@@ -2,15 +2,8 @@
 """
 ProjectManager – фасад менеджера проектів LinuxCNC.
 
-Підключення:
-    pm = ProjectManager(widgets)
-    pm.connect_buttons()
-
-Очікувані імена віджетів у .ui:
-    btn_open_project, btn_create_new_project, btn_clone_repository,
-    btn_property_project, text_edit_search_project, tree_view_project,
-    line, line_3, lbl_project_name,
-    txt_project_name, txt_author, txt_created, txt_last_modified
+Проект = папка з одним файлом програми (<project_name>.parl).
+Дерево файлів проекту відсутнє — файл одразу відкривається в редакторі.
 """
 from __future__ import annotations
 
@@ -24,16 +17,9 @@ from PyQt5.QtGui     import QColor, QFont, QStandardItem
 from PyQt5.QtWidgets import QDialog, QMenu, QMessageBox
 
 from .project_constants  import (
-    DEFAULT_OPEN_FILE, PROJECTS_ROOT, PROJECT_ROOT_FILES,
-    PROJECT_STRUCTURE, STYLE_MENU,
+    PROGRAM_EXT, PROJECTS_ROOT, STYLE_MENU,
 )
 from .project_dialogs    import _DeleteProjectDialog, _NewProjectDialog, _OpenProjectDialog
-from .project_file_ops   import (
-    build_project_tree_context_menu,
-    on_new_file, on_open_file, on_rename, on_delete_file,
-    clipboard_op, on_paste, show_error, unique_path,
-)
-from .project_tree       import setup_project_tree, rebuild_fs_model
 from .project_watcher    import (
     clear_project_info, create_project_meta, delete_project_meta,
     flush_modified_update, get_project_id, init_projects_table,
@@ -51,7 +37,7 @@ def _tr(t: str) -> str:
 class ProjectManager:
     """
     Управляє станом панелі Project Manager.
-    Делегує файлові операції, watcher і дерево до окремих модулів.
+    Проект містить один файл програми — відкривається одразу в редакторі.
     """
 
     def __init__(self, widgets: object) -> None:
@@ -60,6 +46,7 @@ class ProjectManager:
         self._current_project_id: Optional[str] = None
         self._current_author: str = ""
         self._w = lambda name: getattr(self.widgets, name, None)
+        self._cnc = None
 
         # FileWatcher
         self._watcher = QFileSystemWatcher()
@@ -72,7 +59,7 @@ class ProjectManager:
         self._modified_timer.setInterval(2000)
         self._modified_timer.timeout.connect(self._flush_modified_update)
 
-        setup_project_tree(self)
+        self._setup_project_list()
         self._set_initial_state()
 
     # ------------------------------------------------------------------
@@ -120,7 +107,6 @@ class ProjectManager:
         tree = self._w("tree_view_project")
         if tree is not None:
             tree.setVisible(True)
-        self._project_tree.hide()
 
         stop_watcher(self)
 
@@ -143,6 +129,28 @@ class ProjectManager:
         clear_project_info(self)
         self._populate_project_list()
 
+    def _setup_project_list(self) -> None:
+        """Ініціалізувати модель списку проектів."""
+        from PyQt5.QtCore import QSortFilterProxyModel
+        from PyQt5.QtGui  import QStandardItemModel
+
+        tree = self._w("tree_view_project")
+        if tree is not None:
+            from PyQt5.QtWidgets import QAbstractItemView
+            tree.setEditTriggers(QAbstractItemView.NoEditTriggers)
+            tree.doubleClicked.connect(self._on_tree_double_click)
+
+        self._list_model = QStandardItemModel()
+        self._list_proxy = QSortFilterProxyModel()
+        self._list_proxy.setSourceModel(self._list_model)
+        self._list_proxy.setFilterCaseSensitivity(Qt.CaseInsensitive)
+        self._list_proxy.setFilterKeyColumn(0)
+
+        if tree is not None:
+            tree.setModel(self._list_proxy)
+            tree.setHeaderHidden(True)
+            tree.setRootIsDecorated(False)
+
     def _populate_project_list(self) -> None:
         self._list_model.clear()
         PROJECTS_ROOT.mkdir(parents=True, exist_ok=True)
@@ -153,6 +161,10 @@ class ProjectManager:
                 item.setEditable(False)
                 item.setIcon(self._folder_icon())
                 self._list_model.appendRow(item)
+
+    def _program_file(self, project_path: Path) -> Path:
+        """Шлях до файлу програми проекту."""
+        return project_path / f"{project_path.name}{PROGRAM_EXT}"
 
     def _open_project(self, project_path: Path) -> None:
         if not project_path.is_dir():
@@ -181,10 +193,6 @@ class ProjectManager:
         if lbl is not None:
             lbl.setText(project_path.name)
 
-        rebuild_fs_model(self, project_path)
-        self._project_tree.show()
-        self._project_tree.raise_()
-
         em = getattr(self, "_editor_manager", None)
         if em is not None:
             em.set_project_active(True)
@@ -203,13 +211,23 @@ class ProjectManager:
         if tp is not None:
             tp.set_project(project_id)
 
-        default_file = project_path / DEFAULT_OPEN_FILE
-        if default_file.is_file():
-            self._on_open_file(default_file, read_only=True)
+        # Відкрити файл програми в режимі редагування
+        program = self._program_file(project_path)
+        if program.is_file():
+            self._open_program_in_editor(program)
 
         start_watcher(self, project_path)
-
         logger.info("Відкрито проєкт: %s", project_path.name)
+
+    def _open_program_in_editor(self, path: Path) -> None:
+        """Відкрити файл програми в редакторі в режимі редагування."""
+        em = getattr(self, "_editor_manager", None)
+        if em is not None:
+            em.load_file(str(path), read_only=False)
+            return
+        cb = getattr(self, "_open_file_callback", None)
+        if cb:
+            cb(str(path), False)
 
     # ------------------------------------------------------------------
     # Обробники кнопок
@@ -228,25 +246,21 @@ class ProjectManager:
         path = PROJECTS_ROOT / name
         try:
             path.mkdir(parents=True, exist_ok=False)
-            for folder, files in PROJECT_STRUCTURE.items():
-                folder_path = path / folder
-                folder_path.mkdir()
-                for fname in files:
-                    (folder_path / fname).touch()
-            for fname in PROJECT_ROOT_FILES:
-                (path / fname).touch()
+            # Створити єдиний файл програми
+            program = path / f"{name}{PROGRAM_EXT}"
+            program.touch()
             create_project_meta(name, self._current_author)
             if dlg.init_repo:
                 self._init_git_repo(path)
             self._open_project(path)
             logger.info("Створено проєкт: %s", name)
         except FileExistsError:
-            show_error(self, _tr(f'Проєкт "{name}" вже існує.'))
+            self._show_error(_tr(f'Проєкт "{name}" вже існує.'))
         except Exception as exc:
-            show_error(self, _tr(f"Помилка створення проєкту: {exc}"))
+            self._show_error(_tr(f"Помилка створення проєкту: {exc}"))
 
     def _on_clone_repository(self) -> None:
-        show_error(self, _tr("Клонування репозиторію ще не реалізовано."))
+        self._show_error(_tr("Клонування репозиторію ще не реалізовано."))
 
     def _on_property_menu(self) -> None:
         btn = self._w("btn_property_project")
@@ -277,7 +291,7 @@ class ProjectManager:
             delete_project_meta(name)
             logger.info("Видалено проєкт: %s", name)
         except Exception as exc:
-            show_error(self, _tr(f"Помилка видалення: {exc}"))
+            self._show_error(_tr(f"Помилка видалення: {exc}"))
             return
 
         em = getattr(self, "_editor_manager", None)
@@ -292,18 +306,11 @@ class ProjectManager:
         self._show_open_or_create_link()
 
     # ------------------------------------------------------------------
-    # Пошук
+    # Пошук і подвійний клік по списку проектів
     # ------------------------------------------------------------------
 
     def _on_search_changed(self, text: str) -> None:
         self._list_proxy.setFilterFixedString(text)
-
-    # ------------------------------------------------------------------
-    # Контекстні меню дерев
-    # ------------------------------------------------------------------
-
-    def _on_tree_context_menu(self, pos) -> None:
-        pass  # список проектів — без файлових операцій
 
     def _on_tree_double_click(self, index: QModelIndex) -> None:
         src_index = self._list_proxy.mapToSource(index)
@@ -317,54 +324,50 @@ class ProjectManager:
         if path and path.is_dir():
             self._open_project(path)
 
-    def _on_project_tree_double_click(self, index: QModelIndex) -> None:
-        if not index.isValid():
+    # ------------------------------------------------------------------
+    # Контекстне меню редактора — Insert Variable / Teach Point
+    # ------------------------------------------------------------------
+
+    def build_editor_context_menu(self, menu: QMenu) -> None:
+        """
+        Розширити контекстне меню редактора коду.
+        Викликається з editor_manager при побудові контекстного меню.
+        """
+        if self._current_project is None:
             return
-        src_index     = self._tree_proxy.mapToSource(index)
-        file_path_str = self._fs_model.filePath(src_index)
-        if not file_path_str:
+        menu.addSeparator()
+        menu.addAction(_tr("Insert Variable"), self._on_insert_variable)
+        menu.addAction(_tr("Teach Point"),     self._on_teach_point)
+
+    def _on_insert_variable(self) -> None:
+        """Вставити шаблон оголошення змінної."""
+        em = getattr(self, "_editor_manager", None)
+        if em is None:
             return
-        path = Path(file_path_str)
-        if path.is_file():
-            self._on_open_file(path, read_only=True)
+        em.insert_text_at_cursor("[name] = [value]")
 
-    def _on_project_tree_context_menu(self, pos) -> None:
-        build_project_tree_context_menu(self, pos)
-
-    # ------------------------------------------------------------------
-    # Делегати файлових операцій
-    # ------------------------------------------------------------------
-
-    def _on_new_file(self, context_path: Optional[Path]) -> None:
-        on_new_file(self, context_path)
-
-    def _on_open_file(self, path: Path, read_only: bool) -> None:
-        on_open_file(self, path, read_only)
-
-    def _on_rename(self, path: Path, index: QModelIndex) -> None:
-        on_rename(self, path, index)
-
-    def _on_delete_file(self, path: Path) -> None:
-        on_delete_file(self, path)
-
-    def _clipboard_op(self, path: Path, cut: bool) -> None:
-        clipboard_op(self, path, cut)
-
-    def _on_paste(self, context_path: Optional[Path]) -> None:
-        on_paste(self, context_path)
-
-    def _unique_path(self, dest: Path) -> Path:
-        return unique_path(dest)
+    def _on_teach_point(self) -> None:
+        """Вставити поточні координати з контролера."""
+        em = getattr(self, "_editor_manager", None)
+        if em is None:
+            return
+        cnc = self._cnc
+        if cnc is None:
+            self._show_error(_tr("Machine controller not available"))
+            return
+        try:
+            pos = cnc.get_position()
+            coords = " ".join(
+                f"{axis}{val:.3f}" for axis, val in zip("XYZABC", pos)
+                if val is not None
+            )
+            em.insert_text_at_cursor(coords)
+        except Exception as exc:
+            self._show_error(_tr(f"Failed to read position: {exc}"))
 
     # ------------------------------------------------------------------
-    # Делегати watcher і метаданих
+    # Делегати watcher
     # ------------------------------------------------------------------
-
-    def _start_watcher(self, project_path: Path) -> None:
-        start_watcher(self, project_path)
-
-    def _stop_watcher(self) -> None:
-        stop_watcher(self)
 
     def _on_project_dir_changed(self, path: str) -> None:
         on_dir_changed(self, path)
@@ -374,15 +377,6 @@ class ProjectManager:
 
     def _flush_modified_update(self) -> None:
         flush_modified_update(self)
-
-    def _update_last_modified(self, project_name: str) -> None:
-        update_last_modified(project_name)
-
-    def _load_project_info(self, project_path: Path) -> None:
-        load_project_info(self, project_path)
-
-    def _clear_project_info(self) -> None:
-        clear_project_info(self)
 
     # ------------------------------------------------------------------
     # Реєстрація залежностей
@@ -406,6 +400,10 @@ class ProjectManager:
     def set_current_user(self, login: str) -> None:
         """Встановити автора для нових проектів (login активного користувача)."""
         self._current_author = login
+
+    def set_machine_controller(self, cnc) -> None:
+        """Встановити MachineController для Teach Point."""
+        self._cnc = cnc
 
     # ------------------------------------------------------------------
     # "Open or Create" посилання після видалення
@@ -441,12 +439,6 @@ class ProjectManager:
     # Допоміжні
     # ------------------------------------------------------------------
 
-    def _rebuild_fs_model(self, project_path: Path) -> None:
-        rebuild_fs_model(self, project_path)
-
-    def _setup_tree(self) -> None:
-        setup_project_tree(self)
-
     @staticmethod
     def _init_git_repo(path: Path) -> None:
         import subprocess
@@ -462,11 +454,11 @@ class ProjectManager:
     @staticmethod
     def _folder_icon():
         from PyQt5.QtWidgets import QFileIconProvider
-        from PyQt5.QtCore    import QFileInfo
         return QFileIconProvider().icon(QFileIconProvider.Folder)
 
     def _show_error(self, message: str) -> None:
-        show_error(self, message)
+        QMessageBox.critical(
+            self._w("tree_view_project"), _tr("Error"), message)
 
     def __repr__(self) -> str:
         return (f"{self.__class__.__name__}"

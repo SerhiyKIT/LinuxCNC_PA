@@ -12,15 +12,11 @@ from pathlib import Path
 
 PROJECTS_ROOT = Path.home() / "ProjectLinuxCNC"
 
-PROJECT_STRUCTURE: dict[str, list[str]] = {
-    "src":  ["program.txt"],
-    "bin":  ["main.parl"],
-    "data": ["variables.json", "io_config.json"],
-}
+PROJECT_STRUCTURE: dict[str, list[str]] = {}
 PROJECT_ROOT_FILES = []
-DEFAULT_OPEN_FILE  = Path("src") / "program.txt"
+PROGRAM_EXT        = ".parl"
 EDITABLE_EXTS      = (".txt", ".ini", ".json", ".parl")
-HIDDEN_FOLDERS     = {"bin"}
+HIDDEN_FOLDERS     = set()
 WATCHER_IGNORE_DIRS = {}
 
 # ---------------------------------------------------------------------------

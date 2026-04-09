@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import QDialog, QMenu, QPlainTextEdit, QShortcut, QTextEdit
 from .editor_colors import (
     AUTOSAVE_DELAY_MS, CLR_ACTIVE_LINE, CLR_BACKGROUND,
     CLR_EXEC_LINE, CLR_FOREGROUND, CLR_LINE_NUM_BG, CLR_LINE_NUM_FG,
-    MENU_STYLE,
+    MENU_STYLE, POS_AXES,
 )
 from .editor_highlighter import GCodeHighlighter
 
@@ -274,11 +274,34 @@ class GCodeEditorWidget(QPlainTextEdit):
             self._show_search)
         menu.addSeparator()
 
+        menu.addAction(_tr("Insert Variable"), lambda: self._insert_snippet("[name] = [value]"))
+        menu.addAction(_tr("Teach Point"),     lambda: self._insert_snippet(self._get_current_pos()))
+        menu.addSeparator()
+
         # ── Вставка команд (структуровано по категоріях) ────────────────
         self._build_snippets_menu(menu)
 
         menu.exec_(event.globalPos())
 
+    def _get_current_pos(self) -> str:
+        if self._cnc is None:
+            return ""
+        try:
+            self._cnc.poll()
+            pos = self._cnc.status.actual_position
+            
+            parts = []
+            for i, axis in enumerate(POS_AXES):
+                val = pos[i] if i < len(pos) else 0.0
+                parts.append(f"{axis} {val:.4f}")
+            
+            return "{" + ", ".join(parts) + "}"
+            
+        except Exception as exc:
+            logger.error("Get Current POS: %s", exc)
+            return "Error retrieving position"
+        
+    
     def _build_snippets_menu(self, parent_menu: QMenu) -> None:
         """
         Побудувати ієрархічне підменю вставки команд.

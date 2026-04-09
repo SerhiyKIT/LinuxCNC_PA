@@ -532,6 +532,14 @@ CYCLE</source>
         <translation>CALL (виклик)</translation>
     </message>
     <message>
+        <source>Insert Variable</source>
+        <translation>Вставити змінну</translation>
+    </message>
+    <message>
+        <source>Teach Point</source>
+        <translation>Поточна позиція</translation>
+    </message>
+    <message>
         <source>Search…</source>
         <translation>Пошук…</translation>
     </message>
