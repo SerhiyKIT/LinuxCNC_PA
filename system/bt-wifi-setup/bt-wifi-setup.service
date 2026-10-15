@@ -1,0 +1,14 @@
+[Unit]
+Description=Bluetooth LE Wi-Fi setup (Nordic UART)
+After=bluetooth.service NetworkManager.service
+BindsTo=bluetooth.service
+
+[Service]
+Type=simple
+ExecStartPre=-/usr/sbin/rfkill unblock bluetooth
+ExecStart=/usr/bin/python3 /usr/local/lib/bt-wifi-setup/bt_wifi_setup.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target bluetooth.target
