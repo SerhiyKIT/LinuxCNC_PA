@@ -1,0 +1,16 @@
+[Unit]
+Description=Bluetooth LE bridge for LinuxCNC (CNC-Robot)
+After=bluetooth.service
+PartOf=bluetooth.service
+
+[Service]
+Type=simple
+User=cnc
+# '+' — від root: розблокувати Bluetooth (помилка не критична)
+ExecStartPre=+-/usr/sbin/rfkill unblock bluetooth
+ExecStart=/usr/bin/python3 /usr/local/lib/bt-cnc-bridge/bt_cnc_bridge.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

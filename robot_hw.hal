@@ -1,0 +1,76 @@
+# 1. ЗАВАНТАЖЕННЯ. Маска dir: біт n = rpi2_gpios[n] у hal_pi_gpio.c;
+# 66112536 = виходи на фізичних пінах 11,13,15,16,18,22,29,31,32,33,36,37
+loadrt hal_pi_gpio dir=66112536 exclude=0
+# Створюємо 6 генераторів кроків
+loadrt stepgen step_type=0,0,0,0,0,0
+
+# 2. ПОТОКИ
+addf hal_pi_gpio.read base-thread
+addf stepgen.make-pulses base-thread
+addf hal_pi_gpio.write base-thread
+addf stepgen.capture-position servo-thread
+addf stepgen.update-freq servo-thread
+
+# 3. ТАЙМІНГИ (Збільшено до 50 мкс для надійності)
+setp stepgen.0.steplen 90000
+setp stepgen.0.stepspace 90000
+setp stepgen.1.steplen 90000
+setp stepgen.1.stepspace 90000
+setp stepgen.2.steplen 90000
+setp stepgen.2.stepspace 90000
+setp stepgen.3.steplen 50000
+setp stepgen.3.stepspace 50000
+setp stepgen.4.steplen 50000
+setp stepgen.4.stepspace 50000
+setp stepgen.5.steplen 50000
+setp stepgen.5.stepspace 50000
+
+# 4. МАСШТАБ (Position Scale)
+setp stepgen.0.position-scale 42.666667
+setp stepgen.1.position-scale 42.666667
+setp stepgen.2.position-scale 42.666667
+setp stepgen.3.position-scale 42.666667
+setp stepgen.4.position-scale 42.666667
+setp stepgen.5.position-scale 42.666667
+
+# 5. ПІДКЛЮЧЕННЯ JOINT 0-5
+# Joint 0 (P11/13)
+net J0:pos-cmd => stepgen.0.position-cmd
+net step-0 stepgen.0.step => hal_pi_gpio.pin-11-out
+net dir-0 stepgen.0.dir => hal_pi_gpio.pin-13-out
+
+# Joint 1 (P15/16)
+net J1:pos-cmd => stepgen.1.position-cmd
+net step-1 stepgen.1.step => hal_pi_gpio.pin-15-out
+net dir-1 stepgen.1.dir => hal_pi_gpio.pin-16-out
+
+# Joint 2 (P18/22)
+net J2:pos-cmd => stepgen.2.position-cmd
+net step-2 stepgen.2.step => hal_pi_gpio.pin-18-out
+net dir-2 stepgen.2.dir => hal_pi_gpio.pin-22-out
+
+# Joint 3 (P29/31) - ОСЬ ЯКА ВИДАВАЛА ПОМИЛКУ
+net J3:pos-cmd => stepgen.3.position-cmd
+net step-3 stepgen.3.step => hal_pi_gpio.pin-29-out
+net dir-3 stepgen.3.dir => hal_pi_gpio.pin-31-out
+
+# Joint 4 (P32/33 = GPIO12/13)
+net J4:pos-cmd => stepgen.4.position-cmd
+net step-4 stepgen.4.step => hal_pi_gpio.pin-32-out
+net dir-4 stepgen.4.dir => hal_pi_gpio.pin-33-out
+
+# Joint 5 (P36/37 = GPIO16/26)
+net J5:pos-cmd => stepgen.5.position-cmd
+net step-5 stepgen.5.step => hal_pi_gpio.pin-36-out
+net dir-5 stepgen.5.dir => hal_pi_gpio.pin-37-out
+
+# 6. ДОЗВІЛ STEPGEN
+# Без enable stepgen не видає імпульсів. Сигнали J{N}:enable
+# (joint.N.amp-enable-out) створює basic_sim.tcl у robot_cmds.hal,
+# який завантажується раніше — тут лише додаємо stepgen до них.
+net J0:enable => stepgen.0.enable
+net J1:enable => stepgen.1.enable
+net J2:enable => stepgen.2.enable
+net J3:enable => stepgen.3.enable
+net J4:enable => stepgen.4.enable
+net J5:enable => stepgen.5.enable
