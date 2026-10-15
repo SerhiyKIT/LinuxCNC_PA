@@ -1,0 +1,4 @@
+# Перевірено з: bleak 3.0.2, PyQt5 5.15.11, qasync 0.28.0 (Python 3.12)
+bleak>=0.22
+PyQt5>=5.15
+qasync>=0.27
