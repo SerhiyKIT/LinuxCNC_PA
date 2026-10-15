@@ -1,0 +1,27 @@
+# Налаштування BLE-мосту керування роботом (bt-cnc-bridge).
+# Файл лежить на boot-розділі — його можна редагувати з будь-якого ПК.
+# Після зміни: sudo systemctl restart bt-cnc-bridge
+
+# Назва в рекламі Bluetooth
+NAME=CNC-Robot
+
+# PIN для доступу. Порожнє значення = без PIN (небезпечно для робота!)
+PIN=__PIN__
+
+# Що робити з програмою, якщо власник керування відключився: pause | abort
+ON_DISCONNECT=pause
+
+# Частота EVT S (Гц), лише при змінах
+STATUS_HZ=5
+
+# Верхня межа швидкості jog з BLE, град/с (додатково обрізається MAX_VELOCITY з INI)
+MAX_JOG_VEL=20
+
+# Швидкість інкрементального jog (команда jog), град/с
+JOG_VEL=10
+
+# Безперервний jog зупиняється, якщо ping не приходив довше, мс
+WATCHDOG_MS=500
+
+# Каталог програм для ls/open
+PROJECTS_DIR=/home/cnc/ProjectLinuxCNC
