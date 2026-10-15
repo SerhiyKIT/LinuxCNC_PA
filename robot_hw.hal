@@ -1,4 +1,5 @@
-# 1. ЗАВАНТАЖЕННЯ (Маска 66112536 розрахована для 6 осей)
+# 1. ЗАВАНТАЖЕННЯ. Маска dir: біт n = rpi2_gpios[n] у hal_pi_gpio.c;
+# 66112536 = виходи на фізичних пінах 11,13,15,16,18,22,29,31,32,33,36,37
 loadrt hal_pi_gpio dir=66112536 exclude=0
 # Створюємо 6 генераторів кроків
 loadrt stepgen step_type=0,0,0,0,0,0
@@ -32,7 +33,7 @@ setp stepgen.3.position-scale 42.666667
 setp stepgen.4.position-scale 42.666667
 setp stepgen.5.position-scale 42.666667
 
-# 5. ПІДКЛЮЧЕННЯ JOINT 0-3 (Приклад для перших чотирьох)
+# 5. ПІДКЛЮЧЕННЯ JOINT 0-5
 # Joint 0 (P11/13)
 net J0:pos-cmd => stepgen.0.position-cmd
 net step-0 stepgen.0.step => hal_pi_gpio.pin-11-out
@@ -52,3 +53,24 @@ net dir-2 stepgen.2.dir => hal_pi_gpio.pin-22-out
 net J3:pos-cmd => stepgen.3.position-cmd
 net step-3 stepgen.3.step => hal_pi_gpio.pin-29-out
 net dir-3 stepgen.3.dir => hal_pi_gpio.pin-31-out
+
+# Joint 4 (P32/33 = GPIO12/13)
+net J4:pos-cmd => stepgen.4.position-cmd
+net step-4 stepgen.4.step => hal_pi_gpio.pin-32-out
+net dir-4 stepgen.4.dir => hal_pi_gpio.pin-33-out
+
+# Joint 5 (P36/37 = GPIO16/26)
+net J5:pos-cmd => stepgen.5.position-cmd
+net step-5 stepgen.5.step => hal_pi_gpio.pin-36-out
+net dir-5 stepgen.5.dir => hal_pi_gpio.pin-37-out
+
+# 6. ДОЗВІЛ STEPGEN
+# Без enable stepgen не видає імпульсів. Сигнали J{N}:enable
+# (joint.N.amp-enable-out) створює basic_sim.tcl у robot_cmds.hal,
+# який завантажується раніше — тут лише додаємо stepgen до них.
+net J0:enable => stepgen.0.enable
+net J1:enable => stepgen.1.enable
+net J2:enable => stepgen.2.enable
+net J3:enable => stepgen.3.enable
+net J4:enable => stepgen.4.enable
+net J5:enable => stepgen.5.enable
