@@ -36,4 +36,6 @@ else
     systemctl restart cnc-web.service
     systemctl --no-pager status cnc-web.service | head -n 8 || true
 fi
+# Скинути дані на картку: якщо її вийняти одразу, файли можуть лишитися порожніми
+sync
 echo "Готово. На телефоні: http://<IP Raspberry Pi>:$PORT/"
