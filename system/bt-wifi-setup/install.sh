@@ -30,7 +30,9 @@ CONF="$BOOT/bt-wifi-setup.txt"
 if [ -f "$CONF" ]; then
     echo "Конфіг $CONF вже існує — залишаю без змін"
 else
-    PIN=$(printf '%06d' $(( $(od -An -N4 -tu4 /dev/urandom) % 1000000 )))
+    # Один PIN на обидва сервіси (Wi-Fi і керування): беремо наявний, якщо є
+    PIN=$(sed -n 's/^PIN=\([0-9]\{4,\}\)$/\1/p' "$BOOT/bt-cnc-bridge.txt" 2>/dev/null | head -n1)
+    [ -n "$PIN" ] || PIN=$(printf '%06d' $(( $(od -An -N4 -tu4 /dev/urandom) % 1000000 )))
     sed "s/__PIN__/$PIN/" "$SRC/bt-wifi-setup.txt" > "$CONF"
     echo "Створено $CONF, PIN: $PIN"
 fi
