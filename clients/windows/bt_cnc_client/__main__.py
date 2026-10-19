@@ -20,7 +20,7 @@ def main() -> None:
     loop = qasync.QEventLoop(app)
     asyncio.set_event_loop(loop)
 
-    window = MainWindow()
+    window = MainWindow(autostart=True)
     window.show()
 
     closed = asyncio.Event()

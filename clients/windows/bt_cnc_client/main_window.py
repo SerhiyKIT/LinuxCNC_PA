@@ -17,6 +17,7 @@ import ui_constants as ui
 from protocol_client import (
     AXES, DEFAULT_HOST, JOINTS, CncClient, CommandError, JogHold, Status,
 )
+from setup_wizard import SetupWizard
 from tcp_transport import TcpTransport
 from teach_panel import TeachPanel
 
@@ -24,8 +25,10 @@ logger = logging.getLogger(__name__)
 
 
 class MainWindow(QtWidgets.QMainWindow):
-    def __init__(self) -> None:
+    def __init__(self, autostart: bool = False, settings: QtCore.QSettings | None = None) -> None:
+        """autostart — при старті підключитись до збереженого робота або відкрити майстер."""
         super().__init__()
+        self.settings = settings or QtCore.QSettings(ui.SETTINGS_ORG, ui.SETTINGS_APP)
         self.setWindowTitle(ui.WINDOW_TITLE)
         self.resize(*ui.WINDOW_SIZE)
 
@@ -37,8 +40,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.owner = False
 
         self._build()
+        self._load_settings()
         self.set_connected(False)
         QtWidgets.QApplication.instance().applicationStateChanged.connect(self._on_app_state)
+        if autostart:
+            QtCore.QTimer.singleShot(300, self._autostart)
 
     # -----------------------------------------------------------------------
     # Побудова інтерфейсу
@@ -80,6 +86,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.take_btn = QtWidgets.QPushButton("Взяти керування")
         self.take_btn.setCheckable(True)
         self.link_label = QtWidgets.QLabel()
+        self.wizard_btn = QtWidgets.QPushButton("Майстер налаштування…")
+        self.wizard_btn.setToolTip("Перше підключення: знайти робота, підключити його до Wi-Fi")
+        self.wizard_btn.clicked.connect(self.open_wizard)
 
         self.scan_btn.clicked.connect(lambda: self.run(self.do_scan()))
         self.connect_btn.clicked.connect(lambda: self.run(self.do_connect_toggle()))
@@ -90,6 +99,7 @@ class MainWindow(QtWidgets.QMainWindow):
                   self.pin_edit, self.connect_btn, self.take_btn, self.link_label):
             row.addWidget(w)
         row.addStretch(1)
+        row.addWidget(self.wizard_btn)
         self._on_transport_changed(self.transport_box.currentText())
         return row
 
@@ -305,7 +315,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def set_connected(self, connected: bool) -> None:
         self.connect_btn.setText("Відключити" if connected else "Підключити")
         self.link_label.setText("🟢 підключено" if connected else "⚪ не підключено")
-        for w in (self.transport_box, self.host_edit, self.device_box, self.scan_btn, self.pin_edit):
+        for w in (self.transport_box, self.host_edit, self.device_box, self.scan_btn,
+                  self.pin_edit, self.wizard_btn):
             w.setEnabled(not connected)
         self.take_btn.setEnabled(connected)
         # E-stop доступний одразу після PIN, навіть без take
@@ -351,6 +362,54 @@ class MainWindow(QtWidgets.QMainWindow):
             unit = s.u if j < 3 else "°"
             self.pos_table.item(j, 3).setText(f"{s.w[j]:.3f} {unit}" if j < len(s.w) else "—")
         self.teach.set_status(s)
+
+    # -----------------------------------------------------------------------
+    # Збережений робот і майстер
+    # -----------------------------------------------------------------------
+
+    def _load_settings(self) -> None:
+        host = self.settings.value("host", "", str)
+        if host:
+            self.host_edit.setText(host)
+            self.pin_edit.setText(self.settings.value("pin", "", str))
+            self.transport_box.setCurrentText(ui.TRANSPORT_WIFI)
+
+    def _save_settings(self, host: str, pin: str, remember: bool) -> None:
+        if remember:
+            self.settings.setValue("host", host)
+            self.settings.setValue("pin", pin)
+        else:
+            self.settings.remove("host")
+            self.settings.remove("pin")
+        self.settings.sync()
+
+    def _autostart(self) -> None:
+        if self.settings.value("host", "", str):
+            self.log("Підключаюсь до збереженого робота…")
+            self.run(self._auto_connect())
+        else:
+            self.open_wizard()
+
+    async def _auto_connect(self) -> None:
+        try:
+            await self.do_connect_toggle()
+        except Exception as exc:
+            self.log(f"✖ Не вдалося підключитись автоматично ({exc}). Якщо робот змінив мережу "
+                     "або адресу — відкрийте «Майстер налаштування».")
+
+    def open_wizard(self) -> None:
+        wizard = SetupWizard(self)
+        wizard.completed.connect(self._on_wizard_completed)
+        wizard.show()
+        self.wizard = wizard
+
+    def _on_wizard_completed(self, host: str, pin: str, remember: bool) -> None:
+        self.transport_box.setCurrentText(ui.TRANSPORT_WIFI)
+        self.host_edit.setText(host)
+        self.pin_edit.setText(pin)
+        self._save_settings(host, pin, remember)
+        self.log(f"Робот налаштовано: {host}")
+        self.run(self.do_connect_toggle())
 
     # -----------------------------------------------------------------------
     # Дії
