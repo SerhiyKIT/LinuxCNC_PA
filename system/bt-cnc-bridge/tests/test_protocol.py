@@ -126,3 +126,33 @@ def test_split_payload_keeps_utf8_and_newline():
     for c in chunks:
         c.decode("utf-8")                     # жоден пакет не рве символ
     assert b"".join(chunks).decode() == text + "\n"
+
+
+# --- світові осі і файли --------------------------------------------------
+
+@pytest.mark.parametrize("line, expected", [
+    ("jogw x +0.5", Command("jogw", ("X", 0.5))),
+    ("jogw C -10", Command("jogw", ("C", -10.0))),
+    ("jogwc Z - 0.2", Command("jogwc", ("Z", -1, 0.2))),
+    ("jogstop A", Command("jogstop", ("A",))),
+    ("jogstop J2", Command("jogstop", (2,))),
+    ("file begin teach.ngc", Command("file", ("begin", "teach.ngc"))),
+    ("file data G53 G1 X1 Y2 F60", Command("file", ("data", "G53 G1 X1 Y2 F60"))),
+    ("file data", Command("file", ("data", ""))),
+    ("file end", Command("file", ("end",))),
+    ("file abort", Command("file", ("abort",))),
+    ("rm teach.ngc", Command("rm", ("teach.ngc",))),
+])
+def test_parse_world_and_file(line, expected):
+    assert parse(line) == expected
+
+
+@pytest.mark.parametrize("line, code", [
+    ("jogw Q 1", E_ARGS), ("jogw X 0", E_ARGS), ("jogwc X * 1", E_ARGS),
+    ("jogwc X + 0", E_ARGS), ("file", E_ARGS), ("file end now", E_ARGS),
+    ("file begin ../x.ngc", E_PATH), ("file begin notes.txt", E_PATH), ("rm /etc/passwd", E_PATH),
+])
+def test_parse_world_and_file_invalid(line, code):
+    with pytest.raises(ProtocolError) as exc:
+        parse(line)
+    assert exc.value.code == code

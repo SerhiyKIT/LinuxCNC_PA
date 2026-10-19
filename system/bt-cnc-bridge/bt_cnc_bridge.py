@@ -14,8 +14,9 @@ import sys
 from typing import Callable
 
 from bridge_constants import (
-    CONFIG_FILES, DEFAULT_CONFIG, E_CNC, HELP_TEXT, MAX_JOINTS,
-    ON_DISCONNECT_MODES, PROTOCOL_VERSION, STATUS_HZ_RANGE,
+    CONFIG_FILES, DEFAULT_CONFIG, E_CNC, E_SIZE, E_STATE, HELP_TEXT,
+    LINEAR_AXES, MAX_PROGRAM_BYTES, ON_DISCONNECT_MODES, PROTOCOL_VERSION,
+    STATUS_HZ_RANGE,
 )
 from cnc_backend import CncBackend, CncError
 from protocol import (
@@ -69,7 +70,7 @@ def load_config(paths: list[str] = CONFIG_FILES) -> dict:
         cfg["ON_DISCONNECT"] = "pause"
     lo, hi = STATUS_HZ_RANGE
     cfg["STATUS_HZ"] = min(max(cfg["STATUS_HZ"], lo), hi)
-    for key in ("MAX_JOG_VEL", "JOG_VEL", "WATCHDOG_MS"):
+    for key in ("MAX_JOG_VEL", "JOG_VEL", "MAX_JOG_LIN", "JOG_LIN", "WATCHDOG_MS"):
         if cfg[key] <= 0:
             logger.warning("%s має бути > 0, беру %r", key, DEFAULT_CONFIG[key])
             cfg[key] = DEFAULT_CONFIG[key]
@@ -80,16 +81,44 @@ def load_config(paths: list[str] = CONFIG_FILES) -> dict:
 # Ядро мосту
 # ---------------------------------------------------------------------------
 
+def _jog_name(key: int | str) -> str:
+    return f"J{key}" if isinstance(key, int) else key
+
+
 class Bridge:
+    """
+    Диспетчер команд. Клієнти двох видів:
+      * BLE — відповіді й події йдуть широкомовно через `send` (notify);
+      * TCP — зареєстровані через register_client(); відповіді адресні,
+        події отримують лише клієнти, що ввели PIN.
+    """
+
     def __init__(self, cfg: dict, backend: CncBackend, safety: Safety,
                  send: Callable[[str], None]) -> None:
         self.cfg = cfg
         self.backend = backend
         self.safety = safety
-        self.send = send
+        self.ble_send = send
+        self.tcp: dict[str, Callable[[str], None]] = {}
         self.assemblers: dict[str, LineAssembler] = {}
+        self.uploads: dict[str, dict] = {}   # client -> {name, parts, size}
         self.streaming = False      # після take/status шлемо EVT S при змінах
         self.last_status: dict | None = None
+
+    # --- транспорт ------------------------------------------------------
+
+    def register_client(self, client: str, send: Callable[[str], None]) -> None:
+        self.tcp[client] = send
+
+    def reply(self, client: str, text: str) -> None:
+        self.tcp.get(client, self.ble_send)(text)
+
+    def send(self, text: str) -> None:
+        """Подія для всіх: BLE-підписники + авторизовані TCP-клієнти."""
+        self.ble_send(text)
+        for client, send in list(self.tcp.items()):
+            if self.safety.is_authed(client):
+                send(text)
 
     # --- вхід -------------------------------------------------------------
 
@@ -97,7 +126,7 @@ class Bridge:
         assembler = self.assemblers.setdefault(client, LineAssembler())
         for item in assembler.feed(data):
             if isinstance(item, ProtocolError):
-                self.send(format_err(item.code, item.text))
+                self.reply(client, format_err(item.code, item.text))
             else:
                 self.handle_line(client, item)
 
@@ -105,18 +134,18 @@ class Bridge:
         try:
             cmd = parse(line)
             self.safety.check_access(client, cmd.name)
-            if cmd.name not in ("ping", "pin"):
+            if cmd.name not in ("ping", "pin") and cmd.args[:1] != ("data",):
                 logger.info("%s: %s", client.rsplit("/", 1)[-1], line.strip()[:80])
             data = getattr(self, "cmd_" + cmd.name)(client, cmd)
-            self.send(format_ok(cmd.name, data))
+            self.reply(client, format_ok(cmd.name, data))
             if cmd.name in ("take", "status"):
                 self.streaming = True
                 self.push_status(force=True)
         except ProtocolError as exc:
-            self.send(format_err(exc.code, exc.text))
+            self.reply(client, format_err(exc.code, exc.text))
         except Exception as exc:          # міст не має падати через одну команду
             logger.exception("помилка команди")
-            self.send(format_err(E_CNC, str(exc) or exc.__class__.__name__))
+            self.reply(client, format_err(E_CNC, str(exc) or exc.__class__.__name__))
 
     # --- команди ---------------------------------------------------------
     # Кожна повертає дані для `OK <cmd> [дані]` або кидає ProtocolError.
@@ -177,10 +206,60 @@ class Bridge:
         self.safety.start_jogc(joint)
         return f"J{joint} {'+' if direction > 0 else '-'}{vel:g}"
 
+    def _world_vel(self, axis: str, vel: float) -> float:
+        cap = self.cfg["MAX_JOG_LIN"] if axis in LINEAR_AXES else None
+        return self.safety.clamp_velocity(vel, self.backend.axis_max_vel.get(axis), cap)
+
+    def cmd_jogw(self, client, cmd: Command):
+        axis, step = cmd.args
+        default = self.cfg["JOG_LIN"] if axis in LINEAR_AXES else self.cfg["JOG_VEL"]
+        vel = self._world_vel(axis, default)
+        self.backend.jog_world_increment(axis, step, vel)
+        return f"{axis} {step:g} @{vel:g}"
+
+    def cmd_jogwc(self, client, cmd: Command):
+        axis, direction, vel = cmd.args
+        vel = self._world_vel(axis, vel)
+        self.backend.jog_world_continuous(axis, direction, vel)
+        self.safety.start_jogc(axis)
+        return f"{axis} {'+' if direction > 0 else '-'}{vel:g}"
+
     def cmd_jogstop(self, client, cmd: Command):
-        joint = cmd.args[0]
-        self.safety.stop_jog(joint)
-        self.backend.jog_stop(list(range(MAX_JOINTS)) if joint is None else [joint])
+        target = cmd.args[0]
+        self.safety.stop_jog(target)
+        if target is None:
+            self.backend.jog_stop_all()
+        else:
+            self.backend.jog_stop([target])
+
+    def cmd_file(self, client, cmd: Command):
+        action = cmd.args[0]
+        if action == "begin":
+            self.uploads[client] = {"name": cmd.args[1], "parts": [], "size": 0}
+            return cmd.args[1]
+        upload = self.uploads.get(client)
+        if action == "abort":
+            self.uploads.pop(client, None)
+            return None
+        if upload is None:
+            raise ProtocolError(E_STATE, "спершу file begin <файл>")
+        if action == "data":
+            line = cmd.args[1]
+            upload["size"] += len(line.encode("utf-8")) + 1
+            if upload["size"] > MAX_PROGRAM_BYTES:
+                self.uploads.pop(client, None)
+                raise ProtocolError(E_SIZE, f"програма більша за {MAX_PROGRAM_BYTES} байт")
+            upload["parts"].append(line)
+            return None
+        # end
+        self.uploads.pop(client, None)
+        text = "\n".join(upload["parts"]) + "\n"
+        self.backend.write_program(upload["name"], text)
+        return f"{upload['name']} {len(text.encode('utf-8'))}"
+
+    def cmd_rm(self, client, cmd: Command):
+        self.backend.delete_program(cmd.args[0])
+        return cmd.args[0]
 
     def cmd_mdi(self, client, cmd: Command):
         self.backend.mdi(cmd.args[0])
@@ -213,16 +292,17 @@ class Bridge:
 
     # --- періодичні задачі ---------------------------------------------
 
-    def _stop_jogs(self, joints: list[int]) -> None:
-        if joints:
-            self.backend.jog_stop(joints)
+    def _stop_jogs(self, keys: list[int | str]) -> None:
+        if keys:
+            self.backend.jog_stop(keys)
 
     def watchdog_tick(self) -> None:
         late = self.safety.expired()
         if late:
             self.backend.jog_stop(late)
-            logger.warning("watchdog: зупинено J%s", ",".join(map(str, late)))
-            self.send(format_event_error("watchdog " + " ".join(f"J{j}" for j in late)))
+            names = " ".join(_jog_name(k) for k in late)
+            logger.warning("watchdog: зупинено %s", names)
+            self.send(format_event_error("watchdog " + names))
 
     def status_tick(self) -> None:
         for text in self.backend.poll_errors():
@@ -244,12 +324,14 @@ class Bridge:
 
     def client_disconnected(self, client: str) -> None:
         self.assemblers.pop(client, None)
+        self.uploads.pop(client, None)
+        self.tcp.pop(client, None)
         actions = self.safety.disconnect(client, self.backend.is_running())
         if not actions.released:
             return
         logger.warning("власник керування відключився")
-        # Зупиняємо всі joints: дешевше, ніж пропустити якийсь jog
-        self.backend.jog_stop(list(range(MAX_JOINTS)))
+        # Зупиняємо все: дешевше, ніж пропустити якийсь jog
+        self.backend.jog_stop_all()
         if actions.program:
             try:
                 if actions.program == "abort":
@@ -265,13 +347,15 @@ class Bridge:
         """Ніхто не підписаний на TX — вважаємо, що всі відключились."""
         if active:
             return
-        self.streaming = False
-        self.last_status = None
+        # TCP-клієнти від BLE-підписки не залежать
         clients = set(self.safety.authed)
         if self.safety.owner:
             clients.add(self.safety.owner)
-        for client in clients:
+        for client in clients - set(self.tcp):
             self.client_disconnected(client)
+        if not self.tcp:
+            self.streaming = False
+            self.last_status = None
 
 
 # ---------------------------------------------------------------------------
@@ -330,6 +414,12 @@ def main() -> None:
         return tick
 
     ble_gatt.register(bus, adapter, app, DBUS_APP_PATH + "/adv0", cfg["NAME"], fatal)
+    if cfg["TCP_PORT"] > 0:
+        from tcp_server import TcpServer
+        try:
+            TcpServer(bridge, cfg["TCP_BIND"], cfg["TCP_PORT"])
+        except OSError as exc:            # BLE має працювати навіть без TCP
+            logger.error("TCP-сервер не запущено: %s", exc)
     ble_gatt.watch_disconnects(bus, bridge.client_disconnected)
     GLib.timeout_add(WATCHDOG_TICK_MS, periodic(bridge.watchdog_tick))
     GLib.timeout_add(int(1000 / cfg["STATUS_HZ"]), periodic(bridge.status_tick))

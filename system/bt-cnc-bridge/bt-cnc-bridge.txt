@@ -23,5 +23,12 @@ JOG_VEL=10
 # Безперервний jog зупиняється, якщо ping не приходив довше, мс
 WATCHDOG_MS=500
 
+# Лінійні осі X Y Z при jog у світових координатах (одиниці INI: дюйми або мм за секунду)
+MAX_JOG_LIN=0.5
+JOG_LIN=0.2
+
 # Каталог програм для ls/open
 PROJECTS_DIR=/home/cnc/ProjectLinuxCNC
+
+# Доступ по Wi-Fi (TCP) з тим самим протоколом і PIN. 0 — вимкнути
+TCP_PORT=8765

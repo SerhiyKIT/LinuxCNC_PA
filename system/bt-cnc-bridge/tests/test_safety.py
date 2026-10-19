@@ -124,3 +124,15 @@ def test_non_owner_disconnect_changes_nothing(safety):
     actions = safety.disconnect("b", program_running=True)
     assert not actions.released and actions.program is None
     assert safety.owner == "a" and safety.jogging
+
+
+def test_watchdog_mixed_joint_and_axis_keys(safety, clock):
+    safety.start_jogc("X")
+    safety.start_jogc(1)
+    clock.advance(0.6)
+    assert safety.expired() == [1, "X"]
+
+
+def test_clamp_with_linear_cap(safety):
+    assert safety.clamp_velocity(5, 30, cap=0.5) == 0.5
+    assert safety.clamp_velocity(0.2, None, cap=0.5) == 0.2

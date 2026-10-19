@@ -26,7 +26,7 @@ DEST="$ROOT/usr/local/lib/bt-cnc-bridge"
 
 # Лише модулі мосту, без тестів
 install -d -m 755 "$DEST"
-for f in bt_cnc_bridge.py ble_gatt.py protocol.py cnc_backend.py safety.py bridge_constants.py; do
+for f in bt_cnc_bridge.py ble_gatt.py tcp_server.py protocol.py cnc_backend.py safety.py bridge_constants.py; do
     install -m 644 "$SRC/$f" "$DEST/$f"
 done
 chmod 755 "$DEST/bt_cnc_bridge.py"
