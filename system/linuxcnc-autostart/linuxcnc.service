@@ -1,0 +1,25 @@
+# Користувацький сервіс systemd: автозапуск LinuxCNC з robot.ini при старті Pi.
+# Встановлюється в ~/.config/systemd/user/ (sudo не потрібен), див. install.sh.
+# AXIS показується на віртуальному дисплеї VNC :1 (webvnc.service):
+# http://<IP Pi>:8080/vnc.html. Машина стартує в E-STOP.
+
+[Unit]
+Description=LinuxCNC (robot.ini) на дисплеї VNC :1
+
+[Service]
+Type=simple
+Environment=DISPLAY=:1
+Environment=XAUTHORITY=%h/.Xauthority
+WorkingDirectory=%h/linuxcnc/configs/LinuxCNC_PA
+# Чекаємо, поки webvnc підніме X-сервер :1 (до 2 хв)
+ExecStartPre=/bin/sh -c 'for i in $(seq 1 120); do [ -S /tmp/.X11-unix/X1 ] && exit 0; sleep 1; done; echo "немає дисплея :1"; exit 1'
+ExecStart=/usr/bin/linuxcnc %h/linuxcnc/configs/LinuxCNC_PA/robot.ini
+# Закрили AXIS вручну (код 0) — не перезапускаємо; впав — перезапуск
+Restart=on-failure
+RestartSec=10
+# SIGTERM лише скрипту linuxcnc, щоб він сам коректно зупинив HAL і realtime
+KillMode=mixed
+TimeoutStopSec=30
+
+[Install]
+WantedBy=default.target

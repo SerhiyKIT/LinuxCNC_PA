@@ -52,4 +52,6 @@ else
     systemctl enable --now bt-wifi-setup.service
     systemctl --no-pager status bt-wifi-setup.service | head -n 12 || true
 fi
+# Скинути дані на картку: якщо її вийняти одразу, файли можуть лишитися порожніми
+sync
 echo "Готово."

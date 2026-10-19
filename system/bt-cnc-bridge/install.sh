@@ -49,4 +49,6 @@ else
     systemctl restart bt-cnc-bridge.service
     systemctl --no-pager status bt-cnc-bridge.service | head -n 12 || true
 fi
+# Скинути дані на картку: якщо її вийняти одразу, файли можуть лишитися порожніми
+sync
 echo "Готово."
