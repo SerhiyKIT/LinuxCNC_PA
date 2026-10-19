@@ -12,6 +12,7 @@ from typing import Callable
 from bleak import BleakClient, BleakScanner
 
 from protocol_client import DEVICE_NAME, RX_UUID, SERVICE_UUID, TX_UUID
+from setup_client import SETUP_DEVICE_NAME, SETUP_SERVICE_UUID
 
 logger = logging.getLogger(__name__)
 
@@ -28,22 +29,29 @@ class FoundDevice:
 
 
 async def scan(timeout: float = SCAN_TIMEOUT) -> list[FoundDevice]:
-    """Пристрої з сервісом мосту або з ім'ям CNC-Robot, сильніші першими."""
+    """
+    Роботи поблизу, сильніші першими. Один Pi рекламує по черзі CNC-Robot
+    (міст) і CNC-Setup (Wi-Fi), тому шукаємо за обома і групуємо за адресою.
+    """
     found = await BleakScanner.discover(timeout=timeout, return_adv=True)
     result = []
     for device, adv in found.values():
         name = adv.local_name or device.name or ""
         uuids = [u.lower() for u in adv.service_uuids]
-        if SERVICE_UUID in uuids or name.startswith(DEVICE_NAME):
+        if (SERVICE_UUID in uuids or SETUP_SERVICE_UUID in uuids
+                or name.startswith((DEVICE_NAME, SETUP_DEVICE_NAME))):
             result.append(FoundDevice(name or device.address, device.address, adv.rssi))
     return sorted(result, key=lambda d: -d.rssi)
 
 
 class BleTransport:
     def __init__(self, on_data: Callable[[bytes], None],
-                 on_disconnect: Callable[[], None]) -> None:
+                 on_disconnect: Callable[[], None],
+                 rx_uuid: str = RX_UUID, tx_uuid: str = TX_UUID) -> None:
+        """Типово — міст CNC-Robot; для CNC-Setup передайте UUID Nordic UART."""
         self.on_data = on_data
         self.on_disconnect = on_disconnect
+        self.rx_uuid, self.tx_uuid = rx_uuid, tx_uuid
         self.client: BleakClient | None = None
         self.write_size = DEFAULT_WRITE_SIZE
 
@@ -59,7 +67,7 @@ class BleTransport:
             self.write_size = max(DEFAULT_WRITE_SIZE, min(client.mtu_size - 3, MAX_WRITE_SIZE))
         except Exception:
             self.write_size = DEFAULT_WRITE_SIZE
-        await client.start_notify(TX_UUID, lambda _char, data: self.on_data(bytes(data)))
+        await client.start_notify(self.tx_uuid, lambda _char, data: self.on_data(bytes(data)))
         self.client = client
         logger.info("підключено до %s, пакет %d байт", address, self.write_size)
 
@@ -68,7 +76,7 @@ class BleTransport:
             raise ConnectionError("немає з'єднання")
         for i in range(0, len(data), self.write_size):
             # З підтвердженням: порядок і доставка важливіші за швидкість
-            await self.client.write_gatt_char(RX_UUID, data[i:i + self.write_size], response=True)
+            await self.client.write_gatt_char(self.rx_uuid, data[i:i + self.write_size], response=True)
 
     async def disconnect(self) -> None:
         client, self.client = self.client, None

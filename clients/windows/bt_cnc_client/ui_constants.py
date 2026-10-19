@@ -2,6 +2,8 @@
 """Тексти, кольори і стилі вікна клієнта."""
 
 WINDOW_TITLE = "CNC-Robot Studio"
+SETTINGS_ORG = "CNC-Robot"          # QSettings: на Windows — реєстр HKCU\Software\CNC-Robot
+SETTINGS_APP = "Studio"
 WINDOW_SIZE  = (1280, 860)
 
 JOINT_NAMES = ["J0", "J1", "J2", "J3", "J4", "J5"]
