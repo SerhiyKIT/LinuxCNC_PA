@@ -25,6 +25,9 @@ RX_UUID      = "a002da02-7653-4ff1-a840-6568658847c6"   # клієнт -> Pi (wr
 TX_UUID      = "a002da03-7653-4ff1-a840-6568658847c6"   # Pi -> клієнт (notify)
 DEVICE_NAME  = "CNC-Robot"
 JOINTS       = 6
+AXES         = "XYZABC"
+TCP_PORT     = 8765                                     # Wi-Fi доступ до мосту
+DEFAULT_HOST = "linuxcnc.local"
 
 PING_INTERVAL   = 0.2    # с, heartbeat під час jogc (watchdog мосту — 500 мс)
 COMMAND_TIMEOUT = 5.0    # с, очікування OK/ERR
@@ -67,6 +70,8 @@ class Status:
     fo: int = 100
     ro: int = 100
     ctl: int = 0
+    w: list[float] = field(default_factory=list)   # X Y Z A B C (машинні)
+    u: str = "in"
 
     @classmethod
     def from_json(cls, text: str) -> "Status":
@@ -249,8 +254,38 @@ class CncClient:
     async def jog_continuous(self, joint: int, direction: int, vel: float) -> str:
         return await self.command(f"jogc J{joint} {'+' if direction > 0 else '-'} {vel:g}")
 
-    async def jog_stop(self, joint: int | None = None) -> None:
-        await self.command("jogstop" if joint is None else f"jogstop J{joint}")
+    async def jog_stop(self, target: int | str | None = None) -> None:
+        """target: joint (int), вісь X..C (str) або None — усе."""
+        if target is None:
+            await self.command("jogstop")
+        else:
+            await self.command(f"jogstop {_target(target)}")
+
+    async def jog_world_step(self, axis: str, step: float) -> str:
+        return await self.command(f"jogw {axis} {step:+g}")
+
+    async def jog_world_continuous(self, axis: str, direction: int, vel: float) -> str:
+        return await self.command(f"jogwc {axis} {'+' if direction > 0 else '-'} {vel:g}")
+
+    async def upload_program(self, name: str, text: str,
+                             progress: Callable[[int, int], None] = lambda i, n: None) -> str:
+        """Передає файл рядками (file begin/data/end). При помилці — file abort."""
+        lines = text.rstrip("\n").split("\n")
+        await self.command(f"file begin {name}")
+        try:
+            for i, line in enumerate(lines, 1):
+                await self.command(f"file data {line}")
+                progress(i, len(lines))
+            return await self.command("file end")
+        except CommandError:
+            try:
+                await self.command("file abort")
+            except CommandError:
+                pass
+            raise
+
+    async def delete_program(self, name: str) -> None:
+        await self.command(f"rm {name}")
 
     async def ping(self) -> None:
         await self.command("ping", timeout=1.0)
@@ -283,6 +318,10 @@ class CncClient:
         await self.command(f"fo {int(percent)}")
 
 
+def _target(target: int | str) -> str:
+    return target if isinstance(target, str) else f"J{target}"
+
+
 class JogHold:
     """
     Безперервний jog, поки кнопку утримують: `jogc` + `ping` кожні 200 мс,
@@ -294,7 +333,7 @@ class JogHold:
         self.client = client
         self.on_error = on_error
         self.interval = interval
-        self.joint: int | None = None
+        self.joint: int | str | None = None   # joint (int) або вісь X..C (str)
         self.task: asyncio.Task | None = None
         # Збільшується при кожному stop: якщо кнопку відпустили, поки йшов
         # jogc, heartbeat запускати не можна
@@ -304,12 +343,16 @@ class JogHold:
     def active(self) -> bool:
         return self.joint is not None
 
-    async def start(self, joint: int, direction: int, vel: float) -> None:
+    async def start(self, joint: int | str, direction: int, vel: float) -> None:
+        """joint — номер joint або світова вісь 'X'..'C'."""
         await self.stop()
         generation = self.generation
         self.joint = joint
         try:
-            await self.client.jog_continuous(joint, direction, vel)
+            if isinstance(joint, str):
+                await self.client.jog_world_continuous(joint, direction, vel)
+            else:
+                await self.client.jog_continuous(joint, direction, vel)
         except CommandError:
             if self.generation == generation:
                 self.joint = None

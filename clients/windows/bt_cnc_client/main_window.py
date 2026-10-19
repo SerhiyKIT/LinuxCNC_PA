@@ -1,7 +1,10 @@
 # clients/windows/bt_cnc_client/main_window.py
 """
-Головне вікно клієнта (PyQt5). Уся логіка протоколу — у protocol_client.py,
-тут лише віджети і виклик async-методів через qasync.
+Головне вікно CNC-Robot Studio (PyQt5).
+
+Вкладки: «Керування» (стан, живлення, jog, програми, MDI) і «Навчання»
+(teach_panel.py). Логіка протоколу — у protocol_client.py, транспорти —
+tcp_transport.py (Wi-Fi) і ble_transport.py (Bluetooth); тут лише віджети.
 """
 from __future__ import annotations
 
@@ -11,8 +14,11 @@ import logging
 from PyQt5 import QtCore, QtWidgets
 
 import ui_constants as ui
-from ble_transport import BleTransport, scan
-from protocol_client import CncClient, CommandError, JogHold, JOINTS, Status
+from protocol_client import (
+    AXES, DEFAULT_HOST, JOINTS, CncClient, CommandError, JogHold, Status,
+)
+from tcp_transport import TcpTransport
+from teach_panel import TeachPanel
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +29,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setWindowTitle(ui.WINDOW_TITLE)
         self.resize(*ui.WINDOW_SIZE)
 
-        self.transport = BleTransport(on_data=self._on_data, on_disconnect=self._on_link_lost)
-        self.client = CncClient(self.transport.write, on_status=self.show_status,
+        self.transport = None                   # TcpTransport або BleTransport
+        self.client = CncClient(self._write, on_status=self.show_status,
                                 on_event_error=lambda t: self.log(f"⚠ {t}"),
                                 on_line=lambda d, t: self.log(f"{d} {t}"))
         self.jog = JogHold(self.client, on_error=lambda t: self.log(f"⚠ {t}"))
@@ -43,32 +49,34 @@ class MainWindow(QtWidgets.QMainWindow):
         root = QtWidgets.QVBoxLayout(central)
         root.addLayout(self._build_connection())
 
-        body = QtWidgets.QHBoxLayout()
-        left = QtWidgets.QVBoxLayout()
-        left.addWidget(self._build_safety())
-        left.addWidget(self._build_status())
-        left.addWidget(self._build_jog())
-        body.addLayout(left, 3)
-
-        right = QtWidgets.QVBoxLayout()
-        right.addWidget(self._build_program())
-        right.addWidget(self._build_mdi())
-        right.addWidget(self._build_log(), 1)
-        body.addLayout(right, 2)
-
-        root.addLayout(body, 1)
+        split = QtWidgets.QSplitter(QtCore.Qt.Vertical)
+        self.tabs = QtWidgets.QTabWidget()
+        self.tabs.addTab(self._build_control_tab(), "Керування")
+        self.teach = TeachPanel(self.client, self.run, self.log)
+        self.tabs.addTab(self.teach, "Навчання (програма без коду)")
+        split.addWidget(self.tabs)
+        split.addWidget(self._build_log())
+        split.setStretchFactor(0, 5)
+        split.setStretchFactor(1, 1)
+        root.addWidget(split, 1)
         self.setCentralWidget(central)
 
     def _build_connection(self) -> QtWidgets.QHBoxLayout:
         row = QtWidgets.QHBoxLayout()
+        self.transport_box = QtWidgets.QComboBox()
+        self.transport_box.addItems([ui.TRANSPORT_WIFI, ui.TRANSPORT_BLE])
+        self.transport_box.currentTextChanged.connect(self._on_transport_changed)
+        self.host_edit = QtWidgets.QLineEdit(DEFAULT_HOST)
+        self.host_edit.setToolTip("Ім'я або IP Raspberry Pi, напр. 192.168.1.20 (порт 8765)")
+        self.host_edit.setMinimumWidth(180)
         self.device_box = QtWidgets.QComboBox()
         self.device_box.setMinimumWidth(260)
         self.scan_btn = QtWidgets.QPushButton("Пошук")
-        self.connect_btn = QtWidgets.QPushButton("Підключити")
         self.pin_edit = QtWidgets.QLineEdit()
         self.pin_edit.setPlaceholderText("PIN")
         self.pin_edit.setEchoMode(QtWidgets.QLineEdit.Password)
         self.pin_edit.setMaximumWidth(100)
+        self.connect_btn = QtWidgets.QPushButton("Підключити")
         self.take_btn = QtWidgets.QPushButton("Взяти керування")
         self.take_btn.setCheckable(True)
         self.link_label = QtWidgets.QLabel()
@@ -78,11 +86,27 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pin_edit.returnPressed.connect(lambda: self.run(self.do_connect_toggle()))
         self.take_btn.clicked.connect(lambda checked: self.run(self.do_take(checked)))
 
-        for w in (QtWidgets.QLabel("Пристрій:"), self.device_box, self.scan_btn,
+        for w in (self.transport_box, self.host_edit, self.device_box, self.scan_btn,
                   self.pin_edit, self.connect_btn, self.take_btn, self.link_label):
             row.addWidget(w)
         row.addStretch(1)
+        self._on_transport_changed(self.transport_box.currentText())
         return row
+
+    def _build_control_tab(self) -> QtWidgets.QWidget:
+        tab = QtWidgets.QWidget()
+        body = QtWidgets.QHBoxLayout(tab)
+        left = QtWidgets.QVBoxLayout()
+        left.addWidget(self._build_safety())
+        left.addWidget(self._build_status())
+        left.addWidget(self._build_jog())
+        body.addLayout(left, 3)
+        right = QtWidgets.QVBoxLayout()
+        right.addWidget(self._build_program())
+        right.addWidget(self._build_mdi())
+        right.addStretch(1)
+        body.addLayout(right, 2)
+        return tab
 
     def _build_safety(self) -> QtWidgets.QGroupBox:
         box = QtWidgets.QGroupBox("Безпека і живлення")
@@ -118,73 +142,87 @@ class MainWindow(QtWidgets.QMainWindow):
         row.addStretch(1)
         lay.addLayout(row)
 
-        self.joint_table = QtWidgets.QTableWidget(JOINTS, 2)
-        self.joint_table.setHorizontalHeaderLabels(["Позиція, °", "Home"])
-        self.joint_table.setVerticalHeaderLabels(ui.JOINT_NAMES)
-        self.joint_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-        self.joint_table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
-        self.joint_table.setMaximumHeight(230)
+        self.pos_table = QtWidgets.QTableWidget(JOINTS, 4)
+        self.pos_table.setHorizontalHeaderLabels(["Joint, °", "Home", "Вісь", "Світ"])
+        self.pos_table.setVerticalHeaderLabels(ui.JOINT_NAMES)
+        self.pos_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.pos_table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        self.pos_table.setMaximumHeight(230)
         for r in range(JOINTS):
-            for c in range(2):
-                item = QtWidgets.QTableWidgetItem("—")
+            for c in range(4):
+                item = QtWidgets.QTableWidgetItem(ui.AXIS_NAMES[r] if c == 2 else "—")
                 item.setTextAlignment(QtCore.Qt.AlignCenter)
-                self.joint_table.setItem(r, c, item)
-        lay.addWidget(self.joint_table)
+                self.pos_table.setItem(r, c, item)
+        lay.addWidget(self.pos_table)
         return box
 
     def _build_jog(self) -> QtWidgets.QGroupBox:
         box = QtWidgets.QGroupBox("Jog")
         lay = QtWidgets.QVBoxLayout(box)
         opts = QtWidgets.QHBoxLayout()
+        self.jog_space = QtWidgets.QComboBox()
+        self.jog_space.addItems([ui.SPACE_JOINTS, ui.SPACE_WORLD])
+        self.jog_space.currentTextChanged.connect(self._on_jog_space)
         self.jog_mode = QtWidgets.QComboBox()
         self.jog_mode.addItems([ui.MODE_CONTINUOUS, ui.MODE_STEP])
         self.jog_vel = QtWidgets.QDoubleSpinBox()
         self.jog_vel.setRange(*ui.JOG_VEL_RANGE)
         self.jog_vel.setValue(ui.JOG_VEL_DEFAULT)
         self.jog_vel.setSuffix(" °/с")
+        self.jog_lin = QtWidgets.QDoubleSpinBox()
+        self.jog_lin.setDecimals(3)
+        self.jog_lin.setRange(*ui.JOG_LIN_RANGE)
+        self.jog_lin.setValue(ui.JOG_LIN_DEFAULT)
+        self.jog_lin.setSuffix(" од./с")
         self.jog_step = QtWidgets.QDoubleSpinBox()
+        self.jog_step.setDecimals(3)
         self.jog_step.setRange(*ui.JOG_STEP_RANGE)
         self.jog_step.setValue(ui.JOG_STEP_DEFAULT)
-        self.jog_step.setSuffix(" °")
-        for w in (QtWidgets.QLabel("Режим:"), self.jog_mode, QtWidgets.QLabel("Швидкість:"),
-                  self.jog_vel, QtWidgets.QLabel("Крок:"), self.jog_step):
+        self.jog_lin_label = QtWidgets.QLabel("X Y Z:")
+        for w in (self.jog_space, self.jog_mode, QtWidgets.QLabel("Швидкість:"), self.jog_vel,
+                  self.jog_lin_label, self.jog_lin, QtWidgets.QLabel("Крок:"), self.jog_step):
             opts.addWidget(w)
         opts.addStretch(1)
         lay.addLayout(opts)
 
         grid = QtWidgets.QGridLayout()
-        self.jog_buttons = []
-        for j in range(JOINTS):
+        self.jog_buttons, self.jog_labels = [], []
+        for i in range(JOINTS):
+            label = QtWidgets.QLabel(ui.JOINT_NAMES[i])
             minus = QtWidgets.QPushButton("−")
             plus = QtWidgets.QPushButton("+")
             for btn, direction in ((minus, -1), (plus, 1)):
                 btn.setStyleSheet(ui.JOG_BUTTON_STYLE)
-                btn.pressed.connect(lambda j=j, d=direction: self.run(self.do_jog_press(j, d)))
+                btn.pressed.connect(lambda i=i, d=direction: self.run(self.do_jog_press(i, d)))
                 btn.released.connect(lambda: self.run(self.do_jog_release()))
                 self.jog_buttons.append(btn)
-            grid.addWidget(QtWidgets.QLabel(ui.JOINT_NAMES[j]), j // 3, (j % 3) * 3)
-            grid.addWidget(minus, j // 3, (j % 3) * 3 + 1)
-            grid.addWidget(plus, j // 3, (j % 3) * 3 + 2)
+            grid.addWidget(label, i // 3, (i % 3) * 3)
+            grid.addWidget(minus, i // 3, (i % 3) * 3 + 1)
+            grid.addWidget(plus, i // 3, (i % 3) * 3 + 2)
+            self.jog_labels.append(label)
         lay.addLayout(grid)
+        self._on_jog_space(self.jog_space.currentText())
         return box
 
     def _build_program(self) -> QtWidgets.QGroupBox:
-        box = QtWidgets.QGroupBox("Програма")
+        box = QtWidgets.QGroupBox("Програми на роботі")
         lay = QtWidgets.QVBoxLayout(box)
         self.prog_label = QtWidgets.QLabel("Файл: —")
         lay.addWidget(self.prog_label)
         self.files = QtWidgets.QListWidget()
-        self.files.setMaximumHeight(150)
+        self.files.setMaximumHeight(160)
         self.files.itemDoubleClicked.connect(lambda item: self.run(self.client.open_program(item.text())))
         lay.addWidget(self.files)
 
         row = QtWidgets.QHBoxLayout()
         self.ls_btn = QtWidgets.QPushButton("Оновити")
         self.open_btn = QtWidgets.QPushButton("Відкрити")
+        self.rm_btn = QtWidgets.QPushButton("Видалити")
         self.ls_btn.clicked.connect(lambda: self.run(self.do_list()))
         self.open_btn.clicked.connect(lambda: self.run(self.do_open()))
-        row.addWidget(self.ls_btn)
-        row.addWidget(self.open_btn)
+        self.rm_btn.clicked.connect(lambda: self.run(self.do_delete()))
+        for w in (self.ls_btn, self.open_btn, self.rm_btn):
+            row.addWidget(w)
         lay.addLayout(row)
 
         row = QtWidgets.QHBoxLayout()
@@ -251,12 +289,24 @@ class MainWindow(QtWidgets.QMainWindow):
     def log(self, text: str) -> None:
         self.log_view.appendPlainText(text)
 
+    async def _write(self, data: bytes) -> None:
+        if self.transport is None:
+            raise ConnectionError("немає з'єднання")
+        await self.transport.write(data)
+
+    @property
+    def is_wifi(self) -> bool:
+        return self.transport_box.currentText() == ui.TRANSPORT_WIFI
+
+    @property
+    def connected(self) -> bool:
+        return self.transport is not None and self.transport.connected
+
     def set_connected(self, connected: bool) -> None:
         self.connect_btn.setText("Відключити" if connected else "Підключити")
         self.link_label.setText("🟢 підключено" if connected else "⚪ не підключено")
-        self.scan_btn.setEnabled(not connected)
-        self.device_box.setEnabled(not connected)
-        self.pin_edit.setEnabled(not connected)
+        for w in (self.transport_box, self.host_edit, self.device_box, self.scan_btn, self.pin_edit):
+            w.setEnabled(not connected)
         self.take_btn.setEnabled(connected)
         # E-stop доступний одразу після PIN, навіть без take
         self.estop_btn.setEnabled(connected)
@@ -271,10 +321,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.owner = owner
         self.take_btn.setChecked(owner)
         self.take_btn.setText("Віддати керування" if owner else "Взяти керування")
-        for w in ([self.reset_btn, self.power_btn, self.home_btn, self.open_btn, self.mdi_btn,
-                   self.mdi_edit, self.fo_slider, self.jog_mode, self.jog_vel, self.jog_step]
+        for w in ([self.reset_btn, self.power_btn, self.home_btn, self.open_btn, self.rm_btn,
+                   self.mdi_btn, self.mdi_edit, self.fo_slider, self.jog_space, self.jog_mode,
+                   self.jog_vel, self.jog_lin, self.jog_step]
                   + self.jog_buttons + self.cycle_buttons):
             w.setEnabled(owner)
+        self.teach.set_owner(owner)
 
     def show_status(self, s: Status) -> None:
         color = ui.COLORS.get(s.st, ui.COLORS["nocnc"])
@@ -291,55 +343,79 @@ class MainWindow(QtWidgets.QMainWindow):
             self.fo_slider.blockSignals(False)
             self.fo_label.setText(f"Feed {s.fo}%")
         for j in range(JOINTS):
-            pos = f"{s.j[j]:.3f}" if j < len(s.j) else "—"
             homed = j < len(s.homed) and s.homed[j]
-            self.joint_table.item(j, 0).setText(pos)
-            item = self.joint_table.item(j, 1)
+            self.pos_table.item(j, 0).setText(f"{s.j[j]:.3f}" if j < len(s.j) else "—")
+            item = self.pos_table.item(j, 1)
             item.setText("✔" if homed else "—")
             item.setForeground(QtCore.Qt.darkGreen if homed else QtCore.Qt.gray)
+            unit = s.u if j < 3 else "°"
+            self.pos_table.item(j, 3).setText(f"{s.w[j]:.3f} {unit}" if j < len(s.w) else "—")
+        self.teach.set_status(s)
 
     # -----------------------------------------------------------------------
     # Дії
     # -----------------------------------------------------------------------
 
+    def _on_transport_changed(self, text: str) -> None:
+        wifi = text == ui.TRANSPORT_WIFI
+        self.host_edit.setVisible(wifi)
+        self.device_box.setVisible(not wifi)
+        self.scan_btn.setVisible(not wifi)
+
     async def do_scan(self) -> None:
+        from ble_transport import scan       # bleak потрібен лише для Bluetooth
         self.scan_btn.setEnabled(False)
         self.log("Пошук пристроїв...")
         try:
             devices = await scan()
         finally:
-            self.scan_btn.setEnabled(not self.transport.connected)
+            self.scan_btn.setEnabled(not self.connected)
         self.device_box.clear()
         for d in devices:
             self.device_box.addItem(f"{d.name}  ({d.address}, {d.rssi} dBm)", d.address)
         self.log(f"Знайдено: {len(devices)}" if devices else "CNC-Robot не знайдено")
 
     async def do_connect_toggle(self) -> None:
-        if self.transport.connected:
-            await self.jog.stop()
-            await self.transport.disconnect()
-            self.client.connection_lost()
-            self.set_connected(False)
+        if self.connected:
+            await self._disconnect()
             self.log("Відключено")
             return
-        address = self.device_box.currentData()
+        if self.is_wifi:
+            address = self.host_edit.text().strip()
+            transport = TcpTransport(on_data=self._on_data, on_disconnect=self._on_link_lost)
+        else:
+            from ble_transport import BleTransport
+            address = self.device_box.currentData()
+            transport = BleTransport(on_data=self._on_data, on_disconnect=self._on_link_lost)
         if not address:
-            self.log("Спершу знайдіть пристрій (Пошук)")
+            self.log("Вкажіть адресу робота" if self.is_wifi else "Спершу знайдіть пристрій (Пошук)")
             return
         self.log(f"Підключення до {address}...")
-        await self.transport.connect(address)
+        self.transport = transport
+        try:
+            await transport.connect(address)
+        except Exception:
+            self.transport = None
+            raise
         try:
             version = await self.client.version()
             if version != 1:
-                self.log(f"⚠ протокол v{version}, клієнт розрахований на v1")
+                self.log(f"⚠ протокол v{version}, програма розрахована на v1")
             await self.client.login(self.pin_edit.text().strip())
             await self.client.request_status()
         except CommandError:
-            await self.transport.disconnect()
-            self.client.connection_lost()
+            await self._disconnect()
             raise
         self.set_connected(True)
         self.log("Підключено. Натисніть «Взяти керування»")
+
+    async def _disconnect(self) -> None:
+        await self.jog.stop()
+        transport, self.transport = self.transport, None
+        if transport is not None:
+            await transport.disconnect()
+        self.client.connection_lost()
+        self.set_connected(False)
 
     async def do_take(self, checked: bool) -> None:
         try:
@@ -357,11 +433,30 @@ class MainWindow(QtWidgets.QMainWindow):
         await self.jog.stop()
         await self.client.estop(True)
 
-    async def do_jog_press(self, joint: int, direction: int) -> None:
-        if self.jog_mode.currentText() == ui.MODE_STEP:
-            await self.client.jog_step(joint, direction * self.jog_step.value())
+    @property
+    def jog_world(self) -> bool:
+        return self.jog_space.currentText() == ui.SPACE_WORLD
+
+    def _on_jog_space(self, _text: str) -> None:
+        names = ui.AXIS_NAMES if self.jog_world else ui.JOINT_NAMES
+        for label, name in zip(self.jog_labels, names):
+            label.setText(name)
+        self.jog_lin.setVisible(self.jog_world)
+        self.jog_lin_label.setVisible(self.jog_world)
+
+    async def do_jog_press(self, index: int, direction: int) -> None:
+        step = direction * self.jog_step.value()
+        if self.jog_world:
+            axis = AXES[index]
+            vel = self.jog_lin.value() if axis in "XYZ" else self.jog_vel.value()
+            if self.jog_mode.currentText() == ui.MODE_STEP:
+                await self.client.jog_world_step(axis, step)
+            else:
+                await self.jog.start(axis, direction, vel)
+        elif self.jog_mode.currentText() == ui.MODE_STEP:
+            await self.client.jog_step(index, step)
         else:
-            await self.jog.start(joint, direction, self.jog_vel.value())
+            await self.jog.start(index, direction, self.jog_vel.value())
 
     async def do_jog_release(self) -> None:
         if self.jog.active:
@@ -379,6 +474,15 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         await self.client.open_program(item.text())
 
+    async def do_delete(self) -> None:
+        item = self.files.currentItem()
+        if item is None:
+            return
+        answer = QtWidgets.QMessageBox.question(self, "Видалити", f"Видалити {item.text()} з робота?")
+        if answer == QtWidgets.QMessageBox.Yes:
+            await self.client.delete_program(item.text())
+            await self.do_list()
+
     async def do_mdi(self) -> None:
         code = self.mdi_edit.text().strip()
         if code:
@@ -394,6 +498,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def _on_link_lost(self) -> None:
         # Міст сам зупинить jog і поставить програму на паузу
         self.jog.reset()
+        self.transport = None
         self.client.connection_lost()
         self.set_connected(False)
         self.log("⚠ З'єднання втрачено")
@@ -404,7 +509,10 @@ class MainWindow(QtWidgets.QMainWindow):
             self.run(self.jog.stop())
 
     def closeEvent(self, event) -> None:
-        if self.transport.connected:
+        if self.teach.dirty and not self.teach.confirm_discard():
+            event.ignore()
+            return
+        if self.connected:
             self.run(self._shutdown())
         super().closeEvent(event)
 
@@ -415,4 +523,5 @@ class MainWindow(QtWidgets.QMainWindow):
                 await self.client.release()
             except CommandError:
                 pass
-        await self.transport.disconnect()
+        if self.transport is not None:
+            await self.transport.disconnect()
