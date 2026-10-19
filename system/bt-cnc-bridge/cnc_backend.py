@@ -15,8 +15,9 @@ import time
 from typing import Any, Callable
 
 from bridge_constants import (
-    E_CNC, E_NOCNC, E_NOFILE, E_PATH, E_STATE, E_TIMEOUT, MAX_JOINTS,
-    POSITION_DIGITS, PROGRAM_EXTS, RECONNECT_SEC, WAIT_TIMEOUT,
+    AXES, E_CNC, E_NOCNC, E_NOFILE, E_PATH, E_SIZE, E_STATE, E_TIMEOUT,
+    MAX_JOINTS, MAX_PROGRAM_BYTES, POSITION_DIGITS, PROGRAM_EXTS,
+    RECONNECT_SEC, WAIT_TIMEOUT,
 )
 from protocol import ProtocolError, validate_program_name
 
@@ -45,6 +46,7 @@ class CncBackend:
         self.cmd = None
         self.errors = None
         self.joint_max_vel: dict[int, float] = {}
+        self.axis_max_vel: dict[str, float] = {}
         self.last_attempt = -RECONNECT_SEC
 
     # -----------------------------------------------------------------------
@@ -62,20 +64,24 @@ class CncBackend:
         self.cmd = lc.command()
         self.errors = lc.error_channel()
         self.stat = stat
-        self.joint_max_vel = self._read_joint_limits(stat)
+        self.joint_max_vel, self.axis_max_vel = self._read_limits(stat)
         logger.info("підключено до LinuxCNC (%s)", stat.ini_filename)
 
-    def _read_joint_limits(self, stat) -> dict[int, float]:
-        limits = {}
+    def _read_limits(self, stat) -> tuple[dict[int, float], dict[str, float]]:
+        joints, axes = {}, {}
         try:
             ini = self.lc.ini(stat.ini_filename)
             for j in range(self.joint_count()):
                 value = ini.find(f"JOINT_{j}", "MAX_VELOCITY")
                 if value is not None:
-                    limits[j] = float(value)
-        except Exception as exc:          # без INI просто не обрізаємо по joint
+                    joints[j] = float(value)
+            for axis in AXES:
+                value = ini.find(f"AXIS_{axis}", "MAX_VELOCITY")
+                if value is not None:
+                    axes[axis] = float(value)
+        except Exception as exc:          # без INI просто не обрізаємо по INI
             logger.warning("не вдалося прочитати ліміти з INI: %s", exc)
-        return limits
+        return joints, axes
 
     def disconnect(self) -> None:
         if self.connected:
@@ -148,7 +154,15 @@ class CncBackend:
             "run":   self._run_name(s),
             "fo":    round(s.feedrate * 100),
             "ro":    round(s.rapidrate * 100),
+            # Світова позиція X Y Z A B C (машинні координати, без зміщень G54)
+            "w":     [round(v, POSITION_DIGITS) for v in s.actual_position[:len(AXES)]],
+            "u":     self._units(s),
         }
+
+    @staticmethod
+    def _units(s) -> str:
+        # linear_units — машинних одиниць на мм: 1/25.4 для дюймів
+        return "in" if abs(s.linear_units - 1 / 25.4) < 1e-6 else "mm"
 
     def is_running(self) -> bool:
         """Програма/MDI виконується або на паузі (не idle)."""
@@ -213,6 +227,12 @@ class CncBackend:
         self.cmd.teleop_enable(0)
         self._wait()
 
+    def _world_mode(self) -> None:
+        """Ручний режим + teleop (jog у світових осях через кінематику)."""
+        self._set_mode(self.lc.MODE_MANUAL)
+        self.cmd.teleop_enable(1)
+        self._wait()
+
     # -----------------------------------------------------------------------
     # Команди
     # -----------------------------------------------------------------------
@@ -268,15 +288,47 @@ class CncBackend:
         self._prepare_jog(joint)
         self.cmd.jog(self.lc.JOG_CONTINUOUS, True, joint, direction * vel)
 
-    def jog_stop(self, joints: list[int]) -> None:
-        """Зупинка без передумов — має спрацювати завжди, коли є з'єднання."""
+    def _prepare_world_jog(self) -> None:
+        s = self.poll()
+        self._require_on(s)
+        self._require_homed(s)         # без home кінематика не визначена
+        self._require_idle(s)
+        self._world_mode()
+
+    def jog_world_increment(self, axis: str, step: float, vel: float) -> None:
+        self._prepare_world_jog()
+        speed = vel if step > 0 else -vel
+        self.cmd.jog(self.lc.JOG_INCREMENT, False, AXES.index(axis), speed, abs(step))
+
+    def jog_world_continuous(self, axis: str, direction: int, vel: float) -> None:
+        self._prepare_world_jog()
+        self.cmd.jog(self.lc.JOG_CONTINUOUS, False, AXES.index(axis), direction * vel)
+
+    def jog_stop(self, targets: list[int | str]) -> None:
+        """
+        Зупинка без передумов — має спрацювати завжди, коли є з'єднання.
+        int — joint, str — світова вісь X..C.
+        """
         if not self.connected:
             return
-        for joint in joints:
+        for target in targets:
             try:
-                self.cmd.jog(self.lc.JOG_STOP, True, joint)
+                if isinstance(target, str):
+                    self.cmd.jog(self.lc.JOG_STOP, False, AXES.index(target))
+                else:
+                    self.cmd.jog(self.lc.JOG_STOP, True, target)
             except Exception as exc:
-                logger.error("jog stop J%d: %s", joint, exc)
+                logger.error("jog stop %s: %s", target, exc)
+
+    def jog_stop_all(self) -> None:
+        """Зупинити будь-який jog у поточному режимі (joint або teleop)."""
+        if not self.connected:
+            return
+        try:
+            teleop = self.poll().motion_mode == self.lc.TRAJ_MODE_TELEOP
+        except CncError:
+            return
+        self.jog_stop(list(AXES) if teleop else list(range(self.joint_count())))
 
     def mdi(self, code: str) -> None:
         s = self.poll()
@@ -296,7 +348,7 @@ class CncBackend:
                       if n.lower().endswith(PROGRAM_EXTS) and not n.startswith(".")
                       and os.path.isfile(os.path.join(self.projects_dir, n)))
 
-    def program_path(self, name: str) -> str:
+    def program_path(self, name: str, must_exist: bool = True) -> str:
         """Повний шлях до файлу лише всередині PROJECTS_DIR (з урахуванням symlink)."""
         try:
             validate_program_name(name)
@@ -306,9 +358,39 @@ class CncBackend:
         path = os.path.realpath(os.path.join(base, name))
         if os.path.dirname(path) != base:
             raise CncError(E_PATH, "файл поза каталогом проєктів")
-        if not os.path.isfile(path):
+        if must_exist and not os.path.isfile(path):
             raise CncError(E_NOFILE, f"файл '{name}' не знайдено")
         return path
+
+    def _require_not_running_file(self, path: str) -> None:
+        """Не чіпати файл, який LinuxCNC зараз виконує."""
+        if not self.connected:
+            return
+        try:
+            s = self.poll()
+        except CncError:
+            return
+        if s.interp_state != self.lc.INTERP_IDLE and os.path.realpath(s.file or "") == path:
+            raise CncError(E_STATE, "файл зараз виконується")
+
+    def write_program(self, name: str, text: str) -> None:
+        """Атомарний запис програми в PROJECTS_DIR (tmp + rename)."""
+        data = text.encode("utf-8")
+        if len(data) > MAX_PROGRAM_BYTES:
+            raise CncError(E_SIZE, f"програма більша за {MAX_PROGRAM_BYTES} байт")
+        if not os.path.isdir(self.projects_dir):
+            raise CncError(E_NOFILE, f"немає каталогу {self.projects_dir}")
+        path = self.program_path(name, must_exist=False)
+        self._require_not_running_file(path)
+        tmp = os.path.join(os.path.dirname(path), f".{os.path.basename(path)}.tmp")
+        with open(tmp, "wb") as f:
+            f.write(data)
+        os.replace(tmp, path)
+
+    def delete_program(self, name: str) -> None:
+        path = self.program_path(name)
+        self._require_not_running_file(path)
+        os.remove(path)
 
     def open_program(self, name: str) -> None:
         path = self.program_path(name)

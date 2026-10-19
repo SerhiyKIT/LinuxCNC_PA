@@ -32,6 +32,7 @@ def make_fake_linuxcnc():
         JOG_STOP=0, JOG_CONTINUOUS=1, JOG_INCREMENT=2,
         AUTO_RUN=0, AUTO_PAUSE=1, AUTO_RESUME=2, AUTO_STEP=3,
         RCS_DONE=1, RCS_EXEC=2, RCS_ERROR=3,
+        TRAJ_MODE_COORD=1, TRAJ_MODE_FREE=2, TRAJ_MODE_TELEOP=3,
         NML_ERROR=1, NML_TEXT=2, NML_DISPLAY=3,
         OPERATOR_ERROR=11, OPERATOR_TEXT=12, OPERATOR_DISPLAY=13,
     )
@@ -44,11 +45,14 @@ def make_fake_linuxcnc():
     lc.running = True                  # чи запущений LinuxCNC
     lc.wait_rc = lc.RCS_DONE           # що повертає wait_complete
     lc.errors = []                     # черга error_channel
-    lc.ini_values = {("JOINT_0", "MAX_VELOCITY"): "30", ("JOINT_1", "MAX_VELOCITY"): "5"}
+    lc.ini_values = {("JOINT_0", "MAX_VELOCITY"): "30", ("JOINT_1", "MAX_VELOCITY"): "5",
+                     ("AXIS_X", "MAX_VELOCITY"): "30", ("AXIS_C", "MAX_VELOCITY"): "4"}
 
     machine = types.SimpleNamespace(
         task_state=lc.STATE_ESTOP, task_mode=lc.MODE_MANUAL, interp_state=lc.INTERP_IDLE,
         homed=(0,) * 6, joint_actual_position=(0.0,) * 6, joints=6, file="",
+        actual_position=(17.0, 5.5, 7.2, 180.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+        linear_units=1 / 25.4, motion_mode=lc.TRAJ_MODE_FREE,
         motion_line=0, feedrate=1.0, rapidrate=1.0, paused=False,
         ini_filename="/home/cnc/robot.ini",
     )
@@ -69,6 +73,8 @@ def make_fake_linuxcnc():
                 # Мінімальна "фізика", щоб передумови працювали
                 if name == "mode":
                     machine.task_mode = args[0]
+                elif name == "teleop_enable":
+                    machine.motion_mode = lc.TRAJ_MODE_TELEOP if args[0] else lc.TRAJ_MODE_FREE
                 elif name == "state":
                     machine.task_state = {lc.STATE_ESTOP_RESET: lc.STATE_OFF}.get(args[0], args[0])
                 elif name == "program_open":

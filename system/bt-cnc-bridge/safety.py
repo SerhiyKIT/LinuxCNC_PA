@@ -4,7 +4,8 @@
 політика при обриві з'єднання.
 
 Чистий модуль: час береться з переданої функції `clock` (для тестів).
-Клієнт ідентифікується довільним рядком — у мосту це шлях D-Bus пристрою.
+Клієнт ідентифікується довільним рядком — у мосту це шлях D-Bus пристрою
+або `tcp:IP:порт`. Ціль jog — joint (int 0..5) або світова вісь (str X..C).
 """
 from __future__ import annotations
 
@@ -20,10 +21,18 @@ from bridge_constants import (
 from protocol import ProtocolError
 
 
+JogKey = int | str
+
+
+def _ordered(keys) -> list[JogKey]:
+    # Спершу joints (int), потім осі (str) — щоб сортування не падало на суміші
+    return sorted(keys, key=lambda k: (isinstance(k, str), str(k)))
+
+
 @dataclass
 class DisconnectActions:
     """Що зробити з верстатом після обриву з'єднання клієнта."""
-    stop_jogs: list[int] = field(default_factory=list)
+    stop_jogs: list[JogKey] = field(default_factory=list)
     released: bool = False
     program: str | None = None      # "pause" | "abort" | None
 
@@ -42,8 +51,8 @@ class Safety:
         # Лічильник спроб глобальний: перепідключення не скидає блокування
         self.pin_fails = 0
         self.locked_until = 0.0
-        # joint -> час останнього ping під час jogc
-        self.jogging: dict[int, float] = {}
+        # joint/вісь -> час останнього ping під час jogc/jogwc
+        self.jogging: dict[JogKey, float] = {}
 
     # --- PIN -------------------------------------------------------------
 
@@ -75,7 +84,7 @@ class Safety:
             raise ProtocolError(E_BUSY, "керування зайняте іншим клієнтом")
         self.owner = client
 
-    def release(self, client: str) -> list[int]:
+    def release(self, client: str) -> list[JogKey]:
         """Звільняє керування; повертає joints, які треба зупинити."""
         if self.owner != client:
             raise ProtocolError(E_OWNER, "ви не керуєте")
@@ -95,33 +104,37 @@ class Safety:
 
     # --- Jog / watchdog ----------------------------------------------------
 
-    def clamp_velocity(self, vel: float, joint_max: float | None) -> float:
-        limit = self.max_jog_vel if joint_max is None else min(self.max_jog_vel, joint_max)
+    def clamp_velocity(self, vel: float, joint_max: float | None,
+                       cap: float | None = None) -> float:
+        """Обрізає до cap (типово MAX_JOG_VEL) і до ліміту з INI."""
+        limit = self.max_jog_vel if cap is None else cap
+        if joint_max is not None:
+            limit = min(limit, joint_max)
         return min(abs(vel), limit)
 
-    def start_jogc(self, joint: int) -> None:
-        self.jogging[joint] = self.clock()
+    def start_jogc(self, key: JogKey) -> None:
+        self.jogging[key] = self.clock()
 
     def ping(self) -> None:
         now = self.clock()
         for joint in self.jogging:
             self.jogging[joint] = now
 
-    def stop_jog(self, joint: int | None) -> list[int]:
-        if joint is None:
+    def stop_jog(self, key: JogKey | None) -> list[JogKey]:
+        if key is None:
             return self.stop_all_jogs()
-        self.jogging.pop(joint, None)
-        return [joint]
+        self.jogging.pop(key, None)
+        return [key]
 
-    def stop_all_jogs(self) -> list[int]:
-        joints = sorted(self.jogging)
+    def stop_all_jogs(self) -> list[JogKey]:
+        keys = _ordered(self.jogging)
         self.jogging.clear()
-        return joints
+        return keys
 
-    def expired(self) -> list[int]:
-        """Joints, для яких ping не приходив довше за WATCHDOG_MS."""
+    def expired(self) -> list[JogKey]:
+        """Joints/осі, для яких ping не приходив довше за WATCHDOG_MS."""
         now = self.clock()
-        late = sorted(j for j, t in self.jogging.items() if now - t > self.watchdog_sec)
+        late = _ordered(k for k, t in self.jogging.items() if now - t > self.watchdog_sec)
         for joint in late:
             del self.jogging[joint]
         return late

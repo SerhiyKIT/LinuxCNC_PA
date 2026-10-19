@@ -174,3 +174,68 @@ def test_load_config_inline_comments_and_validation(tmp_path):
     assert cfg["STATUS_HZ"] == 20.0
     assert cfg["MAX_JOG_VEL"] == DEFAULT_CONFIG["MAX_JOG_VEL"]
     assert cfg["WATCHDOG_MS"] == DEFAULT_CONFIG["WATCHDOG_MS"]
+
+
+# --- світові осі, файли, TCP-клієнти --------------------------------------
+
+def test_world_jog_limits(bridge, out, lc, clock):
+    power_on(lc)
+    login_take(bridge, out)
+    # X: JOG_LIN=0.2, cap MAX_JOG_LIN=0.5
+    assert say(bridge, out, A, "jogw X +1") == ["OK jogw X 1 @0.2"]
+    # C: INI AXIS_C MAX_VELOCITY=4 < MAX_JOG_VEL=20
+    assert say(bridge, out, A, "jogwc C - 50") == ["OK jogwc C -4"]
+    clock.advance(0.6)
+    out.clear()
+    bridge.watchdog_tick()
+    assert lc.commands("jog")[-1] == ("jog", lc.JOG_STOP, False, 5)
+    assert out == ["EVT E watchdog C"]
+
+
+def test_file_upload(bridge, out, projects):
+    login_take(bridge, out)
+    assert say(bridge, out, A, "file data G0") == ["ERR state спершу file begin <файл>"]
+    assert say(bridge, out, A, "file begin teach.ngc") == ["OK file teach.ngc"]
+    for line in ["(Програма)", "G53 G1 X1 F60", "", "M2"]:
+        assert say(bridge, out, A, "file data " + line) == ["OK file"]
+    assert say(bridge, out, A, "file end")[0].startswith("OK file teach.ngc ")
+    assert (projects / "teach.ngc").read_text() == "(Програма)\nG53 G1 X1 F60\n\nM2\n"
+    assert say(bridge, out, A, "rm teach.ngc") == ["OK rm teach.ngc"]
+
+
+def test_upload_requires_owner_and_is_dropped_on_disconnect(bridge, out):
+    say(bridge, out, B, "pin 1234")
+    assert say(bridge, out, B, "file begin x.ngc")[0].startswith("ERR owner")
+    login_take(bridge, out)
+    say(bridge, out, A, "file begin x.ngc")
+    bridge.client_disconnected(A)
+    assert A not in bridge.uploads
+
+
+def test_tcp_client_gets_private_replies(bridge, out, lc):
+    tcp_out = []
+    bridge.register_client("tcp:1.2.3.4:5", tcp_out.append)
+    out.clear()
+    bridge.handle_bytes("tcp:1.2.3.4:5", b"ver\n")
+    assert tcp_out == ["OK ver 1"] and out == []          # BLE нічого не бачить
+    bridge.handle_bytes("tcp:1.2.3.4:5", b"pin 1234\ntake\n")
+    assert tcp_out[1:3] == ["OK pin", "OK take"]
+    assert tcp_out[3].startswith("EVT S ")                  # статус і в TCP
+    assert '"w":[17.0,5.5,7.2,180.0,0.0,0.0]' in tcp_out[3]
+
+
+def test_events_skip_unauthed_tcp(bridge, out, lc):
+    stranger = []
+    bridge.register_client("tcp:9.9.9.9:1", stranger.append)
+    login_take(bridge, out)
+    lc.errors = [(lc.NML_ERROR, "boom")]
+    bridge.status_tick()
+    assert stranger == []
+
+
+def test_ble_unsubscribe_keeps_tcp_owner(bridge, out):
+    tcp_out = []
+    bridge.register_client("tcp:1.2.3.4:5", tcp_out.append)
+    bridge.handle_bytes("tcp:1.2.3.4:5", b"pin 1234\ntake\n")
+    bridge.subscribers_changed(False)
+    assert bridge.safety.owner == "tcp:1.2.3.4:5" and bridge.streaming

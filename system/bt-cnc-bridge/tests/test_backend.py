@@ -59,7 +59,8 @@ def test_status_snapshot(backend, lc):
     st = backend.status()
     assert st == {"st": "on", "mode": "manual", "homed": [1] * 6,
                   "j": [1.235, 0, 0, 0, 0, -90], "prog": "part.ngc", "line": 7,
-                  "run": "run", "fo": 50, "ro": 100}
+                  "run": "run", "fo": 50, "ro": 100,
+                  "w": [17.0, 5.5, 7.2, 180.0, 0.0, 0.0], "u": "in"}
 
 
 def test_poll_errors_only_errors(backend, lc):
@@ -225,3 +226,62 @@ def test_wait_timeout_and_error(backend, lc):
     assert err_code(backend.estop, True) == E_TIMEOUT
     lc.wait_rc = lc.RCS_ERROR
     assert err_code(backend.estop, True) == E_CNC
+
+
+# --- світові осі -----------------------------------------------------------
+
+def test_world_jog_requires_homed(backend, lc):
+    power_on(lc, homed=False)
+    assert err_code(backend.jog_world_increment, "X", 0.5, 0.2) == E_STATE
+    assert lc.commands("jog") == []
+
+
+def test_world_jog_uses_teleop_and_axis_index(backend, lc):
+    power_on(lc)
+    backend.jog_world_increment("Z", -0.5, 0.2)
+    backend.jog_world_continuous("C", 1, 3.0)
+    assert ("teleop_enable", 1) in lc.calls
+    assert lc.commands("jog") == [
+        ("jog", lc.JOG_INCREMENT, False, 2, -0.2, 0.5),
+        ("jog", lc.JOG_CONTINUOUS, False, 5, 3.0),
+    ]
+    assert backend.axis_max_vel == {"X": 30.0, "C": 4.0}
+
+
+def test_jog_stop_mixed_and_all(backend, lc):
+    power_on(lc)
+    backend.ensure()
+    backend.jog_stop([1, "B"])
+    assert lc.commands("jog") == [("jog", lc.JOG_STOP, True, 1), ("jog", lc.JOG_STOP, False, 4)]
+    lc.calls.clear()
+    lc.machine.motion_mode = lc.TRAJ_MODE_TELEOP
+    backend.jog_stop_all()
+    assert [c[3] for c in lc.commands("jog")] == [0, 1, 2, 3, 4, 5]
+    assert all(c[2] is False for c in lc.commands("jog"))
+
+
+# --- запис програм ------------------------------------------------------
+
+def test_write_and_delete_program(backend, lc, projects):
+    backend.write_program("teach.ngc", "G0 X1\nM2\n")
+    assert (projects / "teach.ngc").read_text() == "G0 X1\nM2\n"
+    assert not list(projects.glob(".*.tmp"))
+    backend.write_program("teach.ngc", "M2\n")          # перезапис
+    assert (projects / "teach.ngc").read_text() == "M2\n"
+    backend.delete_program("teach.ngc")
+    assert not (projects / "teach.ngc").exists()
+
+
+def test_write_program_rejects_bad_names_and_size(backend, projects):
+    assert err_code(backend.write_program, "../x.ngc", "M2") == E_PATH
+    assert err_code(backend.write_program, "big.ngc", "x" * 1_000_001) == "size"
+    os.symlink(projects.parent / "secret.ngc", projects / "link.ngc")
+    assert err_code(backend.write_program, "link.ngc", "M2") == E_PATH
+
+
+def test_cannot_overwrite_running_program(backend, lc, projects):
+    backend.ensure()
+    lc.machine.file = str(projects / "part.ngc")
+    lc.machine.interp_state = lc.INTERP_READING
+    assert err_code(backend.write_program, "part.ngc", "M2\n") == E_STATE
+    assert err_code(backend.delete_program, "part.ngc") == E_STATE

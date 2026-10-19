@@ -12,7 +12,7 @@ import math
 from dataclasses import dataclass
 
 from bridge_constants import (
-    E_ARGS, E_OVERFLOW, E_PATH, E_UNKNOWN, FO_RANGE, MAX_JOINTS,
+    AXES, E_ARGS, E_OVERFLOW, E_PATH, E_UNKNOWN, FO_RANGE, MAX_JOINTS,
     PROGRAM_EXTS, RO_RANGE, RX_BUFFER_MAX,
 )
 
@@ -42,6 +42,21 @@ def parse_joint(token: str) -> int:
     if not raw.isdigit() or not 0 <= int(raw) < MAX_JOINTS:
         raise ProtocolError(E_ARGS, f"joint має бути J0..J{MAX_JOINTS - 1}")
     return int(raw)
+
+
+def parse_axis(token: str) -> str:
+    """`x` / `X` -> `X` (світова вісь)."""
+    axis = token.upper()
+    if len(axis) != 1 or axis not in AXES:
+        raise ProtocolError(E_ARGS, "вісь має бути одна з " + " ".join(AXES))
+    return axis
+
+
+def parse_jog_target(token: str) -> int | str:
+    """Ціль jogstop: joint (`J0`/`0`) або світова вісь (`X`..`C`)."""
+    if token.upper() in AXES:
+        return token.upper()
+    return parse_joint(token)
 
 
 def parse_float(token: str, what: str) -> float:
@@ -144,10 +159,40 @@ def parse(line: str) -> Command:
             raise ProtocolError(E_ARGS, "швидкість має бути > 0")
         return Command(name, (parse_joint(rest[0]), 1 if rest[1] == "+" else -1, vel))
 
+    if name == "jogw":
+        if len(rest) != 2:
+            raise ProtocolError(E_ARGS, "jogw <X..C> <+-крок>")
+        step = parse_float(rest[1], "крок")
+        if step == 0:
+            raise ProtocolError(E_ARGS, "крок не може бути 0")
+        return Command(name, (parse_axis(rest[0]), step))
+
+    if name == "jogwc":
+        if len(rest) != 3 or rest[1] not in ("+", "-"):
+            raise ProtocolError(E_ARGS, "jogwc <X..C> <+|-> <швидкість>")
+        vel = parse_float(rest[2], "швидкість")
+        if vel <= 0:
+            raise ProtocolError(E_ARGS, "швидкість має бути > 0")
+        return Command(name, (parse_axis(rest[0]), 1 if rest[1] == "+" else -1, vel))
+
     if name == "jogstop":
         if len(rest) > 1:
-            raise ProtocolError(E_ARGS, "jogstop [J]")
-        return Command(name, (parse_joint(rest[0]) if rest else None,))
+            raise ProtocolError(E_ARGS, "jogstop [J|вісь]")
+        return Command(name, (parse_jog_target(rest[0]) if rest else None,))
+
+    if name == "file":
+        sub, _, raw = tail.strip().partition(" ")
+        if sub == "begin":
+            return Command(name, ("begin", validate_program_name(raw.strip())))
+        if sub == "data":
+            # Рядок програми як є (порожній теж дозволений)
+            return Command(name, ("data", line.split(" ", 2)[2] if raw else ""))
+        if sub in ("end", "abort") and not raw:
+            return Command(name, (sub,))
+        raise ProtocolError(E_ARGS, "file begin <файл> | data <рядок> | end | abort")
+
+    if name == "rm":
+        return Command(name, (validate_program_name(tail.strip()),))
 
     if name == "mdi":
         code = tail.strip()
