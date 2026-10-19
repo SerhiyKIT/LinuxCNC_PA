@@ -1,0 +1,77 @@
+# Збірка інсталятора CNC-Robot Studio для Windows (PyInstaller + Inno Setup).
+# - кожен push у clients/windows/** -> артефакт "CNC-Robot-Studio-Setup" у вкладці Actions;
+# - тег vX.Y.Z -> реліз на GitHub з інсталятором для завантаження.
+name: Windows Studio
+
+on:
+  push:
+    paths:
+      - "clients/windows/**"
+      - ".github/workflows/windows-studio.yml"
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write          # для створення релізу за тегом
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: clients/windows
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Залежності
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller pytest
+
+      - name: Тести (без Linux-only GLib)
+        run: python -m pytest bt_cnc_client/tests -q -p no:cacheprovider
+
+      - name: Версія
+        id: ver
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=1.0.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: PyInstaller
+        run: pyinstaller packaging/cnc_robot_studio.spec --noconfirm
+
+      - name: Перевірка запуску exe (5 с без помилок)
+        shell: pwsh
+        run: |
+          $env:QT_QPA_PLATFORM = "offscreen"
+          $p = Start-Process -FilePath "dist\CNC-Robot Studio\CNC-Robot Studio.exe" -PassThru
+          Start-Sleep -Seconds 5
+          if ($p.HasExited) { throw "Studio завершилась одразу, код $($p.ExitCode)" }
+          Stop-Process -Id $p.Id -Force
+
+      - name: Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=${{ steps.ver.outputs.version }}" packaging\installer.iss
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CNC-Robot-Studio-Setup-${{ steps.ver.outputs.version }}
+          path: clients/windows/packaging/Output/*.exe
+
+      - name: Реліз (лише для тегу vX.Y.Z)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: clients/windows/packaging/Output/*.exe
+          generate_release_notes: true
