@@ -1,0 +1,15 @@
+[Unit]
+Description=CNC-Robot mobile web app (websockify -> bt-cnc-bridge)
+After=network-online.target bt-cnc-bridge.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=cnc
+# __WEB_DIR__ і __PORT__ підставляє install.sh
+ExecStart=/usr/bin/websockify --web __WEB_DIR__ __PORT__ 127.0.0.1:8765
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

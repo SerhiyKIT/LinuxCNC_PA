@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#1f2933">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>CNC-Robot</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <span id="state" class="pill state-nocnc">Не підключено</span>
+    <span id="run" class="muted"></span>
+    <button id="take" class="chip" disabled>Взяти керування</button>
+  </header>
+
+  <main>
+    <!-- ===== Пульт ===== -->
+    <section id="tab-control" class="tab active">
+      <div class="row3">
+        <button id="reset" class="btn" disabled>Скинути E-stop</button>
+        <button id="power" class="btn" disabled>Power On</button>
+        <button id="home" class="btn" disabled>Home All</button>
+      </div>
+
+      <div class="seg" role="tablist" aria-label="Простір jog">
+        <button id="space-j" class="seg-btn active">Joints</button>
+        <button id="space-w" class="seg-btn">Світ X…C</button>
+      </div>
+      <div class="seg" aria-label="Режим jog">
+        <button id="mode-hold" class="seg-btn active">Утримання</button>
+        <button id="mode-step" class="seg-btn">Крок</button>
+      </div>
+
+      <div class="sliders">
+        <label><span>Швидкість кутів <b id="vel-out">10</b> °/с</span>
+          <input id="vel" type="range" min="1" max="30" step="1" value="10"></label>
+        <label id="lin-label" hidden><span>Швидкість X Y Z <b id="lin-out">0.2</b> од./с</span>
+          <input id="lin" type="range" min="0.02" max="0.5" step="0.02" value="0.2"></label>
+        <label id="step-label" hidden><span>Крок <b id="step-out">1</b> (° або од.)</span>
+          <input id="step" type="range" min="0" max="5" step="1" value="3"></label>
+      </div>
+
+      <div id="jog" class="jog"></div>
+      <p class="hint">Утримуйте кнопку — робот рухається, відпустіть — зупиняється.</p>
+    </section>
+
+    <!-- ===== Навчання ===== -->
+    <section id="tab-teach" class="tab">
+      <div class="row2">
+        <input id="prog-name" class="input" value="program" aria-label="Назва програми">
+        <select id="saved" class="input" aria-label="Збережені програми"></select>
+      </div>
+      <div class="row3">
+        <button id="rec-j" class="btn rec" disabled>● MoveJ</button>
+        <button id="rec-l" class="btn rec" disabled>● MoveL</button>
+        <button id="rec-p" class="btn rec" disabled>● MoveP</button>
+      </div>
+      <div class="row3">
+        <button id="add-wait" class="btn">+ Пауза</button>
+        <button id="add-dout" class="btn">+ Вихід</button>
+        <button id="add-comment" class="btn">+ Коментар</button>
+      </div>
+      <ol id="steps" class="steps"></ol>
+      <div class="row4">
+        <button id="st-up" class="btn" disabled>▲</button>
+        <button id="st-down" class="btn" disabled>▼</button>
+        <button id="st-update" class="btn" disabled>Оновити</button>
+        <button id="st-del" class="btn danger-outline" disabled>Видалити</button>
+      </div>
+      <div class="row2">
+        <button id="st-goto" class="btn" disabled>➜ Перейти до точки</button>
+        <button id="prog-run" class="btn primary" disabled>▶ Запустити</button>
+      </div>
+      <div class="row4">
+        <button id="prog-new" class="btn">Нова</button>
+        <button id="prog-save" class="btn">Зберегти</button>
+        <button id="prog-export" class="btn">Експорт</button>
+        <label class="btn">Імпорт<input id="prog-import" type="file" accept=".json,application/json" hidden></label>
+      </div>
+      <progress id="upload" max="1" value="0" hidden></progress>
+    </section>
+
+    <!-- ===== Програми ===== -->
+    <section id="tab-programs" class="tab">
+      <div class="card">
+        <div class="muted">Відкрито: <b id="prog-open">—</b></div>
+        <ul id="files" class="files"></ul>
+        <div class="row3">
+          <button id="ls" class="btn" disabled>Оновити</button>
+          <button id="open" class="btn" disabled>Відкрити</button>
+          <button id="rm" class="btn danger-outline" disabled>Видалити</button>
+        </div>
+      </div>
+      <div class="row4">
+        <button id="c-run" class="btn primary" disabled>▶</button>
+        <button id="c-pause" class="btn" disabled>⏸</button>
+        <button id="c-resume" class="btn" disabled>⏵</button>
+        <button id="c-stop" class="btn" disabled>⏹</button>
+      </div>
+      <div class="sliders"><label><span>Feed override <b id="fo-out">100</b>%</span>
+        <input id="fo" type="range" min="0" max="150" step="5" value="100" disabled></label></div>
+      <div class="row2">
+        <input id="mdi" class="input" placeholder="MDI: G0 X0" autocapitalize="characters" disabled>
+        <button id="mdi-go" class="btn" disabled>Виконати</button>
+      </div>
+    </section>
+
+    <!-- ===== Зв'язок ===== -->
+    <section id="tab-link" class="tab">
+      <div class="card">
+        <label>Адреса робота<input id="host" class="input" placeholder="192.168.1.20:8780"></label>
+        <label>PIN<input id="pin" class="input" type="password" inputmode="numeric" autocomplete="off"></label>
+        <button id="connect" class="btn primary">Підключити</button>
+      </div>
+      <details class="card" open>
+        <summary>Журнал</summary>
+        <pre id="log" class="log"></pre>
+      </details>
+    </section>
+  </main>
+
+  <button id="estop" class="estop" disabled>E-STOP</button>
+
+  <nav class="tabs">
+    <button data-tab="control" class="active">Пульт</button>
+    <button data-tab="teach">Навчання</button>
+    <button data-tab="programs">Програми</button>
+    <button data-tab="link">Зв'язок</button>
+  </nav>
+
+  <div id="toast" class="toast" hidden></div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
